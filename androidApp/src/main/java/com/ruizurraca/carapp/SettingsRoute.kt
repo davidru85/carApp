@@ -9,7 +9,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.ruizurraca.carapp.core.common.AuthProvider
-import com.ruizurraca.carapp.core.common.Confirmation
 
 /**
  * The `E4-01` Settings destination, pushed over the vehicle list. Its holders are ViewModel-scoped like
@@ -63,10 +62,6 @@ private fun SettingsRoute(
                 onLinkAccount = { provider ->
                     if (provider == AuthProvider.GOOGLE) googleSignIn.convert()
                 },
-                onConfirmAccountConversion = {
-                    viewModel.sessionStateHolder.confirmAccountConversion(Confirmation.AdoptExistingAccount)
-                },
-                onCancelAccountConversion = viewModel.sessionStateHolder::clearMessage,
             ),
     )
 }

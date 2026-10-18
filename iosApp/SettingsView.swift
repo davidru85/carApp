@@ -29,27 +29,11 @@ struct SettingsView: View {
         self.appVersion = appVersion
     }
 
-    private var analyticsEnabled: Binding<Bool> {
-        Binding(
-            get: { viewModel.state.analyticsEnabled },
-            set: { viewModel.setAnalyticsEnabled($0) }
-        )
-    }
-
     var body: some View {
         List {
             Section(header: Text("settings_section_units").foregroundStyle(.primary)) {
                 currencyRow
-                readOnlyRow(
-                    labelKey: "settings_distance_unit",
-                    valueKey: distanceUnitLabelKey(viewModel.state.distanceUnit),
-                    identifier: "settings_distance_unit"
-                )
-                readOnlyRow(
-                    labelKey: "settings_volume_unit",
-                    valueKey: volumeUnitLabelKey(viewModel.state.volumeUnit),
-                    identifier: "settings_volume_unit"
-                )
+                SettingsUnitRows(state: viewModel.state)
                 if let message = viewModel.state.message {
                     let text = message.localizedText
                     Text(text)
@@ -69,17 +53,13 @@ struct SettingsView: View {
 
             Section(header: Text("settings_section_privacy").foregroundStyle(.primary)) {
                 // Off by default and applied at once (`docs/CONTRACTS.md §16.1`); the copy says
-                // pseudonymous, as `D-203` requires.
-                Toggle(isOn: analyticsEnabled) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("settings_analytics")
-                        Text("settings_analytics_description")
-                            .font(.footnote)
-                            .foregroundStyle(.primary)
-                    }
-                }
-                .disabled(viewModel.state.isSaving)
-                .accessibilityIdentifier("settings_analytics_toggle")
+                // pseudonymous, as `D-203` requires. `R3`: `currencyCode == null` means the stored
+                // settings are unknown, so the row shows the loading value and no switch at all — an off
+                // switch would claim a stored opt-out the app has not read (`docs/CONTRACTS.md §20.10`).
+                SettingsAnalyticsRow(
+                    state: viewModel.state,
+                    onChange: viewModel.setAnalyticsEnabled
+                )
             }
 
             Section(header: Text("settings_section_account").foregroundStyle(.primary)) {
@@ -142,18 +122,6 @@ struct SettingsView: View {
         }
     }
 
-    /// A read-only value (`§3.1`): one static accessibility element with no action and no chevron.
-    private func readOnlyRow(labelKey: String, valueKey: String, identifier: String) -> some View {
-        HStack {
-            Text(LocalizedStringKey(labelKey))
-            Spacer()
-            Text(LocalizedStringKey(valueKey))
-                .foregroundStyle(.primary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(identifier)
-    }
-
     @ViewBuilder
     private func sessionRow(_ row: SettingsSessionRow) -> some View {
         switch row {
@@ -178,6 +146,71 @@ struct SettingsView: View {
             .tint(AccessibleColors.controlAccent)
             .disabled(skeletonModel.sessionState.isBusy)
             .accessibilityIdentifier("settings_delete_local_data")
+        }
+    }
+}
+
+/// The two read-only unit rows of `§3.1`. While the stored settings are unknown
+/// (`state.currencyCode == nil`) both values show the loading copy instead of a placeholder unit that
+/// the app has not read (`docs/CONTRACTS.md §20.10`). Each row is one static accessibility element with
+/// no action and no chevron. They are production components, so the Debug review fixtures render the
+/// same view rather than a second implementation.
+struct SettingsUnitRows: View {
+    let state: SettingsUiState
+
+    var body: some View {
+        readOnlyRow(
+            labelKey: "settings_distance_unit",
+            valueKey: state.currencyCode == nil ? "loading" : distanceUnitLabelKey(state.distanceUnit),
+            identifier: "settings_distance_unit"
+        )
+        readOnlyRow(
+            labelKey: "settings_volume_unit",
+            valueKey: state.currencyCode == nil ? "loading" : volumeUnitLabelKey(state.volumeUnit),
+            identifier: "settings_volume_unit"
+        )
+    }
+
+    private func readOnlyRow(labelKey: String, valueKey: String, identifier: String) -> some View {
+        HStack {
+            Text(LocalizedStringKey(labelKey))
+            Spacer()
+            Text(LocalizedStringKey(valueKey))
+                .foregroundStyle(.primary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+/// The `§16.1` row as `SettingsView` declares it, so the Debug review fixtures render the same production
+/// shape: the loading row while the stored settings are unknown, and the switch after.
+struct SettingsAnalyticsRow: View {
+    let state: SettingsUiState
+    let onChange: (Bool) -> Void
+
+    var body: some View {
+        if state.currencyCode == nil {
+            HStack {
+                Text("settings_analytics")
+                Spacer()
+                Text("loading")
+            }
+            .accessibilityIdentifier("settings_analytics_loading")
+        } else {
+            Toggle(isOn: Binding(
+                get: { state.analyticsEnabled },
+                set: { onChange($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("settings_analytics")
+                    Text("settings_analytics_description")
+                        .font(.footnote)
+                        .foregroundStyle(.primary)
+                }
+            }
+            .disabled(state.isSaving)
+            .accessibilityIdentifier("settings_analytics_toggle")
         }
     }
 }

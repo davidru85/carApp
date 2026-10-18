@@ -1,28 +1,54 @@
 import Shared
 import SwiftUI
 
+/// The answers the departure alerts can give. Each is one `SessionStateHolder` intent (or the
+/// composition of intents the contract names), so the alert renderer itself holds no model and the
+/// Debug review fixtures can render it with inert callbacks (`docs/CONTRACTS.md §20.10`).
+struct DeparturePromptCallbacks {
+    let onWaitForPendingSync: () -> Void
+    let onDiscardPendingChanges: (DepartureDiscardIntent) -> Void
+    let onDismiss: () -> Void
+    let onConfirmDeleteAccount: () -> Void
+    let onConfirmDeleteLocalData: () -> Void
+}
+
 /// Presents the F-5 departure prompts over the signed-in surface (`B1-D3`, `B1-D5`, `D-158`).
 ///
 /// The prompts are owned by `SessionStateHolder` and arrive as its typed `message`; this modifier only
 /// decides how one is drawn (`departurePrompt(for:)`) and which intent each button calls. It is
-/// attached at the root of the signed-in surface, above the vehicle list's navigation stack, so a
+/// attached once at the root of the signed-in surface, above the vehicle list's navigation stack, so a
 /// prompt raised from the pushed Settings screen and an outcome published after the departure screen
 /// handed control back are both drawn by the same presenter, with no modal between them and the owner.
+///
+/// The alert renderer (`DeparturePromptAlert`) is separated from the model so a review fixture can render
+/// exactly the production alert with inert callbacks. There is still one live model binding here and one
+/// alert renderer.
+struct DeparturePromptPresenter: ViewModifier {
+    @ObservedObject var model: WalkingSkeletonModel
+
+    func body(content: Content) -> some View {
+        content.modifier(DeparturePromptAlert(
+            current: departurePrompt(for: model.sessionState),
+            callbacks: DeparturePromptCallbacks(
+                onWaitForPendingSync: model.waitForPendingSync,
+                onDiscardPendingChanges: { model.discardPendingChanges(for: $0) },
+                onDismiss: model.dismissSessionMessage,
+                onConfirmDeleteAccount: model.confirmDeleteAccount,
+                onConfirmDeleteLocalData: model.confirmDeleteLocalData
+            )
+        ))
+    }
+}
+
+/// The alert itself: the `E4-02` review fixtures and the production modifier both render this struct.
 ///
 /// The presented value is a local copy refreshed from the derived prompt. An alert button dismisses its
 /// alert before the holder's next emission arrives, and the local copy lets the next prompt of a
 /// two-step protocol (a discard, then the destructive confirmation) present as a new alert.
-struct DeparturePromptPresenter: ViewModifier {
-    @ObservedObject private var model: WalkingSkeletonModel
+struct DeparturePromptAlert: ViewModifier {
+    let current: DeparturePrompt?
+    let callbacks: DeparturePromptCallbacks
     @State private var presented: DeparturePrompt?
-
-    init(model: WalkingSkeletonModel) {
-        _model = ObservedObject(wrappedValue: model)
-    }
-
-    private var current: DeparturePrompt? {
-        departurePrompt(for: model.sessionState)
-    }
 
     private var isPresented: Binding<Bool> {
         Binding(
@@ -52,38 +78,38 @@ struct DeparturePromptPresenter: ViewModifier {
         case let .pendingSync(_, intent):
             // F-5: wait for sync, cancel, or discard after a destructive confirmation (`B1-D3`).
             Button(String(localized: "pending_sync_wait")) {
-                model.waitForPendingSync()
+                callbacks.onWaitForPendingSync()
             }
             .accessibilityIdentifier("departure_pending_sync_wait")
             Button(String(localized: String.LocalizationValue(departureDiscardLabelKey(intent))), role: .destructive) {
-                model.discardPendingChanges(for: intent)
+                callbacks.onDiscardPendingChanges(intent)
             }
             .accessibilityIdentifier("departure_pending_sync_discard")
             Button(String(localized: "cancel"), role: .cancel) {
-                model.dismissSessionMessage()
+                callbacks.onDismiss()
             }
             .accessibilityIdentifier("departure_pending_sync_cancel")
         case .confirmDeleteAccount:
             Button(String(localized: "settings_delete_account"), role: .destructive) {
-                model.confirmDeleteAccount()
+                callbacks.onConfirmDeleteAccount()
             }
             .accessibilityIdentifier("departure_confirm_delete_account")
             Button(String(localized: "cancel"), role: .cancel) {
-                model.dismissSessionMessage()
+                callbacks.onDismiss()
             }
             .accessibilityIdentifier("departure_confirm_cancel")
         case .confirmDeleteLocalData:
             Button(String(localized: "settings_delete_local_data"), role: .destructive) {
-                model.confirmDeleteLocalData()
+                callbacks.onConfirmDeleteLocalData()
             }
             .accessibilityIdentifier("departure_confirm_delete_local_data")
             Button(String(localized: "cancel"), role: .cancel) {
-                model.dismissSessionMessage()
+                callbacks.onDismiss()
             }
             .accessibilityIdentifier("departure_confirm_cancel")
         case .failure:
             Button(String(localized: "ok"), role: .cancel) {
-                model.dismissSessionMessage()
+                callbacks.onDismiss()
             }
             .accessibilityIdentifier("departure_failure_ok")
         }

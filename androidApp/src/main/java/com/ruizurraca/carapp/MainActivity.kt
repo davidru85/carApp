@@ -42,11 +42,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -185,9 +187,17 @@ private fun VehicleApp(
 ) {
     val sessionState by viewModel.sessionStateHolder.state.collectAsState()
     val vehicleState by viewModel.vehicleListStateHolder.state.collectAsState()
-    val googleSignIn = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
     val reauthenticationInFlight =
-        rememberReauthenticationInFlight(viewModel.sessionStateHolder, sessionState.isBusy)
+        rememberReauthenticationInFlight(
+            sessionStateHolder = viewModel.sessionStateHolder,
+            phase = sessionState.phase,
+        )
+    val googleSignIn =
+        rememberGoogleSignIn(
+            sessionStateHolder = viewModel.sessionStateHolder,
+            acquireGoogleCredential = acquireGoogleCredential,
+            onNativeAcquisitionAbandoned = { reauthenticationInFlight.value = false },
+        )
 
     // Launch and foreground return are the only evaluation moments of the D-62 schedule (§11.3).
     // The same edge is the §9.8 AppForeground trigger: the holder applies the background-duration
@@ -213,13 +223,11 @@ private fun VehicleApp(
         }
 
         OnboardingDestination.DEPARTURE -> {
-            DepartureRoute(
-                session = sessionState,
-                sessionStateHolder = viewModel.sessionStateHolder,
-                onReauthenticateWithGoogle = {
-                    reauthenticationInFlight.value = true
-                    googleSignIn.reauthenticate()
-                },
+            DepartureRoot(
+                viewModel = viewModel,
+                sessionState = sessionState,
+                googleSignIn = googleSignIn,
+                reauthenticationInFlight = reauthenticationInFlight,
             )
         }
 
@@ -245,6 +253,29 @@ private fun VehicleApp(
             )
         }
     }
+}
+
+/**
+ * B1-D4's departure branch: the stage flag and the Google re-authentication entry it guards belong to the
+ * authenticated root, so they are wired here and not in the routing `when`.
+ */
+@Composable
+private fun DepartureRoot(
+    viewModel: VehicleAppViewModel,
+    sessionState: SessionUiState,
+    googleSignIn: GoogleSignInActions,
+    reauthenticationInFlight: MutableState<Boolean>,
+) {
+    DepartureRoute(
+        session = sessionState,
+        isReauthenticating = reauthenticationInFlight.value,
+        sessionStateHolder = viewModel.sessionStateHolder,
+        onReauthenticateWithGoogle = {
+            reauthenticationInFlight.value = true
+            googleSignIn.reauthenticate()
+        },
+        onReauthenticationAbandoned = { reauthenticationInFlight.value = false },
+    )
 }
 
 /**
@@ -350,13 +381,20 @@ private fun UnreadableVehicleList(onRetry: () -> Unit) {
  * Native credential acquisition is bound to the host that renders it, so a configuration change can
  * cancel it before any completion intent runs. The in-flight marker survives that recreation and
  * abandons the orphaned attempt, which is what keeps the welcome screen usable.
+ *
+ * [onNativeAcquisitionAbandoned] is the one point where a native attempt ends without a credential:
+ * a cancelled or failed picker, or an acquisition a recreation interrupted. A delivered credential is
+ * not abandonment — it can still be refused by the shared provider, and the host stage has to survive
+ * that refusal so the retained deletion stays reachable.
  */
 @Composable
 private fun rememberGoogleSignIn(
     sessionStateHolder: SessionStateHolder,
     acquireGoogleCredential: suspend () -> GoogleCredentialAcquisition,
+    onNativeAcquisitionAbandoned: () -> Unit,
 ): GoogleSignInActions {
     val scope = rememberCoroutineScope()
+    val currentOnNativeAcquisitionAbandoned by rememberUpdatedState(onNativeAcquisitionAbandoned)
     var acquisitionInFlight by rememberSaveable { mutableStateOf(false) }
     val coordinator =
         remember(sessionStateHolder, acquireGoogleCredential) {
@@ -365,7 +403,10 @@ private fun rememberGoogleSignIn(
                 startPermanentSignIn = sessionStateHolder::startPermanentSignIn,
                 startAccountConversion = sessionStateHolder::startAccountConversion,
                 completeGoogleSignIn = sessionStateHolder::completeGoogleSignIn,
-                failSignIn = sessionStateHolder::failSignIn,
+                failSignIn = { failure ->
+                    sessionStateHolder.failSignIn(failure)
+                    currentOnNativeAcquisitionAbandoned()
+                },
                 setAcquisitionInFlight = { inFlight -> acquisitionInFlight = inFlight },
             )
         }

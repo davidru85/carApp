@@ -25,6 +25,7 @@ internal enum class SessionPrompt {
     PENDING_SYNC,
     CONFIRM_DELETE_ACCOUNT,
     CONFIRM_DELETE_LOCAL_DATA,
+    CONVERSION_COLLISION,
     REAUTHENTICATE,
     ERROR,
 }
@@ -36,21 +37,17 @@ internal enum class SessionPrompt {
  * - `AuthError.RequiresRecentLogin` is the `§20.10` re-authentication flow, never a plain error.
  * - Every other ERROR is a failure the owner must see.
  * - A WARNING without a confirmation is the F-1 local start of `startAnonymousSignIn`, not a departure.
- * - `AdoptExistingAccount` belongs to the `E4-05` conversion surface, and `OdometerInconsistent` is
- *   never published by the session holder.
+ * - `AdoptExistingAccount` is answered by the root through the `E4-05` collision component, because the
+ *   collision arrives after the owner may have left Settings; only `OdometerInconsistent` remains
+ *   unrendered here, as the session holder never publishes it.
  */
 internal fun sessionPrompt(message: UiMessage?): SessionPrompt =
     when (message?.confirmation) {
         Confirmation.DiscardPendingChanges -> SessionPrompt.PENDING_SYNC
-
         Confirmation.DeleteAccount -> SessionPrompt.CONFIRM_DELETE_ACCOUNT
-
         Confirmation.DeleteLocalData -> SessionPrompt.CONFIRM_DELETE_LOCAL_DATA
-
-        Confirmation.AdoptExistingAccount,
-        Confirmation.OdometerInconsistent,
-        -> SessionPrompt.NONE
-
+        Confirmation.AdoptExistingAccount -> SessionPrompt.CONVERSION_COLLISION
+        Confirmation.OdometerInconsistent -> SessionPrompt.NONE
         null -> unconfirmedSessionPrompt(message)
     }
 
@@ -84,6 +81,8 @@ internal data class SessionPromptCallbacks(
     val onConfirmDeleteAccount: () -> Unit,
     val onConfirmDeleteLocalData: () -> Unit,
     val onDismissError: () -> Unit,
+    val onConfirmAccountConversion: () -> Unit,
+    val onCancelAccountConversion: () -> Unit,
 )
 
 /**
@@ -120,6 +119,10 @@ internal fun sessionPromptCallbacks(
         onConfirmDeleteAccount = { session.confirmDeleteAccount(Confirmation.DeleteAccount) },
         onConfirmDeleteLocalData = { session.confirmDeleteAccount(Confirmation.DeleteLocalData) },
         onDismissError = session::clearMessage,
+        onConfirmAccountConversion = {
+            session.confirmAccountConversion(Confirmation.AdoptExistingAccount)
+        },
+        onCancelAccountConversion = session::clearMessage,
     )
 
 /**
@@ -162,6 +165,14 @@ internal fun SettingsSessionPrompts(
                 confirmLabelResource = R.string.settings_delete_local_data,
                 onConfirm = callbacks.onConfirmDeleteLocalData,
                 onWithdraw = callbacks.onWithdraw,
+            )
+        }
+
+        SessionPrompt.CONVERSION_COLLISION -> {
+            AccountConversionCollisionDialog(
+                message = message,
+                onConfirm = callbacks.onConfirmAccountConversion,
+                onCancel = callbacks.onCancelAccountConversion,
             )
         }
 

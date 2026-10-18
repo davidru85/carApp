@@ -122,12 +122,66 @@ final class AccessibilityAuditUITests: XCTestCase {
 
     @MainActor
     func testDepartureFailurePassesTheAccessibilityAudit() throws {
-        let app = launchCarApp(arguments: english, environment: AccessibilityUITestSupport.forceDepartureFailure)
-        let retry = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'departure_'"))
-            .firstMatch
-        XCTAssertTrue(retry.waitForExistence(timeout: 10))
-        attachAccessibilityEvidence(of: app, named: "audit-departure-failure")
+        let app = launchReviewSurface("departureFailure", arguments: english)
+        requireReviewControls(["departure_failure", "departure_retry"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-departure")
         try auditAccessibility(of: app, screen: "departure")
     }
+
+    @MainActor
+    func testReauthenticationPassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("reauthentication", arguments: english)
+        requireReviewControls(["departure_reauth_apple", "departure_reauth_google", "departure_reauth_cancel"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-departure-reauthentication")
+        try auditAccessibility(of: app, screen: "departure-reauthentication")
+    }
+
+    @MainActor
+    func testReauthenticationFailurePassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("reauthenticationFailure", arguments: english)
+        requireReviewControls(["departure_reauth_apple", "departure_reauth_google", "departure_reauth_cancel", "departure_failure"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-departure-reauthentication-failure")
+        try auditAccessibility(of: app, screen: "departure-reauthentication-failure")
+    }
+
+    @MainActor
+    func testDeleteAccountPassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("deleteAccount", arguments: english)
+        requireAlertControls(["Delete account", "Cancel"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-departure-delete-account")
+        try auditAccessibility(of: app, screen: "departure-delete-account")
+    }
+
+    @MainActor
+    func testDeleteLocalDataPassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("deleteLocalData", arguments: english)
+        requireAlertControls(["Delete local data", "Cancel"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-departure-delete-local-data")
+        try auditAccessibility(of: app, screen: "departure-delete-local-data")
+    }
+
+    @MainActor
+    func testPendingSyncPassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("pendingSync", arguments: english)
+        requireAlertControls(["Wait for backup", "Discard and sign out", "Cancel"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-departure-pending-sync")
+        try auditAccessibility(of: app, screen: "departure-pending-sync")
+    }
+
+    @MainActor
+    func testConversionFixturePassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("conversion", arguments: english)
+        requireReviewControls(["settings_link_account_apple", "settings_link_account_google"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-conversion")
+        try auditAccessibility(of: app, screen: "conversion")
+    }
+
+    @MainActor
+    func testCollisionPassesTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("collision", arguments: english)
+        requireAlertControls(["Replace data", "Cancel"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-conversion-collision")
+        try auditAccessibility(of: app, screen: "conversion-collision")
+    }
+
 }

@@ -83,7 +83,7 @@ class SessionPromptTest {
     }
 
     @Test
-    fun theConversionCollisionIsLeftToTheConversionSurface() {
+    fun theConversionCollisionIsTheRootCollisionPrompt() {
         val collision =
             message(
                 code = "CONFIRMATION.AdoptExistingAccount",
@@ -91,7 +91,20 @@ class SessionPromptTest {
                 confirmation = Confirmation.AdoptExistingAccount,
             )
 
-        assertEquals(SessionPrompt.NONE, sessionPrompt(collision))
+        assertEquals(SessionPrompt.CONVERSION_COLLISION, sessionPrompt(collision))
+    }
+
+    /** The odometer confirmation is the fuel form's two-step warning, never a session prompt. */
+    @Test
+    fun theOdometerConfirmationIsNotASessionPrompt() {
+        val odometer =
+            message(
+                code = "CONFIRMATION.OdometerInconsistent",
+                kind = UiMessageKind.WARNING,
+                confirmation = Confirmation.OdometerInconsistent,
+            )
+
+        assertEquals(SessionPrompt.NONE, sessionPrompt(odometer))
     }
 
     @Test

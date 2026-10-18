@@ -45,7 +45,31 @@ func localizedSessionMessage(forCode code: String) -> String {
 /// `SessionStateHolder.startAccountConversion` and completes through the existing native pickers.
 struct LinkAccountRows: View {
     let state: SessionUiState
-    let signInCoordinator: NativeSignInCoordinator
+    let onPrepareApple: (ASAuthorizationAppleIDRequest) -> Void
+    let onCompleteApple: (Result<ASAuthorization, Error>) -> Void
+    let onGoogle: () -> Void
+
+    /// The production route: the native coordinator owns the two Apple steps and the Google picker.
+    init(state: SessionUiState, signInCoordinator: NativeSignInCoordinator) {
+        self.state = state
+        self.onPrepareApple = signInCoordinator.prepareAppleConversionRequest
+        self.onCompleteApple = signInCoordinator.completeAppleAuthorization
+        self.onGoogle = signInCoordinator.startGoogleConversion
+    }
+
+    /// The inert route: a rendering fixture exercises the rows without an authentication flow. The
+    /// callbacks do nothing, so no test that uses this initializer can start a real provider operation.
+    init(
+        state: SessionUiState,
+        onPrepareApple: @escaping (ASAuthorizationAppleIDRequest) -> Void,
+        onCompleteApple: @escaping (Result<ASAuthorization, Error>) -> Void,
+        onGoogle: @escaping () -> Void
+    ) {
+        self.state = state
+        self.onPrepareApple = onPrepareApple
+        self.onCompleteApple = onCompleteApple
+        self.onGoogle = onGoogle
+    }
 
     var body: some View {
         if showsLinkAccountRow(phase: state.phase) {
@@ -67,20 +91,22 @@ struct LinkAccountRows: View {
 
             SignInWithAppleButton(
                 .continue,
-                onRequest: signInCoordinator.prepareAppleConversionRequest,
-                onCompletion: signInCoordinator.completeAppleAuthorization
+                onRequest: onPrepareApple,
+                onCompletion: onCompleteApple
             )
             .signInWithAppleButtonStyle(.black)
             .frame(height: 50)
             .accessibilityIdentifier("settings_link_account_apple")
             .disabled(state.isBusy)
 
-            Button(action: signInCoordinator.startGoogleConversion) {
+            Button(action: onGoogle) {
                 Text("continue_with_google")
+                    .foregroundStyle(AccessibleColors.controlAccent)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccent)
             .accessibilityIdentifier("settings_link_account_google")
             .disabled(state.isBusy)
         }

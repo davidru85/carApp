@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
@@ -178,6 +180,109 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag(SettingsTestTags.DISMISS_ERROR).performClick()
 
         assertEquals(listOf("dismissSettingsMessage"), calls)
+    }
+
+    /**
+     * `R3` U0: the stored settings are unknown, so no row may present a placeholder as a known value and
+     * no switch may claim a stored opt-out (`docs/CONTRACTS.md §20.10`).
+     */
+    @Test
+    fun unknownSettingsRenderLoadingValuesAndNoAnalyticsSwitch() {
+        val calls = mutableListOf<String>()
+        composeRule.setContent {
+            TestSettingsScreen(
+                settings = settingsState(currencyCode = null),
+                callbacks = recordingSettingsCallbacks(calls),
+            )
+        }
+
+        listOf(
+            SettingsTestTags.CURRENCY_VALUE,
+            SettingsTestTags.DISTANCE_UNIT_ROW,
+            SettingsTestTags.VOLUME_UNIT_ROW,
+            SettingsTestTags.ANALYTICS_LOADING,
+        ).forEach { tag ->
+            composeRule.onNodeWithTag(tag, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        }
+        composeRule.onNodeWithTag(SettingsTestTags.ANALYTICS_SWITCH).assertDoesNotExist()
+        val loading = targetString(R.string.loading)
+        composeRule
+            .onNodeWithTag(SettingsTestTags.CURRENCY_VALUE, useUnmergedTree = true)
+            .assertTextEquals(loading)
+        listOf(SettingsTestTags.DISTANCE_UNIT_ROW, SettingsTestTags.VOLUME_UNIT_ROW).forEach { tag ->
+            composeRule.onNodeWithTag(tag).assertTextContains(loading)
+        }
+        assertEquals(emptyList<String>(), calls)
+    }
+
+    /** `R3` U1: a read failure is not a completed read, so the loading values and the typed error stay. */
+    @Test
+    fun failedSettingsReadRendersLoadingValuesPlusTheTypedError() {
+        val calls = mutableListOf<String>()
+        val failure = uiMessage("PERSISTENCE.TRANSACTION_FAILED", UiMessageKind.ERROR, null)
+        composeRule.setContent {
+            TestSettingsScreen(
+                settings = settingsState(currencyCode = null, message = failure),
+                callbacks = recordingSettingsCallbacks(calls),
+            )
+        }
+
+        listOf(
+            SettingsTestTags.ERROR,
+            SettingsTestTags.ANALYTICS_LOADING,
+        ).forEach { tag -> composeRule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed() }
+        composeRule
+            .onNodeWithTag(SettingsTestTags.ERROR)
+            .assertTextEquals(targetString(R.string.error_persistence))
+        composeRule.onNodeWithTag(SettingsTestTags.ANALYTICS_SWITCH).assertDoesNotExist()
+        assertEquals(emptyList<String>(), calls)
+    }
+
+    /** `R3` K0: a known off preference is the real stored state and is actionable. */
+    @Test
+    fun knownOffAnalyticsRendersAnEnabledOffSwitch() {
+        composeRule.setContent { TestSettingsScreen(settings = settingsState(analyticsEnabled = false)) }
+
+        composeRule
+            .onNodeWithTag(SettingsTestTags.ANALYTICS_SWITCH)
+            .performScrollTo()
+            .assertIsOff()
+            .assertIsEnabled()
+        composeRule.onNodeWithTag(SettingsTestTags.ANALYTICS_LOADING).assertDoesNotExist()
+    }
+
+    /** `R3` K1: a stored opt-in is never overridden by an initial default. */
+    @Test
+    fun knownOnAnalyticsRendersAnEnabledOnSwitch() {
+        composeRule.setContent { TestSettingsScreen(settings = settingsState(analyticsEnabled = true)) }
+
+        composeRule
+            .onNodeWithTag(SettingsTestTags.ANALYTICS_SWITCH)
+            .performScrollTo()
+            .assertIsOn()
+            .assertIsEnabled()
+        composeRule.onNodeWithTag(SettingsTestTags.ANALYTICS_LOADING).assertDoesNotExist()
+    }
+
+    /** `R3` K2: a write in flight disables the switch, so it cannot start a second write. */
+    @Test
+    fun savingAnalyticsRendersACheckedDisabledSwitchThatDoesNotWrite() {
+        val calls = mutableListOf<String>()
+        composeRule.setContent {
+            TestSettingsScreen(
+                settings = settingsState(analyticsEnabled = true, isSaving = true),
+                callbacks = recordingSettingsCallbacks(calls),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(SettingsTestTags.ANALYTICS_SWITCH)
+            .performScrollTo()
+            .assertIsOn()
+            .assertIsNotEnabled()
+        composeRule.onNodeWithTag(SettingsTestTags.ANALYTICS_SWITCH).performClick()
+
+        assertEquals(emptyList<String>(), calls)
     }
 
     /** Only `UiMessageKind.ERROR` is raised as a failure, as on the departure prompts. */

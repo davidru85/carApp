@@ -65,4 +65,125 @@ final class SpanishLocalizationUITests: XCTestCase {
         XCTAssertTrue(error.waitForExistence(timeout: 10))
         attachAccessibilityEvidence(of: app, named: "es-departure")
     }
+
+    // MARK: - R5-I: explicit Spanish presentation evidence for the review fixtures
+
+    func testReauthenticationRendersSpanishCopy() {
+        let app = launchReviewSurface("reauthentication", arguments: spanish)
+        requireReviewControls(["departure_reauth_apple", "departure_reauth_google", "departure_reauth_cancel"], in: app)
+        XCTAssertEqual(app.buttons["departure_reauth_google"].label, "Continuar con Google")
+        XCTAssertEqual(app.buttons["departure_reauth_cancel"].label, "Cancelar")
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == %@", "departure_reauth_message"))
+                .firstMatch.label.contains("vuelve a iniciar sesión"),
+            "the recent-login reason must be Spanish"
+        )
+        attachAccessibilityEvidence(of: app, named: "es-reauthentication")
+    }
+
+    func testRetainedReauthenticationFailureRendersSpanishCopy() {
+        let app = launchReviewSurface("reauthenticationFailure", arguments: spanish)
+        requireReviewControls(["departure_reauth_google", "departure_reauth_cancel", "departure_failure"], in: app)
+        let failure = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "departure_failure"))
+            .firstMatch
+        XCTAssertTrue(
+            failure.label.contains("Esta acción necesita conexión"),
+            "the mapped auth network error must be Spanish, saw \(failure.label)"
+        )
+        attachAccessibilityEvidence(of: app, named: "es-reauthentication-failure")
+    }
+
+    func testDeleteAccountConfirmationRendersSpanishCopy() {
+        let app = launchReviewSurface("deleteAccount", arguments: spanish)
+        requireAlertControls(["Eliminar cuenta", "Cancelar"], in: app)
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(
+            alert.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "Esto elimina permanentemente tu cuenta"))
+                .firstMatch.exists,
+            "the complete Spanish irreversible-action body must be present"
+        )
+        XCTAssertTrue(alert.buttons["Eliminar cuenta"].exists)
+        XCTAssertTrue(alert.buttons["Cancelar"].exists)
+        attachAccessibilityEvidence(of: app, named: "es-delete-account")
+    }
+
+    func testDeleteLocalDataConfirmationRendersSpanishCopy() {
+        let app = launchReviewSurface("deleteLocalData", arguments: spanish)
+        requireAlertControls(["Eliminar datos locales", "Cancelar"], in: app)
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(
+            alert.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "Esto elimina permanentemente todos los vehículos"))
+                .firstMatch.exists,
+            "the complete Spanish irreversible-action body must be present"
+        )
+        XCTAssertTrue(alert.buttons["Eliminar datos locales"].exists)
+        XCTAssertTrue(alert.buttons["Cancelar"].exists)
+        attachAccessibilityEvidence(of: app, named: "es-delete-local-data")
+    }
+
+    func testPendingSyncPromptRendersSpanishCopy() {
+        let app = launchReviewSurface("pendingSync", arguments: spanish)
+        requireAlertControls(["Esperar a la copia", "Descartar y cerrar sesión", "Cancelar"], in: app)
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(
+            alert.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "3"))
+                .firstMatch.exists,
+            "the pending-sync count must be visible"
+        )
+        XCTAssertTrue(alert.buttons["Esperar a la copia"].exists)
+        XCTAssertTrue(alert.buttons["Cancelar"].exists)
+        attachAccessibilityEvidence(of: app, named: "es-pending-sync")
+    }
+
+    func testConversionRowRendersSpanishCopy() {
+        let app = launchReviewSurface("conversion", arguments: spanish)
+        requireReviewControls(["settings_link_account_apple", "settings_link_account_google"], in: app)
+        XCTAssertEqual(app.buttons["settings_link_account_google"].label, "Continuar con Google")
+        // `LinkAccountRows` is one container, so its title is its own `staticTexts` node inside it.
+        XCTAssertTrue(
+            app.staticTexts["Vincular una cuenta"].waitForExistence(timeout: 10)
+                || app.descendants(matching: .any)
+                    .matching(NSPredicate(format: "label CONTAINS %@", "Vincular"))
+                    .firstMatch.exists,
+            "the Spanish link-account title and body must be present"
+        )
+        XCTAssertFalse(
+            app.buttons["settings_link_account_apple"].label.isEmpty,
+            "the system Apple button must still expose an accessible label"
+        )
+        attachAccessibilityEvidence(of: app, named: "es-conversion")
+    }
+
+    func testCollisionRendersSpanishCopy() {
+        let app = launchReviewSurface("collision", arguments: spanish)
+        requireAlertControls(["Sustituir datos", "Cancelar"], in: app)
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(
+            alert.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "sustituye permanentemente"))
+                .firstMatch.exists,
+            "the complete Spanish collision body must be present"
+        )
+        XCTAssertTrue(alert.buttons["Sustituir datos"].exists)
+        XCTAssertTrue(alert.buttons["Cancelar"].exists)
+        attachAccessibilityEvidence(of: app, named: "es-collision")
+    }
+
+    func testDepartureFailureRendersSpanishRetryCopy() {
+        let app = launchReviewSurface("departureFailure", arguments: spanish)
+        requireReviewControls(["departure_failure", "departure_retry"], in: app)
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == %@", "departure_failure"))
+                .firstMatch.label.contains("No se ha podido guardar el cambio"),
+            "the Spanish persistence error must be present"
+        )
+        XCTAssertFalse(app.buttons["departure_retry"].label.isEmpty, "the retry control must be localised")
+        attachAccessibilityEvidence(of: app, named: "es-departure-fixture")
+    }
 }

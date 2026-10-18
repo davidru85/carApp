@@ -31,6 +31,7 @@ import com.google.android.apps.common.testing.accessibility.framework.Accessibil
 import com.google.android.apps.common.testing.accessibility.framework.AccessibilityViewCheckResult
 import com.google.android.apps.common.testing.accessibility.framework.integrations.espresso.AccessibilityValidator
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.DispatcherProvider
 import com.ruizurraca.carapp.core.common.Outcome
@@ -277,11 +278,19 @@ internal fun a11ySettingsCallbacks(): SettingsCallbacks = recordingSettingsCallb
 
 internal fun a11yPromptCallbacks(): SessionPromptCallbacks = recordingSessionPromptCallbacks(mutableListOf())
 
-/** The `B1-D4` departure screen with inert actions (signature of `DepartureScreen.kt`, `E4-01`). */
+/**
+ * The `B1-D4` departure screen with inert actions (signature of `DepartureScreen.kt`, `E4-01`). The
+ * optional host stage defaults to false so a caller that does not test re-authentication keeps the
+ * signature it had; this default belongs to test code and not to the production screen.
+ */
 @Composable
-internal fun A11yDepartureScreen(session: SessionUiState) {
+internal fun A11yDepartureScreen(
+    session: SessionUiState,
+    isReauthenticating: Boolean = false,
+) {
     DepartureScreen(
         session = session,
+        isReauthenticating = isReauthenticating,
         onRetry = {},
         onDismissMessage = {},
         onReauthenticate = {},
@@ -307,6 +316,25 @@ internal fun failedDepartureSession(): SessionUiState =
         phase = SessionPhase.DELETING,
         message = a11yMessage("PERSISTENCE.TRANSACTION_FAILED"),
         pendingDepartureRetry = DepartureRetry.LOCAL_CLEAR,
+    )
+
+/** `R5`: the `§20.10` re-authentication stage with the Google provider Android can open. */
+internal fun reauthenticationSession(code: String = "AUTH.REQUIRES_RECENT_LOGIN"): SessionUiState =
+    a11ySession(
+        phase = SessionPhase.PERMANENT,
+        message = a11yMessage(code),
+    ).copy(providers = listOf(AuthProvider.GOOGLE))
+
+/** `R5`: the destructive account-deletion confirmation of a permanent owner. */
+internal fun deleteAccountSession(): SessionUiState =
+    a11ySession(
+        phase = SessionPhase.PERMANENT,
+        message =
+            a11yMessage(
+                code = "CONFIRMATION.DeleteAccount",
+                kind = UiMessageKind.WARNING,
+                confirmation = Confirmation.DeleteAccount,
+            ),
     )
 
 internal fun conversionCollisionSession(): SessionUiState =

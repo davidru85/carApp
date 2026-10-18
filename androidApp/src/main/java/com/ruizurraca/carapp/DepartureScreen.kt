@@ -28,19 +28,22 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 
 /**
  * The departure surface of B1-D4. While the shared holder is busy (a departure, or the host's
- * re-authentication attempt) it shows progress. A stale login (`AuthError.RequiresRecentLogin`) shows
- * the `§20.10` re-authentication choice: one action per provider the host can open natively
- * ([reauthenticationProviders]) and a cancel. Any other settled state shows the typed failure through
- * the one shared mapping and, only when `pendingDepartureRetry` names a retained step, the
- * `retryDeparture()` action. It decides nothing: every value it draws is published by
- * `SessionStateHolder` (`docs/CONTRACTS.md §20.10`).
+ * re-authentication attempt) it shows progress. A stale login (`AuthError.RequiresRecentLogin`), or a
+ * host stage the shared provider already refused, shows the `§20.10` re-authentication choice: one
+ * action per provider the host can open natively ([reauthenticationProviders]) and a cancel. Any other
+ * settled state shows the typed failure through the one shared mapping and, only when
+ * `pendingDepartureRetry` names a retained step, the `retryDeparture()` action. It decides nothing:
+ * every value it draws is published by `SessionStateHolder` (`docs/CONTRACTS.md §20.10`).
  *
  * The two re-authentication parameters were added to the `00-common.md` signature for parity with the
- * iOS `DepartureView`; no existing parameter was renamed.
+ * iOS `DepartureView`; no existing parameter was renamed. [isReauthenticating] is the host stage: once
+ * it is set, a provider rejection does not end it, so the retained deletion keeps its Google and Cancel
+ * actions instead of falling back to a generic dismissal.
  */
 @Composable
 internal fun DepartureScreen(
     session: SessionUiState,
+    isReauthenticating: Boolean,
     onRetry: () -> Unit,
     onDismissMessage: () -> Unit,
     onReauthenticate: (AuthProvider) -> Unit,
@@ -63,7 +66,7 @@ internal fun DepartureScreen(
                         DepartureProgress()
                     }
 
-                    sessionPrompt(session.message) == SessionPrompt.REAUTHENTICATE -> {
+                    isReauthenticating || sessionPrompt(session.message) == SessionPrompt.REAUTHENTICATE -> {
                         DepartureReauthentication(
                             session = session,
                             onReauthenticate = onReauthenticate,
@@ -108,12 +111,15 @@ private fun DepartureReauthentication(
         textAlign = TextAlign.Center,
         modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_TITLE),
     )
-    session.message?.let { message ->
-        Text(
-            text = stringResource(sessionMessageStringResource(message)),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_REASON),
-        )
+    // The reason is the `§20.10` recent-login requirement itself, so it stays on screen when the shared
+    // provider rejects the credential and the session message becomes a different typed failure.
+    Text(
+        text = stringResource(R.string.error_auth_requires_recent_login),
+        textAlign = TextAlign.Center,
+        modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_REASON),
+    )
+    if (sessionPrompt(session.message) != SessionPrompt.REAUTHENTICATE) {
+        SessionErrorText(session.message, testTag = DepartureTestTags.ERROR)
     }
     reauthenticationProviders(session.providers).forEach { provider ->
         Button(
@@ -193,16 +199,20 @@ internal object DepartureTestTags {
 @Composable
 internal fun DepartureRoute(
     session: SessionUiState,
+    isReauthenticating: Boolean,
     sessionStateHolder: SessionStateHolder,
     onReauthenticateWithGoogle: () -> Unit,
+    onReauthenticationAbandoned: () -> Unit,
 ) {
     DepartureScreen(
         session = session,
+        isReauthenticating = isReauthenticating,
         onRetry = sessionStateHolder::retryDeparture,
         onDismissMessage = sessionStateHolder::clearMessage,
         // Android offers Google only (F-1), so every offered provider opens the Google picker.
         onReauthenticate = { _ -> onReauthenticateWithGoogle() },
         onCancelReauthentication = {
+            onReauthenticationAbandoned()
             sessionStateHolder.startReauthentication(AuthProvider.GOOGLE)
             sessionStateHolder.failSignIn(NativeSignInFailure.CANCELLED)
         },
@@ -211,19 +221,20 @@ internal fun DepartureRoute(
 
 /**
  * The host's `isReauthenticating` flag. `SessionUiState` has no "awaiting re-authentication" value, so
- * the host remembers that it started an attempt and keeps the departure surface mounted until the
- * session is no longer busy ([isReauthenticationStillInFlight]). It reads the holder's current value,
- * not the collected one, because the collected state can lag one frame behind the synchronous
+ * the host remembers that it started an attempt and keeps the departure surface mounted for as long as
+ * the suspended deletion exists ([isReauthenticationStillInFlight]). It reads the holder's current
+ * value, not the collected one, because the collected state can lag one frame behind the synchronous
  * `startReauthentication` call that made the session busy.
  */
 @Composable
 internal fun rememberReauthenticationInFlight(
     sessionStateHolder: SessionStateHolder,
-    isBusy: Boolean,
+    phase: SessionPhase,
 ): MutableState<Boolean> {
     val inFlight = rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(inFlight.value, isBusy) {
-        inFlight.value = isReauthenticationStillInFlight(inFlight.value, sessionStateHolder.state.value)
+    LaunchedEffect(inFlight.value, phase) {
+        inFlight.value =
+            isReauthenticationStillInFlight(inFlight.value, sessionStateHolder.state.value)
     }
     return inFlight
 }
@@ -238,9 +249,29 @@ internal fun rememberReauthenticationInFlight(
  * routing them anywhere else would leave the typed failure and `retryDeparture()` unreachable.
  *
  * It also carries `§20.10` re-authentication: a permanent owner whose deletion was refused with
- * `AuthError.RequiresRecentLogin` is routed here, and so is the host's own re-authentication attempt
- * ([isReauthenticating]) while the native picker is up, so its result arrives on a mounted surface.
- * `UNKNOWN` without `isBusy` is the cold start and keeps waiting; every other state keeps F-1 routing.
+ * `AuthError.RequiresRecentLogin` is routed here, and so is the host's own re-authentication stage
+ * ([isReauthenticating]) from the moment the owner asks for it until one of the transitions below ends
+ * it, so its result arrives on a mounted surface. `UNKNOWN` without `isBusy` is the cold start and keeps
+ * waiting; every other state keeps F-1 routing.
+ *
+ * The stage's transitions are the contract's, not an observation of the session state:
+ *
+ * | Input event | Host stage after the event | Root destination and visible result |
+ * |---|---|---|
+ * | Initial `AUTH.REQUIRES_RECENT_LOGIN` in `PERMANENT` | May still be false |
+ *   Departure, reason plus provider controls |
+ * | Tap Google | true | Departure progress while busy |
+ * | Native picker returns a credential; the shared provider rejects it | true | Departure,
+ *   permanent reason, typed failure, Google and Cancel |
+ * | Native picker is cancelled or fails before a credential | false | Authenticated route;
+ *   shared `failSignIn` abandons the deletion |
+ * | Configuration change interrupts native acquisition | false via the abandonment callback |
+ *   Authenticated route; the session is not stranded busy |
+ * | Tap explicit Cancel on the stage | false | Shared start-then-cancel abandons the deletion |
+ * | Shared re-authentication succeeds; the phase leaves `PERMANENT` | false once the phase
+ *   observer runs | Departure progress, then success or the existing typed retry |
+ * | A session emission occurs with no host stage active | false | No stage is inferred from a
+ *   generic error |
  */
 internal fun resolveRootDestination(
     session: SessionUiState,
@@ -281,15 +312,13 @@ private fun isDepartureSurfaceActive(
     }
 
 /**
- * Whether the host's re-authentication attempt is still running after a session emission. The attempt
- * starts busy (`startReauthentication` sets `isBusy` before the picker opens) and ends the moment the
- * session is no longer busy: cancelled, failed, or the resumed deletion has settled. `SessionUiState`
- * has no "awaiting re-authentication" value, so the host tracks this itself.
+ * A shared provider rejection keeps the permanent owner's suspended deletion. Only an explicit
+ * native abandonment, an explicit Cancel, or leaving PERMANENT ends the host stage.
  */
 internal fun isReauthenticationStillInFlight(
     isReauthenticating: Boolean,
     session: SessionUiState,
-): Boolean = isReauthenticating && session.isBusy
+): Boolean = isReauthenticating && session.phase == SessionPhase.PERMANENT
 
 /**
  * The providers the departure surface offers for re-authentication: the session's own providers that

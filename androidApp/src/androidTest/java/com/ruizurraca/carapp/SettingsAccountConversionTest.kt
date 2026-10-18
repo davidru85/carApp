@@ -20,7 +20,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-/** `E4-05`: the conversion surface as the stateless Settings screen of `E4-01` renders it. */
+/**
+ * `E4-05`: the conversion surface. The link rows are the stateless Settings screen's; the credential
+ * collision is owned by the authenticated root presenter (`SettingsSessionPrompts`), which is mounted
+ * beside Settings, so these tests mount both.
+ */
 class SettingsAccountConversionTest {
     @get:Rule
     val composeRule = createComposeRule()
@@ -42,7 +46,7 @@ class SettingsAccountConversionTest {
     }
 
     @Test
-    fun theSettingsScreenShowsExactlyOneCollisionConfirmation() {
+    fun theAuthenticatedRootShowsExactlyOneCollisionConfirmation() {
         showSettings(conversionSession(SessionPhase.ANONYMOUS, message = collisionConfirmation()))
 
         composeRule.onNodeWithTag(SettingsTestTags.CONVERSION_DIALOG).assertIsDisplayed()
@@ -52,29 +56,29 @@ class SettingsAccountConversionTest {
     }
 
     @Test
-    fun theSettingsScreenRoutesTheCollisionConfirmToTheConversionCallback() {
-        var confirms = 0
+    fun theAuthenticatedRootRoutesTheCollisionConfirmToTheConversionCallback() {
+        val calls = mutableListOf<String>()
         showSettings(
             session = conversionSession(SessionPhase.ANONYMOUS, message = collisionConfirmation()),
-            callbacks = settingsCallbacks(onConfirmAccountConversion = { confirms += 1 }),
+            promptCallbacks = recordingSessionPromptCallbacks(calls),
         )
 
         composeRule.onNodeWithTag(SettingsTestTags.CONVERSION_CONFIRM).performClick()
 
-        assertEquals(1, confirms)
+        assertEquals(listOf("confirmAccountConversion"), calls)
     }
 
     @Test
-    fun theSettingsScreenRoutesTheCollisionCancelToTheConversionCallback() {
-        var cancels = 0
+    fun theAuthenticatedRootRoutesTheCollisionCancelToTheConversionCallback() {
+        val calls = mutableListOf<String>()
         showSettings(
             session = conversionSession(SessionPhase.ANONYMOUS, message = collisionConfirmation()),
-            callbacks = settingsCallbacks(onCancelAccountConversion = { cancels += 1 }),
+            promptCallbacks = recordingSessionPromptCallbacks(calls),
         )
 
         composeRule.onNodeWithTag(SettingsTestTags.CONVERSION_CANCEL).performClick()
 
-        assertEquals(1, cancels)
+        assertEquals(listOf("cancelAccountConversion"), calls)
     }
 
     @Test
@@ -91,9 +95,11 @@ class SettingsAccountConversionTest {
         assertEquals(listOf(AuthProvider.GOOGLE), requested)
     }
 
+    /** Settings plus the authenticated root presenter, mounted exactly as `VehicleApp` does. */
     private fun showSettings(
         session: SessionUiState,
         callbacks: SettingsCallbacks = settingsCallbacks(),
+        promptCallbacks: SessionPromptCallbacks = recordingSessionPromptCallbacks(mutableListOf()),
     ) {
         composeRule.setContent {
             SettingsScreen(
@@ -112,14 +118,11 @@ class SettingsAccountConversionTest {
                 appVersion = "0.0.1",
                 callbacks = callbacks,
             )
+            SettingsSessionPrompts(session = session, callbacks = promptCallbacks)
         }
     }
 
-    private fun settingsCallbacks(
-        onLinkAccount: (AuthProvider) -> Unit = {},
-        onConfirmAccountConversion: () -> Unit = {},
-        onCancelAccountConversion: () -> Unit = {},
-    ): SettingsCallbacks =
+    private fun settingsCallbacks(onLinkAccount: (AuthProvider) -> Unit = {}): SettingsCallbacks =
         SettingsCallbacks(
             onBack = {},
             onSelectCurrency = {},
@@ -130,8 +133,6 @@ class SettingsAccountConversionTest {
             onDeleteLocalData = {},
             onDismissSettingsMessage = {},
             onLinkAccount = onLinkAccount,
-            onConfirmAccountConversion = onConfirmAccountConversion,
-            onCancelAccountConversion = onCancelAccountConversion,
         )
 
     /** Lazy and plain scroll containers alike: `performScrollToNode` brings the row into view. */

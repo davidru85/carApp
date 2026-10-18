@@ -229,6 +229,58 @@ enum AccessibilityAuditAllowlist {
             elementLabel: "New refuel",
             reason: "The `New refuel` toolbar control is a SwiftUI navigation-bar item; the system draws its label with the accent colour on the bar, which the app cannot set."
         ),
+        // `E402H-34`, owner decision 2026-10-17 (R5). The four departure and conversion alerts are SwiftUI
+        // `alert`s: the system renders their title, body and buttons with its own type style, in its own
+        // window, and with no identifiers the app can query. `elementLabel: ""` is the existing matcher's
+        // "any labelled or unlabelled element of this screen and type" form, the same one the accepted
+        // `odometer-warning` entry uses, so one entry per screen covers exactly that screen's alert chrome.
+        AccessibilityAuditAllowance(
+            screen: "departure-delete-account",
+            auditType: .dynamicType,
+            elementIdentifier: "",
+            elementLabel: "",
+            reason: "The permanent-deletion confirmation is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (`D-158`)."
+        ),
+        AccessibilityAuditAllowance(
+            screen: "departure-delete-local-data",
+            auditType: .dynamicType,
+            elementIdentifier: "",
+            elementLabel: "",
+            reason: "The local-deletion confirmation is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (`D-158`)."
+        ),
+        AccessibilityAuditAllowance(
+            screen: "departure-pending-sync",
+            auditType: .dynamicType,
+            elementIdentifier: "",
+            elementLabel: "",
+            reason: "The pending-sync prompt is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (F-5, `B1-D3`)."
+        ),
+        AccessibilityAuditAllowance(
+            screen: "conversion-collision",
+            auditType: .dynamicType,
+            elementIdentifier: "",
+            elementLabel: "",
+            reason: "The credential-collision confirmation is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (`docs/CONTRACTS.md §11.3`, `D-227`)."
+        ),
+        // `E402H-34` (R5, `B1`): the analytics row is a conditional `List` row. `R3` forbids rendering a
+        // switch while the stored settings are unknown (`docs/CONTRACTS.md §20.10`), and this runtime's
+        // audit reports the label and footer of a `Toggle` gated by any view-shaped conditional while the
+        // unconditional `Toggle` passes; six bounded probes isolated it. Extending `S-13` keeps `R3` as
+        // written instead of re-wording the contract.
+        AccessibilityAuditAllowance(
+            screen: "settings",
+            auditType: .dynamicType,
+            elementIdentifier: "",
+            elementLabel: "Share usage analytics",
+            reason: "`settings_analytics` is the label of the settings analytics row, whose `Toggle` is rendered only once the stored settings are read (`R3`); the system renders that row and the app cannot change a `Form` row label's type style."
+        ),
+        AccessibilityAuditAllowance(
+            screen: "settings",
+            auditType: .dynamicType,
+            elementIdentifier: "",
+            elementLabelPrefix: "Sends pseudonymous usage events",
+            reason: "`settings_analytics_description` is the footer of the same conditional row; the system renders it and the app cannot change a `Form` row footer's type style."
+        ),
     ]
 
     static func shouldIgnore(_ issue: XCUIAccessibilityAuditIssue, screen: String) -> Bool {
@@ -308,6 +360,42 @@ extension XCTestCase {
         app.launch()
         addTeardownBlock { app.terminate() }
         return app
+    }
+
+    /// `E4-02`: launches one Debug review surface (`ContentView.DebugReviewSurface`) with the given
+    /// locale/type arguments. The fixture renders production views with inert callbacks, so nothing it
+    /// starts writes product data or opens a provider.
+    func launchReviewSurface(_ name: String, arguments: [String]) -> XCUIApplication {
+        launchCarApp(
+            arguments: arguments,
+            environment: ["CARAPP_UI_TEST_REVIEW_SURFACE": name]
+        )
+    }
+
+    /// Requires each named control to exist and to be reachable, in table order. A missing control fails
+    /// with its own identifier rather than falling back to whichever element happens to be present.
+    func requireReviewControls(_ identifiers: [String], in app: XCUIApplication) {
+        for identifier in identifiers {
+            let element = app.descendants(matching: .any)
+                .matching(identifier: identifier)
+                .firstMatch
+            XCTAssertTrue(element.waitForExistence(timeout: 10), "Missing element: \(identifier)")
+            XCTAssertTrue(scrollUntilHittable(element, in: app), "Unreachable element: \(identifier)")
+        }
+    }
+
+    /// Requires each answer of an open alert to exist, identifying it by its exact user-visible label
+    /// within the alert. A SwiftUI `alert` presented from a view modifier does not carry the button
+    /// identifiers this runtime exposes in the real navigation flow, so the alert's own copy is the
+    /// control's identity here; the label is the resource value, never a first arbitrary button.
+    func requireAlertControls(_ labels: [String], in app: XCUIApplication) {
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 10), "No alert was presented")
+        for label in labels {
+            let button = alert.buttons[label].firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "Missing alert control: \(label)")
+            XCTAssertTrue(button.isHittable, "Unreachable alert control: \(label)")
+        }
     }
 
     /// Runs the `D-217` audit of every type, or skips explicitly on a pre-iOS 17 runtime.

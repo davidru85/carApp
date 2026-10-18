@@ -24,10 +24,12 @@ struct ContentView: View {
 
     var body: some View {
         #if DEBUG
-        // `E4-02`: UI tests cannot make a real departure fail, so this Debug-only seam renders the
-        // B1-D4 departure screen in its failed state for the accessibility audits. It cannot exist in
-        // a Release build, like CARAPP_UI_TEST_FORCE_WELCOME.
-        if ProcessInfo.processInfo.environment["CARAPP_UI_TEST_FORCE_DEPARTURE_FAILURE"] == "1" {
+        // `E4-02`: UI tests cannot reach every audited state, so this Debug-only seam renders one of a
+        // closed set of review surfaces. It cannot exist in a Release build, like
+        // CARAPP_UI_TEST_FORCE_WELCOME.
+        if let surface = DebugReviewSurface.selected {
+            DebugReviewSurfaceView(surface: surface)
+        } else if ProcessInfo.processInfo.environment["CARAPP_UI_TEST_FORCE_DEPARTURE_FAILURE"] == "1" {
             DepartureView(
                 state: forcedDepartureFailureState(),
                 isReauthenticating: false,
@@ -111,5 +113,169 @@ private func forcedDepartureFailureState() -> SessionUiState {
         pendingSyncCount: nil,
         pendingDepartureRetry: .localClear
     )
+}
+#endif
+
+#if DEBUG
+/// `E4-02`: the closed set of review surfaces a UI test may ask for. The value is validated against this
+/// enum, so an unknown string falls through to normal routing instead of accepting arbitrary state.
+private enum DebugReviewSurface: String {
+    case settingsUnknown
+    case settingsReadError
+    case settingsOff
+    case settingsOn
+    case settingsSaving
+    case reauthentication
+    case reauthenticationFailure
+    case departureFailure
+    case deleteAccount
+    case deleteLocalData
+    case pendingSync
+    case conversion
+    case collision
+
+    static var selected: DebugReviewSurface? {
+        guard let raw = ProcessInfo.processInfo.environment["CARAPP_UI_TEST_REVIEW_SURFACE"] else {
+            return nil
+        }
+        return DebugReviewSurface(rawValue: raw)
+    }
+}
+
+/// `E4-02`: renders one review surface over the production renderers with inert callbacks. It holds no
+/// model, graph, provider or repository, so it performs no product write and starts no authentication.
+private struct DebugReviewSurfaceView: View {
+    let surface: DebugReviewSurface
+
+    var body: some View {
+        content
+            // Production reaches an alert through a session emission after the root is mounted. Publishing
+            // the fixture's prompt on the next main-actor hop reproduces that timing, so the alert presents
+            // the same way it does in the app (an alert armed during the same first render of a freshly
+            // installed window loses its buttons' identifiers on this runtime).
+            .task { promptPublished = true }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch surface {
+        case .settingsUnknown, .settingsReadError, .settingsOff, .settingsOn, .settingsSaving:
+            List {
+                Section(header: Text("settings_section_units")) {
+                    SettingsUnitRows(state: settings)
+                }
+                Section(header: Text("settings_section_privacy")) {
+                    SettingsAnalyticsRow(state: settings, onChange: { _ in })
+                }
+                if let message = settings.message {
+                    Text(message.localizedText)
+                        .accessibilityIdentifier("settings_message")
+                }
+            }
+        case .reauthentication, .reauthenticationFailure, .departureFailure:
+            DepartureView(
+                state: session,
+                isReauthenticating: surface != .departureFailure,
+                onRetry: {},
+                onDismissMessage: {},
+                onReauthenticateWithGoogle: {},
+                onPrepareAppleReauthentication: { _ in },
+                onCompleteAppleAuthorization: { _ in },
+                onCancelReauthentication: {}
+            )
+        case .deleteAccount:
+            alertBackground.modifier(DeparturePromptAlert(
+                current: fixturePrompt(.confirmDeleteAccount),
+                callbacks: promptCallbacks
+            ))
+        case .deleteLocalData:
+            alertBackground.modifier(DeparturePromptAlert(
+                current: fixturePrompt(.confirmDeleteLocalData),
+                callbacks: promptCallbacks
+            ))
+        case .pendingSync:
+            alertBackground.modifier(DeparturePromptAlert(
+                current: fixturePrompt(.pendingSync(count: 3, intent: .signOut)),
+                callbacks: promptCallbacks
+            ))
+        case .conversion:
+            List {
+                LinkAccountRows(
+                    state: session,
+                    onPrepareApple: { _ in },
+                    onCompleteApple: { _ in },
+                    onGoogle: {}
+                )
+            }
+        case .collision:
+            alertBackground.conversionCollisionAlert(
+                confirmation: promptPublished ? .adoptExistingAccount : nil,
+                onConfirm: {},
+                onCancel: {}
+            )
+        }
+    }
+
+    /// An inert, full-size backdrop so the alert has a presenter without any product surface. It is
+    /// wrapped in a `NavigationStack`, as the production root is, so the alert presents from the same
+    /// kind of container it does in the app.
+    private var alertBackground: some View {
+        NavigationStack {
+            List { Text("settings_title") }
+                .navigationTitle(Text("settings_title"))
+        }
+    }
+
+    /// A prompt the alert observes as a later change rather than at first appearance. Production always
+    /// reaches an alert through a session emission after the root is mounted, and an alert armed during
+    /// the first `onAppear` of a freshly installed window loses its buttons' identifiers on this runtime;
+    /// the fixture reproduces the production timing instead of the anomaly.
+    @State private var promptPublished = false
+
+    private func fixturePrompt(_ prompt: DeparturePrompt) -> DeparturePrompt? {
+        promptPublished ? prompt : nil
+    }
+
+    private var promptCallbacks: DeparturePromptCallbacks {
+        DeparturePromptCallbacks(
+            onWaitForPendingSync: {},
+            onDiscardPendingChanges: { _ in },
+            onDismiss: {},
+            onConfirmDeleteAccount: {},
+            onConfirmDeleteLocalData: {}
+        )
+    }
+
+    private var settings: SettingsUiState {
+        let unknown = surface == .settingsUnknown || surface == .settingsReadError
+        return SettingsUiState(
+            currencyCode: unknown ? nil : "EUR",
+            supportedCurrencyCodes: ["EUR", "USD"],
+            distanceUnit: .km,
+            volumeUnit: .liter,
+            analyticsEnabled: surface == .settingsOn || surface == .settingsSaving,
+            isSaving: surface == .settingsSaving,
+            message: surface == .settingsReadError
+                ? UiMessage(id: 1, kind: .error, code: "PERSISTENCE.TRANSACTION_FAILED", confirmation: nil)
+                : nil
+        )
+    }
+
+    private var session: SessionUiState {
+        let departureFailed = surface == .departureFailure
+        let anonymous = surface == .conversion
+        let code = departureFailed
+            ? "PERSISTENCE.TRANSACTION_FAILED"
+            : (surface == .reauthenticationFailure ? "AUTH.NETWORK_UNAVAILABLE" : "AUTH.REQUIRES_RECENT_LOGIN")
+        return SessionUiState(
+            phase: departureFailed ? .deleting : (anonymous ? .anonymous : .permanent),
+            providers: anonymous ? [.anonymous] : [.apple, .google],
+            isBusy: false,
+            message: anonymous ? nil : UiMessage(id: 1, kind: .error, code: code, confirmation: nil),
+            anonymousReminderIndex: nil,
+            pendingSyncCount: nil,
+            pendingDepartureRetry: departureFailed ? .localClear : nil
+        )
+    }
 }
 #endif

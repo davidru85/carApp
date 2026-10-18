@@ -222,4 +222,68 @@ final class SettingsFlowUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
+
+    /// `R3`/`R5-G` U0–K2 through the production renderers of `SettingsUnitRows` and
+    /// `SettingsAnalyticsControl`, rendered by the Debug review fixture. The fixture is rendering
+    /// evidence only: the shared Settings tests are what prove that a write moves the stored state.
+    func testUnknownSettingsRenderLoadingUnitValuesAndNoAnalyticsSwitch() {
+        let app = launchReviewSurface("settingsUnknown", arguments: englishArguments)
+
+        let loading = app.descendants(matching: .any)["settings_analytics_loading"]
+        XCTAssertTrue(loading.waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.switches["settings_analytics_toggle"].exists, "no switch may claim a stored opt-out")
+        requireUnitRowsShowLoading(in: app)
+    }
+
+    func testFailedSettingsReadRendersLoadingValuesPlusTheTypedError() {
+        let app = launchReviewSurface("settingsReadError", arguments: englishArguments)
+
+        let loading = app.descendants(matching: .any)["settings_analytics_loading"]
+        XCTAssertTrue(loading.waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.switches["settings_analytics_toggle"].exists, "no switch may claim a stored opt-out")
+        requireUnitRowsShowLoading(in: app)
+        let message = app.staticTexts["settings_message"]
+        XCTAssertTrue(message.waitForExistence(timeout: timeout))
+        XCTAssertTrue(
+            message.label.contains("The change could not be saved on this device"),
+            "saw \(message.label)"
+        )
+    }
+
+    func testKnownOffAnalyticsRendersAnEnabledOffSwitch() {
+        let app = launchReviewSurface("settingsOff", arguments: englishArguments)
+        requireKnownAnalyticsSwitch(value: "0", isEnabled: true, in: app)
+    }
+
+    func testKnownOnAnalyticsRendersAnEnabledOnSwitch() {
+        let app = launchReviewSurface("settingsOn", arguments: englishArguments)
+        requireKnownAnalyticsSwitch(value: "1", isEnabled: true, in: app)
+    }
+
+    func testSavingAnalyticsRendersACheckedDisabledSwitch() {
+        let app = launchReviewSurface("settingsSaving", arguments: englishArguments)
+        requireKnownAnalyticsSwitch(value: "1", isEnabled: false, in: app)
+    }
+
+    private var englishArguments: [String] { AccessibilityUITestSupport.englishArguments }
+
+    private func requireUnitRowsShowLoading(in app: XCUIApplication) {
+        let loading = "Loading"
+        for identifier in ["settings_distance_unit", "settings_volume_unit"] {
+            let row = app.descendants(matching: .any)[identifier]
+            XCTAssertTrue(row.waitForExistence(timeout: timeout), "missing \(identifier)")
+            XCTAssertTrue(
+                row.label.contains(loading),
+                "\(identifier) must show the loading resource while the settings are unknown, saw \(row.label)"
+            )
+        }
+    }
+
+    private func requireKnownAnalyticsSwitch(value: String, isEnabled: Bool, in app: XCUIApplication) {
+        let toggle = app.switches["settings_analytics_toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: timeout), "the analytics switch must exist once the settings are known")
+        XCTAssertEqual(toggle.value as? String, value)
+        XCTAssertEqual(toggle.isEnabled, isEnabled)
+        XCTAssertFalse(app.descendants(matching: .any)["settings_analytics_loading"].exists)
+    }
 }

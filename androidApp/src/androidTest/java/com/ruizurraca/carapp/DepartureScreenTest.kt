@@ -120,11 +120,15 @@ class DepartureScreenTest {
         assertEquals(listOf("cancelReauthentication"), calls)
     }
 
-    private fun showDeparture(session: SessionUiState): List<String> {
+    private fun showDeparture(
+        session: SessionUiState,
+        isReauthenticating: Boolean = false,
+    ): List<String> {
         val calls = mutableListOf<String>()
         composeRule.setContent {
             DepartureScreen(
                 session = session,
+                isReauthenticating = isReauthenticating,
                 onRetry = { calls += "retry" },
                 onDismissMessage = { calls += "dismiss" },
                 onReauthenticate = { provider -> calls += "reauthenticate:$provider" },
@@ -133,6 +137,55 @@ class DepartureScreenTest {
         }
         return calls
     }
+
+    /**
+     * R1: the shared provider refused the credential, so the deletion stays suspended and the host
+     * stage stays up. The owner answers it with Google or Cancel, never with a generic OK that would
+     * dismiss the only visible trace of a retained deletion.
+     */
+    @Test
+    fun aProviderFailureRetainsTheGoogleAndCancelActions() {
+        showDeparture(
+            sessionState(
+                phase = SessionPhase.PERMANENT,
+                message = uiMessage("AUTH.NETWORK_UNAVAILABLE", UiMessageKind.ERROR, null),
+            ).copy(providers = listOf(AuthProvider.GOOGLE)),
+            isReauthenticating = true,
+        )
+
+        listOf(
+            DepartureTestTags.REAUTHENTICATION_REASON,
+            DepartureTestTags.reauthenticate(AuthProvider.GOOGLE),
+            DepartureTestTags.CANCEL_REAUTHENTICATION,
+            DepartureTestTags.ERROR,
+        ).forEach { tag -> composeRule.onNodeWithTag(tag).assertIsDisplayed() }
+        composeRule.onNodeWithTag(DepartureTestTags.RETRY).assertDoesNotExist()
+        composeRule.onNodeWithTag(DepartureTestTags.DISMISS).assertDoesNotExist()
+    }
+
+    @Test
+    fun aRetainedFailureStillOffersGoogle() {
+        val calls = showDeparture(providerRejection(), isReauthenticating = true)
+
+        composeRule.onNodeWithTag(DepartureTestTags.reauthenticate(AuthProvider.GOOGLE)).performClick()
+
+        assertEquals(listOf("reauthenticate:GOOGLE"), calls)
+    }
+
+    @Test
+    fun aRetainedFailureStillOffersCancel() {
+        val calls = showDeparture(providerRejection(), isReauthenticating = true)
+
+        composeRule.onNodeWithTag(DepartureTestTags.CANCEL_REAUTHENTICATION).performClick()
+
+        assertEquals(listOf("cancelReauthentication"), calls)
+    }
+
+    private fun providerRejection(): SessionUiState =
+        sessionState(
+            phase = SessionPhase.PERMANENT,
+            message = uiMessage("AUTH.NETWORK_UNAVAILABLE", UiMessageKind.ERROR, null),
+        ).copy(providers = listOf(AuthProvider.GOOGLE))
 
     private fun failedLocalClear(): SessionUiState =
         sessionState(

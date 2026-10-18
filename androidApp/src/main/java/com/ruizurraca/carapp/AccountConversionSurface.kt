@@ -167,7 +167,7 @@ internal fun SessionErrorText(
     Text(
         text = stringResource(sessionMessageStringResource(message)),
         color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.testTag(testTag),
+        modifier = Modifier.testTag(testTag).announcedError(),
     )
 }
 

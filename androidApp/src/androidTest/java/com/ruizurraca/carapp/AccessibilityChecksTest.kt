@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
+import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.SyncStatus
 import org.junit.Before
 import org.junit.Rule
@@ -91,7 +92,20 @@ class AccessibilityChecksTest {
 
     @Test
     fun conversionCollisionConfirmationPassesAccessibilityChecks() {
-        showSettings(conversionCollisionSession())
+        val session = conversionCollisionSession()
+        composeRule.setContent {
+            CarAppTestTheme {
+                SettingsScreen(
+                    settings = a11ySettings(),
+                    session = session,
+                    sync = a11ySync(),
+                    appVersion = A11Y_APP_VERSION,
+                    callbacks = a11ySettingsCallbacks(),
+                )
+                // The collision is presented by the authenticated root, beside Settings (`R2`).
+                SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks())
+            }
+        }
         composeRule.checkAccessibilityOfEveryWindow()
     }
 
@@ -123,5 +137,47 @@ class AccessibilityChecksTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun reauthenticationPassesAccessibilityChecks() {
+        composeRule.setContent { CarAppTestTheme { A11yDepartureScreen(reauthenticationSession(), true) } }
+        listOf(
+            DepartureTestTags.reauthenticate(AuthProvider.GOOGLE),
+            DepartureTestTags.CANCEL_REAUTHENTICATION,
+        ).forEach { tag ->
+            composeRule.scrollToAndAssertDisplayed(tag)
+        }
+        composeRule.checkAccessibilityOfEveryWindow()
+    }
+
+    @Test
+    fun aRetainedReauthenticationFailurePassesAccessibilityChecks() {
+        val session = reauthenticationSession("AUTH.NETWORK_UNAVAILABLE")
+        composeRule.setContent { CarAppTestTheme { A11yDepartureScreen(session, true) } }
+        listOf(
+            DepartureTestTags.reauthenticate(AuthProvider.GOOGLE),
+            DepartureTestTags.CANCEL_REAUTHENTICATION,
+            DepartureTestTags.ERROR,
+        ).forEach { tag ->
+            composeRule.scrollToAndAssertDisplayed(tag)
+        }
+        composeRule.checkAccessibilityOfEveryWindow()
+    }
+
+    @Test
+    fun deleteAccountConfirmationPassesAccessibilityChecks() {
+        val session = deleteAccountSession()
+        composeRule.setContent {
+            CarAppTestTheme { SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks()) }
+        }
+        composeRule.scrollToAndAssertDisplayed(hasTextContaining(targetString(R.string.confirm_delete_account)))
+        listOf(
+            SettingsTestTags.CONFIRM_DESTRUCTIVE,
+            SettingsTestTags.CANCEL_DESTRUCTIVE,
+        ).forEach { tag ->
+            composeRule.scrollToAndAssertDisplayed(tag)
+        }
+        composeRule.checkAccessibilityOfEveryWindow()
     }
 }

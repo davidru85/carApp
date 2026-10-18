@@ -1671,8 +1671,6 @@ references exists in both of its catalogues (`D-221`).
 
 ## 15. Platform Boundary Contract
 
-## 15. Platform Boundary Contract
-
 ### 15.1 Mechanism
 
 Injection is the **only** mechanism for anything present in `AppGraphDependencies`. Any interface already injected through `AppGraphDependencies` MUST NOT also have an `expect`/`actual` form. `expect`/`actual` is reserved for provider-free platform factory functions.

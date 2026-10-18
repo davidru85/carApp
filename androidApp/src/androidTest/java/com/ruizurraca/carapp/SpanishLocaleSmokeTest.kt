@@ -133,20 +133,25 @@ class SpanishLocaleSmokeTest {
         // A Material3 dialog opens its own window and takes no context from
         // `DeviceConfigurationOverride.Locales`, so this screen is rendered under the app locale the
         // §3 V-6 evidence capture uses (`cmd locale set-app-locales`).
+        val session = conversionCollisionSession()
         withTheSpanishAppLocale {
             showInSpanish {
                 SettingsScreen(
                     settings = a11ySettings(),
-                    session = conversionCollisionSession(),
+                    session = session,
                     sync = a11ySync(),
                     appVersion = A11Y_APP_VERSION,
                     callbacks = a11ySettingsCallbacks(),
                 )
+                // The collision is presented by the authenticated root, beside Settings (`R2`).
+                SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks())
             }
             composeRule.waitForIdle()
             val copy = localizedString(SPANISH_TAG, R.string.confirm_replace_existing_account)
             assertTrue(copy, copy.contains("sustituye permanentemente"))
             composeRule.scrollToAndAssertDisplayed(hasTextContaining(copy))
+            listOf(SettingsTestTags.CONVERSION_CONFIRM, SettingsTestTags.CONVERSION_CANCEL)
+                .forEach(composeRule::scrollToAndAssertDisplayed)
         }
     }
 
@@ -178,6 +183,48 @@ class SpanishLocaleSmokeTest {
             DeviceConfigurationOverride(DeviceConfigurationOverride.Locales(LocaleList(SPANISH_TAG))) {
                 CarAppTestTheme(content)
             }
+        }
+    }
+
+    @Test
+    fun reauthenticationRendersSpanishCopy() {
+        showInSpanish { A11yDepartureScreen(reauthenticationSession(), true) }
+        composeRule
+            .onNodeWithText(localizedString(SPANISH_TAG, R.string.continue_with_google))
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(localizedString(SPANISH_TAG, R.string.cancel)).assertIsDisplayed()
+        composeRule
+            .onNodeWithText(localizedString(SPANISH_TAG, R.string.error_auth_requires_recent_login))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun aRetainedReauthenticationFailureRendersSpanishCopy() {
+        showInSpanish { A11yDepartureScreen(reauthenticationSession("AUTH.NETWORK_UNAVAILABLE"), true) }
+        composeRule
+            .onNodeWithText(localizedString(SPANISH_TAG, R.string.error_auth_network))
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithText(localizedString(SPANISH_TAG, R.string.continue_with_google))
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(localizedString(SPANISH_TAG, R.string.cancel)).assertIsDisplayed()
+    }
+
+    @Test
+    fun deleteAccountConfirmationRendersSpanishCopy() {
+        val session = deleteAccountSession()
+        withTheSpanishAppLocale {
+            showInSpanish {
+                SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks())
+            }
+            composeRule.waitForIdle()
+            val body = localizedString(SPANISH_TAG, R.string.confirm_delete_account)
+            assertTrue(body, body.contains("Esto elimina permanentemente tu cuenta"))
+            composeRule.scrollToAndAssertDisplayed(hasTextContaining(body))
+            composeRule
+                .onNodeWithText(localizedString(SPANISH_TAG, R.string.settings_delete_account))
+                .assertIsDisplayed()
+            composeRule.onNodeWithText(localizedString(SPANISH_TAG, R.string.cancel)).assertIsDisplayed()
         }
     }
 }

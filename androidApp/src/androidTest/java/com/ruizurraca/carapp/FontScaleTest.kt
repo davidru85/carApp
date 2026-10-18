@@ -5,6 +5,7 @@ import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.ruizurraca.carapp.core.common.AuthProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -134,9 +135,22 @@ class FontScaleTest {
 
     @Test
     fun conversionCollisionConfirmationStaysReadableAtDoubleFontScale() {
-        assertSettingsReachable(conversionCollisionSession())
+        val session = conversionCollisionSession()
+        showAtDoubleFontScale {
+            SettingsScreen(
+                settings = a11ySettings(),
+                session = session,
+                sync = a11ySync(),
+                appVersion = A11Y_APP_VERSION,
+                callbacks = a11ySettingsCallbacks(),
+            )
+            // The collision is presented by the authenticated root, beside Settings (`R2`).
+            SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks())
+        }
         val confirmation = targetString(R.string.confirm_replace_existing_account)
         composeRule.scrollToAndAssertDisplayed(hasTextContaining(confirmation))
+        listOf(SettingsTestTags.CONVERSION_CONFIRM, SettingsTestTags.CONVERSION_CANCEL)
+            .forEach(composeRule::scrollToAndAssertDisplayed)
     }
 
     @Test
@@ -163,6 +177,36 @@ class FontScaleTest {
         }
         composeRule.assertRenderedTagsReachable(stringConstantsOf(SettingsTestTags::class.java))
         composeRule.scrollToAndAssertDisplayed(hasTextContaining(targetString(R.string.confirm_delete_local_data)))
+    }
+
+    @Test
+    fun reauthenticationActionsStayReachableAtDoubleFontScale() {
+        showAtDoubleFontScale { A11yDepartureScreen(reauthenticationSession(), true) }
+        listOf(
+            DepartureTestTags.reauthenticate(AuthProvider.GOOGLE),
+            DepartureTestTags.CANCEL_REAUTHENTICATION,
+            DepartureTestTags.REAUTHENTICATION_REASON,
+        ).forEach(composeRule::scrollToAndAssertDisplayed)
+    }
+
+    @Test
+    fun aRetainedReauthenticationFailureStaysReadableAtDoubleFontScale() {
+        showAtDoubleFontScale { A11yDepartureScreen(reauthenticationSession("AUTH.NETWORK_UNAVAILABLE"), true) }
+        listOf(
+            DepartureTestTags.ERROR,
+            DepartureTestTags.reauthenticate(AuthProvider.GOOGLE),
+            DepartureTestTags.CANCEL_REAUTHENTICATION,
+        ).forEach(composeRule::scrollToAndAssertDisplayed)
+    }
+
+    @Test
+    fun deleteAccountConfirmationStaysReadableAtDoubleFontScale() {
+        showAtDoubleFontScale {
+            SettingsSessionPrompts(session = deleteAccountSession(), callbacks = a11yPromptCallbacks())
+        }
+        composeRule.scrollToAndAssertDisplayed(hasTextContaining(targetString(R.string.confirm_delete_account)))
+        listOf(SettingsTestTags.CONFIRM_DESTRUCTIVE, SettingsTestTags.CANCEL_DESTRUCTIVE)
+            .forEach(composeRule::scrollToAndAssertDisplayed)
     }
 
     private fun assertSettingsReachable(session: SessionUiState): List<String> {

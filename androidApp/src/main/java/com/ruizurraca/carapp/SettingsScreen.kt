@@ -105,10 +105,6 @@ internal data class SettingsCallbacks(
     val onDismissSettingsMessage: () -> Unit,
     /** `E4-05`: starts linking the anonymous session to [AuthProvider] through the native picker. */
     val onLinkAccount: (AuthProvider) -> Unit,
-    /** `E4-05`: answers the credential collision with `Confirmation.AdoptExistingAccount`. */
-    val onConfirmAccountConversion: () -> Unit,
-    /** `E4-05`: cancels the credential collision; the shared holder implements it as `clearMessage()`. */
-    val onCancelAccountConversion: () -> Unit,
 )
 
 /**
@@ -154,12 +150,6 @@ internal fun SettingsScreen(
             )
         }
     }
-
-    AccountConversionCollisionDialog(
-        message = session.message,
-        onConfirm = callbacks.onConfirmAccountConversion,
-        onCancel = callbacks.onCancelAccountConversion,
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,14 +222,16 @@ private fun UnitsAndCurrencySection(
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     val locale = LocalConfiguration.current.locales[0]
     val currencyCode = settings.currencyCode
+    // `currencyCode == null` is the readiness signal of `docs/CONTRACTS.md §20.10`; until the repository
+    // has emitted the stored settings, the other fields are placeholders and MUST NOT be shown as known.
     val currencyValue =
         currencyCode?.let { code ->
             stringResource(R.string.settings_currency_value, currencyDisplayName(code, locale), code)
-        }
+        } ?: stringResource(R.string.loading)
     SettingsSectionHeader(R.string.settings_section_units)
     SettingsValueRow(
         labelResource = R.string.settings_currency,
-        value = currencyValue.orEmpty(),
+        value = currencyValue,
         rowTag = SettingsTestTags.CURRENCY_ROW,
         valueTag = SettingsTestTags.CURRENCY_VALUE,
         onClick = if (currencyCode != null && !settings.isSaving) ({ pickerOpen = true }) else null,
@@ -247,7 +239,12 @@ private fun UnitsAndCurrencySection(
     HorizontalDivider()
     SettingsValueRow(
         labelResource = R.string.settings_distance_unit,
-        value = stringResource(distanceUnitLabelResource(settings.distanceUnit)),
+        value =
+            if (currencyCode == null) {
+                stringResource(R.string.loading)
+            } else {
+                stringResource(distanceUnitLabelResource(settings.distanceUnit))
+            },
         rowTag = SettingsTestTags.DISTANCE_UNIT_ROW,
         valueTag = null,
         onClick = null,
@@ -255,7 +252,12 @@ private fun UnitsAndCurrencySection(
     HorizontalDivider()
     SettingsValueRow(
         labelResource = R.string.settings_volume_unit,
-        value = stringResource(volumeUnitLabelResource(settings.volumeUnit)),
+        value =
+            if (currencyCode == null) {
+                stringResource(R.string.loading)
+            } else {
+                stringResource(volumeUnitLabelResource(settings.volumeUnit))
+            },
         rowTag = SettingsTestTags.VOLUME_UNIT_ROW,
         valueTag = null,
         onClick = null,
@@ -275,8 +277,9 @@ private fun UnitsAndCurrencySection(
 }
 
 /**
- * A label and its value as one accessibility node. A row without [onClick] has no click action, which
- * is what makes the units read-only rather than merely unlabelled.
+ * A label and its value. They stack instead of sharing one line: at 200% text a long currency value (the
+ * platform display name plus its ISO code) starved the label, which wrapped to four lines. A row without
+ * [onClick] has no click action, which is what makes the units read-only rather than merely unlabelled.
  */
 @Composable
 private fun SettingsValueRow(
@@ -292,20 +295,18 @@ private fun SettingsValueRow(
         } else {
             Modifier.clickable(role = Role.Button, onClick = onClick)
         }
-    Row(
+    Column(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .then(interaction)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
                 .testTag(rowTag),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = stringResource(labelResource),
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
         )
         Text(
             text = value,
@@ -379,15 +380,29 @@ private fun BackupSection(
 
 /**
  * The `§16.1` opt-in, off by default and applied immediately by the shared holder. The copy says
- * pseudonymous, not anonymous (`D-203`). The switch is disabled until the settings row is known.
+ * pseudonymous, not anonymous (`D-203`).
+ *
+ * While the stored settings are unknown (`currencyCode == null`) the row shows a loading value and no
+ * switch at all: an unchecked switch would claim a stored opt-out the app has not read, which is exactly
+ * what `docs/CONTRACTS.md §20.10` prohibits. A known state disables the switch only while a write runs.
  */
 @Composable
 private fun PrivacySection(
     settings: SettingsUiState,
     onAnalyticsEnabledChange: (Boolean) -> Unit,
 ) {
-    val enabled = settings.currencyCode != null && !settings.isSaving
     SettingsSectionHeader(R.string.settings_section_privacy)
+    if (settings.currencyCode == null) {
+        SettingsValueRow(
+            labelResource = R.string.settings_analytics_title,
+            value = stringResource(R.string.loading),
+            rowTag = SettingsTestTags.ANALYTICS_LOADING,
+            valueTag = null,
+            onClick = null,
+        )
+        return
+    }
+    val enabled = !settings.isSaving
     Row(
         modifier =
             Modifier
@@ -534,6 +549,7 @@ internal object SettingsTestTags {
     const val VOLUME_UNIT_ROW = "settings_volume_unit_row"
     const val BACKUP_ROW = "settings_backup_row"
     const val ANALYTICS_SWITCH = "settings_analytics_switch"
+    const val ANALYTICS_LOADING = "settings_analytics_loading"
     const val SESSION_PROGRESS = "settings_session_progress"
     const val SIGN_OUT_ROW = "settings_sign_out_row"
     const val DELETE_ACCOUNT_ROW = "settings_delete_account_row"

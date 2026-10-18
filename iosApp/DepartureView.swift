@@ -127,17 +127,22 @@ struct DepartureView: View {
             .disabled(state.isBusy)
         }
         if providers.contains(.google) {
+            // `E4-02` (`D-223`): a prominent button's system fill/label pair fails WCAG AA, so the app
+            // sets both sides, exactly as the welcome screen's Google button does.
             Button(action: onReauthenticateWithGoogle) {
                 Text("continue_with_google")
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccentOnFill)
             .accessibilityIdentifier("departure_reauth_google")
             .disabled(state.isBusy)
         }
         Button(action: onCancelReauthentication) {
             Text("cancel")
+                .foregroundStyle(AccessibleColors.controlAccent)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)

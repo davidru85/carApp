@@ -38,6 +38,59 @@
 
 ## Entries
 
+### 2026-10-17 — PR #91 review corrections R1–R6
+
+- **Type:** correction
+- **Story / Decision:** `E4-B1` (`E4-01`, `E4-05`, `E4-02`) / —
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** the owner's corrective action on pull request #91 (reviewed base `108c9a54`,
+  reviewed head `0f94b4cd`) is applied:
+  - **R1** keeps Android's re-authentication stage after a shared provider rejection
+    (`isReauthenticationStillInFlight` keys on `PERMANENT`, not on `isBusy`) and clears it only on a
+    genuine native abandonment (`rememberGoogleSignIn`'s `onNativeAcquisitionAbandoned`) or an explicit
+    Cancel, so a retained deletion keeps its Google retry and Cancel.
+  - **R2** presents a delayed credential collision from the authenticated root
+    (`SessionPrompt.CONVERSION_COLLISION` in `SettingsSessionPrompts`) instead of from the Settings
+    destination, which the owner may have left.
+  - **R3** renders unknown preferences as loading on both hosts: Android's `UnitsAndCurrencySection`
+    and `PrivacySection` and iOS's new `SettingsUnitRows` and `SettingsAnalyticsControl` show no
+    switch and no placeholder unit while `currencyCode == null`.
+  - **R4** gives every Settings label its own line (`SettingsValueRow` is a `Column`), which removes the
+    200% Spanish USD four-line collapse.
+  - **R5** adds the named deterministic state fixtures (`CARAPP_UI_TEST_REVIEW_SURFACE` /
+    `DebugReviewSurface`, Debug only), the re-authentication and deletion audits, the AX3 local
+    navigation cases and the Spanish presentation evidence the `E4-02` table was missing.
+  - **R6** reconciles the current-state records: the duplicate `§15` heading is removed, the bundle
+    checkpoint describes the correction, and the 2026-10-16 `E4-02` log entry's S-13 pending statement
+    was closed by the owner's approval on 2026-10-17.
+- **Why:** the review found that a provider-side rejection, a delayed collision and an unread settings
+  row each produced a surface that contradicted `docs/CONTRACTS.md §11.3`, `§11.5` and `§20.10`, and
+  that the accessibility evidence excluded states `D-225` requires. No shared contract, decision or
+  residual risk changed.
+- **Documents touched:** `docs/CONTRACTS.md §15`; `docs/handoffs/E4-B1.md` (ready check + checkpoint),
+  `E4-01.md`, `E4-05.md`, `E4-02.md`; this log.
+- **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest
+  testAndroidHostTest iosSimulatorArm64Test …` is `BUILD SUCCESSFUL`; `contractCheck` reports 229
+  decisions, 229 ADRs and 44 assertions with no `FAIL` or `PENDING`; Android unit tests 120/0; the full
+  Android instrumented suite on `emulator-5554` (`E1_07_API_36`, API 36) is 152 tests / 0 failures;
+  `carAppTests` is 144 tests / 0 failures on the erased simulator
+  `B3094DD6-582D-4055-92A9-5F7E732CE372` (iPhone Air, iOS 26.4.1, Xcode 27.1). Each finding has an
+  observed RED before its fix (R1 `ReauthenticationTest` assertions, R2 the missing
+  `settings_conversion_dialog`, R3 the rendered placeholder states, R4 `expected:<1> but was:<4>`).
+- **`E402H-34` (2026-10-17):** the two `Dynamic Type` findings the correction exposed — the SwiftUI
+  `alert` chrome of the four new alert screens, and the conditional settings analytics row — are closed
+  by the owner's decision to extend the `S-13` allowlist instead of re-wording `R3`: one entry per alert
+  screen (the `alert` nodes carry no identifier or label, so the matcher's screen-and-type form is the
+  only one that can address them) and two for the analytics row. `R3` and `docs/CONTRACTS.md §20.10`
+  stay as written. `AccessibilityAuditUITests` is then `** TEST SUCCEEDED **`, 17 tests with 1 expected
+  `LOCAL` skip and 0 failures on the erased simulator `B3094DD6-582D-4055-92A9-5F7E732CE372`.
+- **Follow-ups / risks:** the owner's TalkBack and
+  VoiceOver walkthrough (`D-226`), the manual provider acceptance of the conversion surface, and the
+  `D-229` branch-protection action remain owner-owned, as do the accepted `D-228` conversion
+  interruption risks with their `E2-10` follow-up. The live pull-request description was not edited
+  (`gh` cannot reach `api.github.com` here); its replacement text is in `docs/handoffs/E4-B1.md`.
+
 ### 2026-10-17 — D-229 splits the iOS UI tests into their own protected CI job
 
 - **Type:** decision
