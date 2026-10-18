@@ -88,8 +88,9 @@
 - **Follow-ups / risks:** the owner's TalkBack and
   VoiceOver walkthrough (`D-226`), the manual provider acceptance of the conversion surface, and the
   `D-229` branch-protection action remain owner-owned, as do the accepted `D-228` conversion
-  interruption risks with their `E2-10` follow-up. The live pull-request description was not edited
-  (`gh` cannot reach `api.github.com` here); its replacement text is in `docs/handoffs/E4-B1.md`.
+  interruption risks with their `E2-10` follow-up. The pull-request description was updated on
+  2026-10-17: the stale `E4-01: Not complete yet` line, the checkpoint block and the truncated `E4-02`
+  evidence bullets were replaced with the correction head's real state and evidence.
 
 ### 2026-10-17 — D-229 splits the iOS UI tests into their own protected CI job
 
