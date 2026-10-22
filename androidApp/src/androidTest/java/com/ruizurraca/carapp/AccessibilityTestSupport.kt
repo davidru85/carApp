@@ -129,9 +129,12 @@ internal fun ComposeTestRule.checkAccessibilityOfEveryWindow() {
  * [ACCESSIBILITY_SCROLL_ATTEMPTS] so an unreachable node still fails with the assertion's own message.
  */
 internal fun ComposeTestRule.scrollToAndAssertDisplayed(matcher: SemanticsMatcher) {
-    repeat(ACCESSIBILITY_SCROLL_ATTEMPTS) {
-        if (isDisplayedNow(matcher)) return
-        if (!scrollTowards(matcher)) return
+    // No early `return`: inside `repeat`'s inline lambda it would leave this function and skip the final
+    // assertion, so a node that no scroll can reach would pass unchecked.
+    var attemptsLeft = ACCESSIBILITY_SCROLL_ATTEMPTS
+    while (attemptsLeft > 0 && !isDisplayedNow(matcher)) {
+        if (!scrollTowards(matcher)) break
+        attemptsLeft -= 1
     }
     onNode(matcher).assertIsDisplayed()
 }

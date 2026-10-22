@@ -119,18 +119,27 @@ class FontScaleTest {
 
     @Test
     fun localSettingsRowsStayReachableAtDoubleFontScale() {
-        assertSettingsReachable(a11ySession(SessionPhase.LOCAL))
+        assertSettingsReachable(a11ySession(SessionPhase.LOCAL), listOf(SettingsTestTags.DELETE_LOCAL_DATA_ROW))
     }
 
     @Test
     fun anonymousSettingsRowsAndTheConversionRowStayReachableAtDoubleFontScale() {
-        val reached = assertSettingsReachable(a11ySession(SessionPhase.ANONYMOUS))
-        assertTrue("the E4-05 row was not rendered: $reached", SettingsTestTags.LINK_ACCOUNT_ROW in reached)
+        assertSettingsReachable(
+            a11ySession(SessionPhase.ANONYMOUS),
+            listOf(
+                SettingsTestTags.LINK_ACCOUNT_ROW,
+                SettingsTestTags.LINK_ACCOUNT_GOOGLE,
+                SettingsTestTags.DELETE_LOCAL_DATA_ROW,
+            ),
+        )
     }
 
     @Test
     fun permanentSettingsRowsStayReachableAtDoubleFontScale() {
-        assertSettingsReachable(a11ySession(SessionPhase.PERMANENT))
+        assertSettingsReachable(
+            a11ySession(SessionPhase.PERMANENT),
+            listOf(SettingsTestTags.SIGN_OUT_ROW, SettingsTestTags.DELETE_ACCOUNT_ROW),
+        )
     }
 
     @Test
@@ -209,7 +218,10 @@ class FontScaleTest {
             .forEach(composeRule::scrollToAndAssertDisplayed)
     }
 
-    private fun assertSettingsReachable(session: SessionUiState): List<String> {
+    private fun assertSettingsReachable(
+        session: SessionUiState,
+        phaseRows: List<String>,
+    ) {
         showAtDoubleFontScale {
             SettingsScreen(
                 settings = a11ySettings(),
@@ -220,8 +232,8 @@ class FontScaleTest {
             )
         }
         val reached = composeRule.assertRenderedTagsReachable(stringConstantsOf(SettingsTestTags::class.java))
-        assertTrue("only $reached were rendered", reached.size >= MIN_SETTINGS_ELEMENTS)
-        return reached
+        val required = SETTINGS_ROWS_OF_EVERY_PHASE + phaseRows
+        assertTrue("required rows were not rendered: ${required - reached.toSet()}", reached.containsAll(required))
     }
 
     private fun showAtDoubleFontScale(content: @Composable () -> Unit) {
@@ -234,6 +246,14 @@ class FontScaleTest {
 
     private companion object {
         /** Currency, the two units, the backup status, the analytics switch and the version (`§3.1`). */
-        const val MIN_SETTINGS_ELEMENTS = 4
+        val SETTINGS_ROWS_OF_EVERY_PHASE =
+            listOf(
+                SettingsTestTags.CURRENCY_ROW,
+                SettingsTestTags.DISTANCE_UNIT_ROW,
+                SettingsTestTags.VOLUME_UNIT_ROW,
+                SettingsTestTags.BACKUP_ROW,
+                SettingsTestTags.ANALYTICS_SWITCH,
+                SettingsTestTags.VERSION_ROW,
+            )
     }
 }

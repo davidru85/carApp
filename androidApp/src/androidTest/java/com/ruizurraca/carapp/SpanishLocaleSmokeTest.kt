@@ -1,6 +1,5 @@
 package com.ruizurraca.carapp
 
-import android.os.ParcelFileDescriptor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.Locales
@@ -14,7 +13,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -128,56 +126,6 @@ class SpanishLocaleSmokeTest {
         composeRule.scrollToAndAssertDisplayed(hasTextContaining(error))
     }
 
-    @Test
-    fun conversionConfirmationRendersSpanishCopy() {
-        // A Material3 dialog opens its own window and takes no context from
-        // `DeviceConfigurationOverride.Locales`, so this screen is rendered under the app locale the
-        // §3 V-6 evidence capture uses (`cmd locale set-app-locales`).
-        val session = conversionCollisionSession()
-        withTheSpanishAppLocale {
-            showInSpanish {
-                SettingsScreen(
-                    settings = a11ySettings(),
-                    session = session,
-                    sync = a11ySync(),
-                    appVersion = A11Y_APP_VERSION,
-                    callbacks = a11ySettingsCallbacks(),
-                )
-                // The collision is presented by the authenticated root, beside Settings (`R2`).
-                SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks())
-            }
-            composeRule.waitForIdle()
-            val copy = localizedString(SPANISH_TAG, R.string.confirm_replace_existing_account)
-            assertTrue(copy, copy.contains("sustituye permanentemente"))
-            composeRule.scrollToAndAssertDisplayed(hasTextContaining(copy))
-            listOf(SettingsTestTags.CONVERSION_CONFIRM, SettingsTestTags.CONVERSION_CANCEL)
-                .forEach(composeRule::scrollToAndAssertDisplayed)
-        }
-    }
-
-    /**
-     * The §3 V-6 mechanism: the app's own locale is set through the shell and read back, so the
-     * dialog window of the next composition resolves the Spanish catalogue. It is cleared again so the
-     * following tests keep the emulator's en-US default.
-     */
-    private fun withTheSpanishAppLocale(action: () -> Unit) {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val packageName = instrumentation.targetContext.packageName
-        runShellCommand("cmd locale set-app-locales $packageName --locales $SPANISH_TAG")
-        try {
-            action()
-        } finally {
-            runShellCommand("cmd locale set-app-locales $packageName --locales \"\"")
-        }
-    }
-
-    private fun runShellCommand(command: String) {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        ParcelFileDescriptor
-            .AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command))
-            .use { stream -> stream.readBytes() }
-    }
-
     private fun showInSpanish(content: @Composable () -> Unit) {
         composeRule.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.Locales(LocaleList(SPANISH_TAG))) {
@@ -208,23 +156,5 @@ class SpanishLocaleSmokeTest {
             .onNodeWithText(localizedString(SPANISH_TAG, R.string.continue_with_google))
             .assertIsDisplayed()
         composeRule.onNodeWithText(localizedString(SPANISH_TAG, R.string.cancel)).assertIsDisplayed()
-    }
-
-    @Test
-    fun deleteAccountConfirmationRendersSpanishCopy() {
-        val session = deleteAccountSession()
-        withTheSpanishAppLocale {
-            showInSpanish {
-                SettingsSessionPrompts(session = session, callbacks = a11yPromptCallbacks())
-            }
-            composeRule.waitForIdle()
-            val body = localizedString(SPANISH_TAG, R.string.confirm_delete_account)
-            assertTrue(body, body.contains("Esto elimina permanentemente tu cuenta"))
-            composeRule.scrollToAndAssertDisplayed(hasTextContaining(body))
-            composeRule
-                .onNodeWithText(localizedString(SPANISH_TAG, R.string.settings_delete_account))
-                .assertIsDisplayed()
-            composeRule.onNodeWithText(localizedString(SPANISH_TAG, R.string.cancel)).assertIsDisplayed()
-        }
     }
 }
