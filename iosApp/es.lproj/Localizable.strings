@@ -63,9 +63,9 @@
 "error_money_input" = "Introduce los dos valores monetarios obligatorios.";
 "error_currency" = "Selecciona una moneda compatible.";
 
-"add_fuel_entry" = "Nueva recarga";
-"create_fuel_entry_title" = "Nueva recarga";
-"edit_fuel_entry_title" = "Editar recarga";
+"add_fuel_entry" = "Nuevo repostaje";
+"create_fuel_entry_title" = "Nuevo repostaje";
+"edit_fuel_entry_title" = "Editar repostaje";
 "close" = "Cerrar";
 "save_fuel_entry" = "Guardar";
 "fuel_date_value" = "Fecha: %@";
@@ -81,24 +81,24 @@
 "calculated_price" = "Precio por litro calculado";
 "calculated_liters" = "Litros calculados";
 "value_pending" = "Introduce ambos valores";
-"full_tank" = "Tanque lleno";
+"full_tank" = "Depósito lleno";
 "full_tank_help" = "Desactívalo para guardar un repostaje parcial.";
 "missed_entries" = "Repostajes omitidos";
-"missed_entries_help" = "Actívalo si no registraste una recarga anterior.";
+"missed_entries_help" = "Actívalo si no registraste un repostaje anterior.";
 "notes_optional" = "Notas (opcional)";
 "odometer_warning_title" = "El odómetro parece incoherente";
 "odometer_warning_body" = "Este valor no es superior al odómetro anterior. Guárdalo solo si es correcto.";
 "save_anyway" = "Guardar de todos modos";
 
 "consumption_average_title" = "Consumo medio histórico";
-"consumption_empty" = "Se necesitan dos repostajes con tanque lleno para calcular el consumo.";
+"consumption_empty" = "Se necesitan dos repostajes con el depósito lleno para calcular el consumo.";
 "consumption_reliable" = "Media fiable de %d tramos válidos";
 "consumption_not_yet_reliable" = "Media de %d tramo válido; se necesitan dos para que sea fiable";
 "fuel_entry_facts" = "%@ km · %@ L · %@";
-"partial_tank" = "Tanque parcial";
+"partial_tank" = "Depósito parcial";
 "inconsistent_odometer" = "Odómetro incoherente";
-"consumption_no_previous_full_tank" = "Se necesita un tanque lleno anterior.";
-"consumption_partial_tank" = "Sin consumo: tanque parcial.";
+"consumption_no_previous_full_tank" = "Se necesita un repostaje anterior con el depósito lleno.";
+"consumption_partial_tank" = "Sin consumo: depósito parcial.";
 "consumption_missed_entries" = "Sin consumo: faltan uno o más repostajes.";
 "consumption_inconsistent_odometer" = "Sin consumo: el tramo contiene un odómetro incoherente.";
 "consumption_non_positive_distance" = "Sin consumo: la distancia debe ser positiva.";
@@ -126,13 +126,11 @@
 "confirm_delete_local_data" = "Esto elimina permanentemente todos los vehículos y repostajes de este dispositivo. No hay ninguna cuenta desde la que recuperarlos, así que no se puede deshacer.";
 "confirm_replace_existing_account" = "Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer.";
 "error_entity_unavailable" = "Este vehículo o repostaje ya no está disponible.";
-"warning_pending_sync" = "Algunos cambios de este dispositivo aún no están en la copia de seguridad. Si continúas, se perderán.";
 "error_auth_credential_in_use" = "Esta cuenta ya está vinculada a otra cuenta de carApp.";
 "error_auth_session_expired" = "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.";
 "error_auth_permission_denied" = "Ahora mismo no se permite esta acción de la cuenta. Inténtalo de nuevo más tarde.";
 "error_auth_requires_recent_login" = "Por seguridad, vuelve a iniciar sesión para eliminar tu cuenta.";
 "error_auth_uid_would_change" = "Se ha detenido la vinculación porque habría sustituido esta cuenta. No ha cambiado nada.";
-"error_auth_account_deletion_failed" = "No se ha podido eliminar tu cuenta. Se han conservado los datos de este dispositivo. Inténtalo de nuevo.";
 "error_backup_offline" = "No se ha podido conectar con la copia de seguridad. Tus datos están a salvo en este dispositivo; inténtalo de nuevo cuando tengas conexión.";
 "error_backup_session" = "La copia de seguridad está en pausa hasta que se renueve tu sesión. Tus datos están a salvo en este dispositivo.";
 "error_backup_rejected" = "La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo.";

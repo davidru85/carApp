@@ -126,13 +126,11 @@
 "confirm_delete_local_data" = "This permanently deletes every vehicle and refuel on this device. There is no account to recover them from, so this cannot be undone.";
 "confirm_replace_existing_account" = "This permanently replaces every vehicle and refuel in the existing account with the data on this device. This cannot be undone.";
 "error_entity_unavailable" = "This vehicle or refuel is no longer available.";
-"warning_pending_sync" = "Some changes on this device have not been backed up yet. If you continue, they will be lost.";
 "error_auth_credential_in_use" = "This account is already linked to another carApp account.";
 "error_auth_session_expired" = "Your session has expired. Sign in again to continue.";
 "error_auth_permission_denied" = "This account action is not allowed right now. Try again later.";
 "error_auth_requires_recent_login" = "For your security, sign in again to delete your account.";
 "error_auth_uid_would_change" = "Linking was stopped because it would have replaced this account. Nothing has changed.";
-"error_auth_account_deletion_failed" = "Your account could not be deleted. The data on this device has been kept. Try again.";
 "error_backup_offline" = "The backup could not be reached. Your data is safe on this device; try again when you are online.";
 "error_backup_session" = "The backup is paused until your session is renewed. Your data is safe on this device.";
 "error_backup_rejected" = "The backup rejected this data, so retrying will not help. Your data is still on this device.";
