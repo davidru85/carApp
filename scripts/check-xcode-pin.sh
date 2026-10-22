@@ -10,7 +10,9 @@
 set -euo pipefail
 
 PINNED=$(grep -E '^xcode = ' gradle/libs.versions.toml | sed -E 's/.*"([^"]+)".*/\1/')
-ACTUAL=$(xcodebuild -version | head -1 | awk '{print $2}')
+# awk reads the whole output: `head -1` closes the pipe early, and xcodebuild then aborts on the
+# broken pipe (exit 134 on the runner), which pipefail turns into a failed check.
+ACTUAL=$(xcodebuild -version | awk 'NR == 1 {print $2}')
 echo "pinned=$PINNED actual=$ACTUAL"
 if [ "${PINNED%%.*}" != "${ACTUAL%%.*}" ]; then
   echo "::error::Xcode major version drift: pinned $PINNED, runner has $ACTUAL. Update docs/versions-matrix.md and gradle/libs.versions.toml in a reviewed change."

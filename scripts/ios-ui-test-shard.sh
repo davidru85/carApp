@@ -74,10 +74,12 @@ if [[ "$MODE" == "--print-selection" ]]; then
   exit 0
 fi
 
+# awk reads the whole stream; `head` would close the pipe early, and pipefail would turn the
+# writer's broken pipe into a failure (scripts/check-xcode-pin.sh hit exactly that on the runner).
 DEVICE_ID="$(
   xcrun simctl list devices available iPhone \
     | grep -E -o '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' \
-    | head -n 1
+    | awk 'NR == 1'
 )"
 if [[ -z "$DEVICE_ID" ]]; then
   echo "::error::No available iPhone simulator." >&2
