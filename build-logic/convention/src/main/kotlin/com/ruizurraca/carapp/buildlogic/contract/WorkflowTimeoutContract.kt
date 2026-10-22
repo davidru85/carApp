@@ -112,22 +112,29 @@ internal class WorkflowTimeoutContract private constructor(
         val STEP_NAME = Regex("^\\s{6}- name: (.+)$")
         val TIMEOUT = Regex("^\\s{4}timeout-minutes: (\\d+)$")
         val STEP_TIMEOUT = Regex("^\\s{8}timeout-minutes: (\\d+)$")
-        val PROTECTED_CHECK_NAMES = setOf(
-            "ktlint",
-            "detekt",
-            "architecture-check",
-            "contract-check",
-            "android-assemble",
-            "android-instrumented-tests",
-            "shared-tests",
-            "ios-simulator-build",
-            "ios-ui-tests-audit-1",
-            "ios-ui-tests-audit-2",
-            "ios-ui-tests-ax3-1",
-            "ios-ui-tests-ax3-2",
-            "ios-ui-tests-remainder",
-            "objc-header-golden-check",
-            "provider-decoupling",
-        )
     }
 }
+
+/**
+ * The check names `main`'s branch protection requires (`docs/CONTRACTS.md §18`). Assertion 30 keeps each
+ * one present in the workflow, and assertion 45 keeps the `ios-ui-tests-*` names equal to the shard set
+ * of `scripts/ios-ui-test-shards.txt` (`D-230`, ADR-0231).
+ */
+internal val PROTECTED_CHECK_NAMES: Set<String> =
+    setOf(
+        "ktlint",
+        "detekt",
+        "architecture-check",
+        "contract-check",
+        "android-assemble",
+        "android-instrumented-tests",
+        "shared-tests",
+        "ios-simulator-build",
+        "ios-ui-tests-audit-1",
+        "ios-ui-tests-audit-2",
+        "ios-ui-tests-ax3-1",
+        "ios-ui-tests-ax3-2",
+        "ios-ui-tests-remainder",
+        "objc-header-golden-check",
+        "provider-decoupling",
+    )

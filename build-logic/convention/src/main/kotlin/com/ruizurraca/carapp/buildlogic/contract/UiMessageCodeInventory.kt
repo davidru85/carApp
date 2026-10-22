@@ -18,7 +18,8 @@ internal object UiMessageCodeInventory {
     const val CONFIRMATION_PREFIX = "CONFIRMATION."
 
     private const val OVERRIDE = "override"
-    private val LEAF_CODE = Regex("""override\s+val\s+code\s*=\s*\"([A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)?)\"""")
+    private val LEAF_CODE =
+        Regex("""override\s+val\s+code\s*(?::\s*String\s*)?=\s*\"([A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)?)\"""")
     private val CONFIRMATION_ENUM = Regex("""\benum\s+class\s+Confirmation\s*\{([^}]*)\}""")
     private val INFO_LITERAL = Regex("""\"(INFO\.[A-Z][A-Z0-9_]*)\"""")
 

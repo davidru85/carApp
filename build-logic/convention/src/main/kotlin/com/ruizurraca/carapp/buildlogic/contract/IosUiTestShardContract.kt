@@ -32,13 +32,14 @@ internal class IosUiTestShardContract private constructor(
 
     fun validate(): AssertionResult {
         val entries = manifestEntries()
+        val shards = entries.mapNotNull { it.entry }.map(Entry::shard).toSet() + REMAINDER
         val mismatches = entries.flatMap { it.problems } +
             entryMismatches(entries.mapNotNull { it.entry }) +
-            jobMismatches(entries.mapNotNull { it.entry }.map(Entry::shard).toSet() + REMAINDER) +
+            jobMismatches(shards) +
+            protectionMismatches(shards) +
             directSelections()
         return if (mismatches.isEmpty()) {
-            val shards = entries.mapNotNull { it.entry?.shard }.toSet().size + 1
-            AssertionResult(ID, NAME, AssertionResult.Status.PASS, "$shards shards")
+            AssertionResult(ID, NAME, AssertionResult.Status.PASS, "${shards.size} shards")
         } else {
             AssertionResult(ID, NAME, AssertionResult.Status.FAIL, mismatches.joinToString())
         }
@@ -99,6 +100,14 @@ internal class IosUiTestShardContract private constructor(
             }
         }
         return unknown + perShard
+    }
+
+    /** Every shard check is required by branch protection, and no protected shard check is stale (ADR-0231). */
+    private fun protectionMismatches(shards: Set<String>): List<String> {
+        val expected = shards.map { shard -> "$JOB_PREFIX$shard" }.toSet()
+        val protected = PROTECTED_CHECK_NAMES.filter { name -> name.startsWith(JOB_PREFIX) }.toSet()
+        return (expected - protected).sorted().map { name -> "check $name is not in PROTECTED_CHECK_NAMES" } +
+            (protected - expected).sorted().map { name -> "protected check $name runs no manifest shard" }
     }
 
     private fun directSelections(): List<String> =

@@ -11,6 +11,9 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
  * is therefore never read as a reference or as literal text.
  */
 internal object HostSourceSyntax {
+    /** The callee name a literal yielded by a `…Key` function reports. */
+    private const val KEY_FUNCTION_CALLEE = "return"
+
     /** One string literal on one line. In the patterns below its body is group 2, escapes kept. */
     private const val LITERAL = """\"((?:[^\"\\\n]|\\.)*)\""""
 
@@ -29,7 +32,12 @@ internal object HostSourceSyntax {
     private val LOCALIZED_LITERAL = Regex("""\b(String)\(\s*localized:\s*$LITERAL""")
     private val LOCALIZATION_VALUE_LITERAL = Regex("""\b(LocalizationValue)\(\s*$LITERAL""")
     private val NS_LOCALIZED_LITERAL = Regex("""\b(NSLocalizedString)\(\s*$LITERAL""")
-    private val KEY_RETURN = Regex("""\b(return)\s+\"([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\"""")
+
+    /** A literal passed to an app view or helper parameter that the view renders as a `LocalizedStringKey`. */
+    private val LABELLED_KEY_LITERAL = Regex("""\b(key|labelKey|valueKey|titleKey)\s*:\s*$LITERAL""")
+
+    /** A snake_case literal a `…Key` function yields, after `return` or as a ternary branch (`? "a" : "b"`). */
+    private val KEY_RETURN = Regex("""(?:\b(return)\s+|[?:]\s*)\"([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\"""")
     private val KEY_FUNCTION = Regex("""\bfunc\s+\w*Key\s*\(""")
 
     val VERBATIM_TEXT = Regex("""\bText\(\s*verbatim\s*:""")
@@ -63,8 +71,9 @@ internal object HostSourceSyntax {
 
     /**
      * Every literal of [text] passed to a SwiftUI key initializer or modifier, to `String(localized:)`,
-     * `String.LocalizationValue` or `NSLocalizedString`, plus every snake_case literal returned inside a
-     * function whose name ends in `Key`, in line order.
+     * `String.LocalizationValue` or `NSLocalizedString`, or to a `key:`, `labelKey:`, `valueKey:` or
+     * `titleKey:` argument, plus every snake_case literal a function whose name ends in `Key` yields after
+     * `return` or as a ternary branch, in line order.
      */
     fun iosLiterals(text: String): List<IosLiteral> {
         val masked = KotlinSourceText.code(text)
@@ -75,6 +84,7 @@ internal object HostSourceSyntax {
                 LOCALIZED_LITERAL to false,
                 LOCALIZATION_VALUE_LITERAL to false,
                 NS_LOCALIZED_LITERAL to false,
+                LABELLED_KEY_LITERAL to true,
             )
         val calls =
             shapes.flatMap { (pattern, withoutArguments) ->
@@ -87,7 +97,7 @@ internal object HostSourceSyntax {
         val returns =
             KEY_RETURN.findAll(text)
                 .filter { match -> isCode(masked, match.range.first) && keyFunctions.any { body -> match.range.first in body } }
-                .map { match -> IosLiteral(match.groupValues[1], match.groupValues[2], lineOf(text, match.range.first), false) }
+                .map { match -> IosLiteral(KEY_FUNCTION_CALLEE, match.groupValues[2], lineOf(text, match.range.first), false) }
                 .toList()
         return (calls + returns).sortedBy(IosLiteral::line)
     }
