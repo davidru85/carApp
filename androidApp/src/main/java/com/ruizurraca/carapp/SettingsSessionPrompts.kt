@@ -88,11 +88,11 @@ internal data class SessionPromptCallbacks(
 /**
  * Binds the prompts to the shared holders.
  *
- * - "Wait" withdraws the warning and asks for a user-initiated cycle (B1-D3). The owner repeats the
+ * - "Wait" withdraws the warning and asks for a user-initiated cycle (D-213). The owner repeats the
  *   request later, and the warning reappears while rows remain.
  * - "Discard" answers the request the warning belongs to, which the phase names ([pendingSyncDiscard]):
  *   `confirmSignOut` for a permanent owner, `confirmDeleteAccount` for a local or anonymous one.
- * - Re-authentication is not answered here: the root routes it to the departure surface (B1-D4).
+ * - Re-authentication is not answered here: the root routes it to the departure surface (D-214).
  */
 internal fun sessionPromptCallbacks(
     session: SessionStateHolder,
@@ -128,7 +128,7 @@ internal fun sessionPromptCallbacks(
 /**
  * The departure prompts of the Android host. They are drawn at the root of the authenticated branch
  * (`VehicleApp` in `MainActivity.kt`), not by the Settings route: a failed deletion returns the phase
- * to `PERMANENT`, which re-mounts the `NavHost` at the vehicle list (B1-D4). Only `ERROR` messages are
+ * to `PERMANENT`, which re-mounts the `NavHost` at the vehicle list (D-214). Only `ERROR` messages are
  * raised as failures ([sessionPrompt]); a stale login is the departure surface's, not a dialog here.
  */
 @Composable

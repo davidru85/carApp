@@ -12,7 +12,7 @@ struct DeparturePromptCallbacks {
     let onConfirmDeleteLocalData: () -> Void
 }
 
-/// Presents the F-5 departure prompts over the signed-in surface (`B1-D3`, `B1-D5`, `D-158`).
+/// Presents the F-5 departure prompts over the signed-in surface (`D-213`, `D-215`, `D-158`).
 ///
 /// The prompts are owned by `SessionStateHolder` and arrive as its typed `message`; this modifier only
 /// decides how one is drawn (`departurePrompt(for:)`) and which intent each button calls. It is
@@ -76,7 +76,7 @@ struct DeparturePromptAlert: ViewModifier {
     private func actions(for prompt: DeparturePrompt) -> some View {
         switch prompt {
         case let .pendingSync(_, intent):
-            // F-5: wait for sync, cancel, or discard after a destructive confirmation (`B1-D3`).
+            // F-5: wait for sync, cancel, or discard after a destructive confirmation (`D-213`).
             Button(String(localized: "pending_sync_wait")) {
                 callbacks.onWaitForPendingSync()
             }

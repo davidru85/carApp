@@ -48,7 +48,7 @@ import java.util.Currency
 import java.util.Locale
 
 /**
- * The session rows a phase offers (B1-D5). `UNKNOWN`, `SIGNED_OUT` and `DELETING` have no owner the
+ * The session rows a phase offers (D-215). `UNKNOWN`, `SIGNED_OUT` and `DELETING` have no owner the
  * screen could act for, so they offer none; Settings is not reachable in those phases anyway.
  */
 internal fun settingsSessionRows(phase: SessionPhase): List<SettingsSessionRow> =
@@ -81,7 +81,7 @@ internal fun volumeUnitLabelResource(unit: VolumeUnit): Int =
 
 /**
  * The platform display name of an ISO 4217 code in [locale]. `SettingsUiState` carries only the code
- * (`docs/CONTRACTS.md §15.3`, B1-D1), so the host produces the name through the platform currency API.
+ * (`docs/CONTRACTS.md §15.3`, D-211), so the host produces the name through the platform currency API.
  * A code the platform does not know is shown as itself instead of crashing the screen.
  */
 internal fun currencyDisplayName(
@@ -109,11 +109,11 @@ internal data class SettingsCallbacks(
 
 /**
  * The `E4-01` Settings screen: exactly the `docs/SPECIFICATION.md §3.1` surface, in its order —
- * currency, the two read-only units, backup status, the analytics opt-in, the B1-D5 session rows and
+ * currency, the two read-only units, backup status, the analytics opt-in, the D-215 session rows and
  * the app version. The anonymous-only link-account row is `E4-05`'s. Departure prompts are not drawn
  * here: `SettingsSessionPrompts` draws them at the root of the authenticated branch, because a failed
  * deletion re-mounts the `NavHost` at the vehicle list, and re-authentication lives on the departure
- * surface (B1-D4).
+ * surface (D-214).
  */
 @Composable
 internal fun SettingsScreen(
@@ -435,7 +435,7 @@ private fun PrivacySection(
     }
 }
 
-/** The B1-D5 rows. They are disabled while a session operation is running. */
+/** The D-215 rows. They are disabled while a session operation is running. */
 @Composable
 private fun AccountSection(
     session: SessionUiState,
@@ -465,7 +465,7 @@ private fun AccountSection(
 }
 
 /**
- * B1-D5 maps both deletion rows to `requestDeleteAccount()` in the route: the shared holder decides
+ * D-215 maps both deletion rows to `requestDeleteAccount()` in the route: the shared holder decides
  * which `DELETING` operation the current owner is entitled to (`D-158`).
  */
 @Composable

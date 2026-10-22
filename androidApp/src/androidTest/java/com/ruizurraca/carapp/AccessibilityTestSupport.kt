@@ -282,7 +282,7 @@ internal fun a11ySettingsCallbacks(): SettingsCallbacks = recordingSettingsCallb
 internal fun a11yPromptCallbacks(): SessionPromptCallbacks = recordingSessionPromptCallbacks(mutableListOf())
 
 /**
- * The `B1-D4` departure screen with inert actions (signature of `DepartureScreen.kt`, `E4-01`). The
+ * The `D-214` departure screen with inert actions (signature of `DepartureScreen.kt`, `E4-01`). The
  * optional host stage defaults to false so a caller that does not test re-authentication keeps the
  * signature it had; this default belongs to test code and not to the production screen.
  */

@@ -19,7 +19,7 @@ enum DepartureDiscardIntent: Equatable {
 
 /// One departure prompt drawn over the signed-in surface by `DeparturePromptPresenter`.
 enum DeparturePrompt: Equatable {
-    /// `WARNING.PENDING_SYNC` with its exact count: wait, cancel or discard (F-5, `B1-D3`).
+    /// `WARNING.PENDING_SYNC` with its exact count: wait, cancel or discard (F-5, `D-213`).
     case pendingSync(count: Int, intent: DepartureDiscardIntent)
     /// `CONFIRMATION.DeleteAccount`, the destructive step of a permanent deletion.
     case confirmDeleteAccount
@@ -29,7 +29,7 @@ enum DeparturePrompt: Equatable {
     case failure(code: String)
 }
 
-/// What the `B1-D4` departure screen draws.
+/// What the `D-214` departure screen draws.
 enum DepartureStage: Equatable {
     case inProgress
     /// A step failed. `retry` is the published `pendingDepartureRetry`, or `nil` when no retry is
@@ -111,7 +111,7 @@ func departurePrompt(
     }
 }
 
-/// Whether the root shows the departure screen instead of the onboarding destination (`B1-D4`).
+/// Whether the root shows the departure screen instead of the onboarding destination (`D-214`).
 ///
 /// A running deletion is `DELETING`. A failed step keeps whichever phase it failed in and publishes
 /// what a retry would repeat, so a published retry routes here in every phase. A permanent deletion

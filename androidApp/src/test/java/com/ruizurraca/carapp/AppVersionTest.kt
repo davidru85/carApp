@@ -3,7 +3,7 @@ package com.ruizurraca.carapp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** The Settings version label (B1-D2): the package `versionName` verbatim, and never an empty row. */
+/** The Settings version label (D-212): the package `versionName` verbatim, and never an empty row. */
 class AppVersionTest {
     @Test
     fun aDeclaredVersionNameIsShownVerbatim() {

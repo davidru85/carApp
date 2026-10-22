@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.ruizurraca.carapp.core.common.AuthProvider
 
 /**
- * The departure surface of B1-D4. While the shared holder is busy (a departure, or the host's
+ * The departure surface of D-214. While the shared holder is busy (a departure, or the host's
  * re-authentication attempt) it shows progress. A stale login (`AuthError.RequiresRecentLogin`), or a
  * host stage the shared provider already refused, shows the `§20.10` re-authentication choice: one
  * action per provider the host can open natively ([reauthenticationProviders]) and a cancel. Any other
@@ -35,8 +35,8 @@ import com.ruizurraca.carapp.core.common.AuthProvider
  * `pendingDepartureRetry` names a retained step, the `retryDeparture()` action. It decides nothing:
  * every value it draws is published by `SessionStateHolder` (`docs/CONTRACTS.md §20.10`).
  *
- * The two re-authentication parameters were added to the `00-common.md` signature for parity with the
- * iOS `DepartureView`; no existing parameter was renamed. [isReauthenticating] is the host stage: once
+ * The two re-authentication parameters give this screen parity with the iOS `DepartureView`
+ * (`D-214`, ADR-0215); no existing parameter was renamed. [isReauthenticating] is the host stage: once
  * it is set, a provider rejection does not end it, so the retained deletion keeps its Google and Cancel
  * actions instead of falling back to a generic dismissal.
  */
@@ -190,7 +190,7 @@ internal object DepartureTestTags {
 }
 
 /**
- * Binds [DepartureScreen] to the session holder at the root (B1-D4). Cancelling re-authentication is
+ * Binds [DepartureScreen] to the session holder at the root (D-214). Cancelling re-authentication is
  * the contract's "cancelled re-authentication" (`docs/CONTRACTS.md §20.10`): it opens the attempt and
  * reports it cancelled, which abandons the deletion without touching local data — the sequence of the
  * shared test `cancellingReauthenticationAbandonsTheDeletionWithoutClearingLocalData`. `clearMessage()`
@@ -240,7 +240,7 @@ internal fun rememberReauthenticationInFlight(
 }
 
 /**
- * The root destination of the Android host (B1-D4).
+ * The root destination of the Android host (D-214).
  *
  * A departure owns the window while it runs (`DELETING`), while it retains a step to retry
  * (`pendingDepartureRetry != null`, in whatever phase the failure left), and during the hand-over

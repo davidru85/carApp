@@ -12,7 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * B1-D4: progress while a departure or a re-authentication attempt runs; the `§20.10`
+ * D-214: progress while a departure or a re-authentication attempt runs; the `§20.10`
  * re-authentication choice for a stale login; the typed failure, what a retry repeats and the
  * `retryDeparture()` action once a step failed; and no retry when nothing is retained.
  */

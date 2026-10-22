@@ -30,7 +30,7 @@ internal fun NavGraphBuilder.settingsRoute(
 }
 
 /**
- * B1-D5 binds both deletion rows to `requestDeleteAccount()`: the shared holder decides which of the
+ * D-215 binds both deletion rows to `requestDeleteAccount()`: the shared holder decides which of the
  * three `DELETING` operations the current owner is entitled to (`docs/CONTRACTS.md §20.10`, `D-158`).
  */
 @Composable

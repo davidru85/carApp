@@ -2,7 +2,7 @@ import Shared
 import SwiftUI
 
 /// The Settings screen of `docs/SPECIFICATION.md §3.1`, exactly: the currency, the read-only distance
-/// and volume units, the backup status, the analytics opt-in, the account rows of `B1-D5` and the app
+/// and volume units, the backup status, the analytics opt-in, the account rows of `D-215` and the app
 /// version. The anonymous-only "link account" row belongs to `E4-05`.
 ///
 /// It is pushed onto the vehicle list's navigation stack rather than presented as the sheet design 06

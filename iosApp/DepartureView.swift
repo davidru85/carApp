@@ -2,7 +2,7 @@ import AuthenticationServices
 import Shared
 import SwiftUI
 
-/// The `B1-D4` departure screen, mounted at the root in place of the signed-in surface.
+/// The `D-214` departure screen, mounted at the root in place of the signed-in surface.
 ///
 /// The root routes here while a deletion runs (`DELETING`), whenever the session holder publishes a
 /// `pendingDepartureRetry`, and while a permanent deletion waits for re-authentication. Routing at the

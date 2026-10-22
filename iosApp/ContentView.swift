@@ -54,7 +54,7 @@ switch destination {
         case .waiting:
             ProgressView()
         case .departure:
-            // `B1-D4`: progress, the typed failure and its retry, and the re-authentication of a
+            // `D-214`: progress, the typed failure and its retry, and the re-authentication of a
             // stale-login deletion stay reachable while the signed-in surface is unmounted.
             DepartureView(
                 state: model.sessionState,

@@ -207,7 +207,7 @@ private fun VehicleApp(
         viewModel.syncStateHolder.onForegroundReturn(backgroundMillis)
     }
 
-    // B1-D4: a departure owns the whole window while it runs, retains a step, hands over to the local
+    // D-214: a departure owns the whole window while it runs, retains a step, hands over to the local
     // clear or waits for re-authentication, because the authenticated `NavHost` is not its surface.
     when (resolveRootDestination(sessionState, vehicleState.vehicles.size, reauthenticationInFlight.value)) {
         OnboardingDestination.WAITING -> {
@@ -256,7 +256,7 @@ private fun VehicleApp(
 }
 
 /**
- * B1-D4's departure branch: the stage flag and the Google re-authentication entry it guards belong to the
+ * D-214's departure branch: the stage flag and the Google re-authentication entry it guards belong to the
  * authenticated root, so they are wired here and not in the routing `when`.
  */
 @Composable

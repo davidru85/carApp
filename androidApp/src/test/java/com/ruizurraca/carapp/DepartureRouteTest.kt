@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * B1-D4: a departure owns the root of the Android host while it runs, while it retains a step to
+ * D-214: a departure owns the root of the Android host while it runs, while it retains a step to
  * retry, during the hand-over between a remote step and the local clear, while a stale login waits
  * for re-authentication and while the host's re-authentication attempt is in flight, because the
  * `NavHost` is not the surface for any of those states. Every other state keeps the F-1 routing.

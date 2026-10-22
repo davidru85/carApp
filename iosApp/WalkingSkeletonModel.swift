@@ -160,7 +160,7 @@ final class WalkingSkeletonModel: ObservableObject {
     }
 
     /// The account deletion of a permanent owner and the local-data deletion of a local or anonymous
-    /// owner are the same intent (`B1-D5`); the holder decides which operation it is.
+    /// owner are the same intent (`D-215`); the holder decides which operation it is.
     func requestDeleteAccount() {
         sessionStateHolder.requestDeleteAccount()
     }
@@ -220,7 +220,7 @@ final class WalkingSkeletonModel: ObservableObject {
         }
     }
 
-    /// F-5 "wait for sync" (`B1-D3`): withdraw the prompt and request one user-initiated cycle. The
+    /// F-5 "wait for sync" (`D-213`): withdraw the prompt and request one user-initiated cycle. The
     /// owner asks again later, and the prompt reappears while rows remain. Only `PullToRefresh` may be
     /// requested from Swift (`docs/CONTRACTS.md §20.10`, `D-185`).
     func waitForPendingSync() {

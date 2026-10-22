@@ -6,7 +6,7 @@ import XCTest
 /// Every test reaches Settings through the vehicle-list toolbar, so the entry point is exercised each
 /// time. The guest path is the only session these tests can create: CI holds no App Check debug token,
 /// so the owner is `LOCAL` there, and `ANONYMOUS` on a development machine that has one. Both are
-/// offered the same account row (`B1-D5`), so every assertion holds for both.
+/// offered the same account row (`D-215`), so every assertion holds for both.
 ///
 /// No launch hook is added. A fresh simulator shows mandatory first-vehicle creation (F-1); the helper
 /// completes it and leaves the vehicle detail F-2 routes to, because the Settings entry is on the list.
@@ -99,8 +99,8 @@ final class SettingsFlowUITests: XCTestCase {
 
         let deleteLocalData = app.buttons["settings_delete_local_data"]
         XCTAssertTrue(deleteLocalData.waitForExistence(timeout: timeout))
-        XCTAssertFalse(app.buttons["settings_sign_out"].exists, "A guest owner has no sign-out (B1-D5)")
-        XCTAssertFalse(app.buttons["settings_delete_account"].exists, "A guest owner has no account to delete (B1-D5)")
+        XCTAssertFalse(app.buttons["settings_sign_out"].exists, "A guest owner has no sign-out (D-215)")
+        XCTAssertFalse(app.buttons["settings_delete_account"].exists, "A guest owner has no account to delete (D-215)")
         deleteLocalData.tap()
 
         confirmLocalDataDeletion(in: app)

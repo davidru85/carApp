@@ -4,7 +4,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** B1-D2: the Android host reads its version natively from the installed package. */
+/** D-212: the Android host reads its version natively from the installed package. */
 class AppVersionInstrumentedTest {
     @Test
     fun theContextVersionIsThePackageVersionName() {

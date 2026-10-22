@@ -247,7 +247,7 @@ enum AccessibilityAuditAllowlist {
             auditType: .dynamicType,
             elementIdentifier: "",
             elementLabel: "",
-            reason: "The pending-sync prompt is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (F-5, `B1-D3`)."
+            reason: "The pending-sync prompt is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (F-5, `D-213`)."
         ),
         AccessibilityAuditAllowance(
             screen: "conversion-collision",

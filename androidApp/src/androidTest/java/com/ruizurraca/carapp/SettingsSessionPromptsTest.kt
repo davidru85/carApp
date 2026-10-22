@@ -102,7 +102,7 @@ class SettingsSessionPromptsTest {
         assertEquals(listOf("withdraw"), calls)
     }
 
-    /** B1-D4: a stale login is carried by the departure surface, so no dialog is raised for it here. */
+    /** D-214: a stale login is carried by the departure surface, so no dialog is raised for it here. */
     @Test
     fun aStaleLoginIsLeftToTheDepartureSurface() {
         showPrompts(staleLogin())

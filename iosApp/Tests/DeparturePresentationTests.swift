@@ -4,7 +4,7 @@ import XCTest
 @testable import carApp
 
 /// The host decisions behind the F-5 departure surface: when the root shows the departure screen
-/// (`B1-D4`), what that screen draws, and which prompt a published session message becomes.
+/// (`D-214`), what that screen draws, and which prompt a published session message becomes.
 ///
 /// Every decision reads published `SessionUiState` facts only. The departure rules themselves belong to
 /// `AccountDepartureFlow` and are tested in `:shared` (`SessionDeparture*Test`); these tests pin how

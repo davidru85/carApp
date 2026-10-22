@@ -11,7 +11,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * The B1-D5 session rows: a permanent owner signs out or deletes the account, a local or anonymous
+ * The D-215 session rows: a permanent owner signs out or deletes the account, a local or anonymous
  * owner deletes local data (`docs/CONTRACTS.md §11.5`), and every row only requests its intent.
  */
 class SettingsAccountSectionTest {

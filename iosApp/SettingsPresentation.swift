@@ -1,14 +1,14 @@
 import Foundation
 import Shared
 
-/// One account row of the Settings screen (`docs/SPECIFICATION.md §3.1`, `B1-D5`).
+/// One account row of the Settings screen (`docs/SPECIFICATION.md §3.1`, `D-215`).
 enum SettingsSessionRow: Hashable {
     case signOut
     case deleteAccount
     case deleteLocalData
 }
 
-/// The account rows a session phase is offered (`B1-D5`).
+/// The account rows a session phase is offered (`D-215`).
 ///
 /// A permanent owner can sign out and delete the account. A local or anonymous identity exists only
 /// on this device (`D-156`), so its one row deletes the local data through `requestDeleteAccount()`

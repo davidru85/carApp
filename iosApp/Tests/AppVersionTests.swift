@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import carApp
 
-/// `B1-D2`: Settings shows the version the bundle declares, as `"<marketing version> (<build number>)"`.
+/// `D-212`: Settings shows the version the bundle declares, as `"<marketing version> (<build number>)"`.
 final class AppVersionTests: XCTestCase {
     func testTheVersionJoinsTheMarketingVersionAndTheBuildNumber() {
         XCTAssertEqual(AppVersion.format(shortVersion: "0.0.1", buildNumber: "1"), "0.0.1 (1)")

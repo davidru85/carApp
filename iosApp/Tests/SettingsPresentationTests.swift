@@ -12,7 +12,7 @@ final class SettingsPresentationTests: XCTestCase {
         XCTAssertEqual(settingsSessionRows(for: .permanent), [.signOut, .deleteAccount])
     }
 
-    /// `B1-D5` and `D-156`: a local or anonymous identity exists only on this device, so its one
+    /// `D-215` and `D-156`: a local or anonymous identity exists only on this device, so its one
     /// account row deletes the local data and there is no sign-out.
     func testALocalOrAnonymousOwnerIsOfferedOnlyDeleteLocalData() {
         XCTAssertEqual(settingsSessionRows(for: .local), [.deleteLocalData])

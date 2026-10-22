@@ -6,7 +6,7 @@ enum OnboardingDestination {
     case welcome
     case firstVehicle
     case vehicleList
-    /// The `B1-D4` departure screen: progress, the typed failure and its retry, and the
+    /// The `D-214` departure screen: progress, the typed failure and its retry, and the
     /// re-authentication a stale-login deletion waits for.
     case departure
 }

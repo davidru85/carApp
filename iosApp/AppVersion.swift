@@ -2,7 +2,7 @@ import Foundation
 
 /// The app version shown by Settings (`docs/SPECIFICATION.md §3.1`).
 ///
-/// `B1-D2`: each host reads its own bundle, so no shared contract carries the version. The version
+/// `D-212`: each host reads its own bundle, so no shared contract carries the version. The version
 /// scheme itself (`CFBundleShortVersionString`, `CFBundleVersion`) is decided by `E4-04`; this type only
 /// formats what the bundle declares.
 enum AppVersion {

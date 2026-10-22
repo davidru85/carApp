@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 /**
- * The host presentation of `docs/SPECIFICATION.md §3.1`: which session rows each phase offers (B1-D5),
+ * The host presentation of `docs/SPECIFICATION.md §3.1`: which session rows each phase offers (D-215),
  * the read-only unit labels and the platform currency name. None of it is shared state; it is how the
  * Android host draws typed values it receives.
  */
