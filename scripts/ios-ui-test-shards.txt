@@ -1,0 +1,38 @@
+# iOS UI test shards of the carAppUITests target (D-230, ADR-0231).
+#
+# Read by scripts/ios-ui-test-shard.sh, which turns a shard into xcodebuild test selection, and by
+# contractCheck assertion 45, which fails when an entry names a test that does not exist, when an
+# identifier is assigned twice, or when a shard has no ios-ui-tests-<shard> job in
+# .github/workflows/ci.yml.
+#
+# Each line is "<shard> <TestClass>" or "<shard> <TestClass>/<testMethod>".
+# - A class entry runs every test of that class except the methods another shard names, so a new
+#   method added to the class runs in the class's shard without an edit here.
+# - The `remainder` shard is implicit and is never listed: it runs every carAppUITests test that no
+#   line names, so a new test class runs somewhere without an edit here.
+#
+# Balance: every shard targets about 15 to 17 minutes of tests on the macOS runner, so the job,
+# including the ~11.5 minute framework link and test-app compile, stays well inside the 40-minute
+# default ceiling of D-176. Durations below are the run 39087272433 measurements where the test ran
+# there, and estimates otherwise; rebalance from a complete run when a shard drifts above 20 minutes.
+
+# audit-1, ~1042 s measured: the three slowest system-alert audits.
+audit-1 AccessibilityAuditUITests/testPendingSyncPassesTheAccessibilityAudit
+audit-1 AccessibilityAuditUITests/testCollisionPassesTheAccessibilityAudit
+audit-1 AccessibilityAuditUITests/testDeleteLocalDataPassesTheAccessibilityAudit
+
+# audit-2, ~1009 s measured: every other audit, including odometer-warning and delete-account.
+audit-2 AccessibilityAuditUITests
+
+# ax3-1, ~925 s (pending-sync estimated): the three slowest system-alert AX3 audits.
+ax3-1 LargeContentSizeUITests/testPendingSyncIsReachableAtAx3
+ax3-1 LargeContentSizeUITests/testCollisionIsReachableAtAx3
+ax3-1 LargeContentSizeUITests/testDeleteAccountIsReachableAtAx3
+
+# ax3-2, ~975 s (partly estimated): every other AX3 test, including delete-local-data and
+# odometer-warning.
+ax3-2 LargeContentSizeUITests
+
+# remainder, ~810 s estimated: OnboardingFlowUITests, OnboardingWaitPolicyTests,
+# SettingsFlowUITests, SpanishLocalizationUITests, VehicleAndFuelFlowUITests,
+# AccountConversionUITests, CarAppKeychainPersistenceUITests and any class added later.

@@ -47,14 +47,16 @@ class WorkflowTimeoutContractTest {
     }
 
     /**
-     * The `ios-ui-tests` ceiling is 60 because the UI suite plus the nine accessibility audits
-     * measured 21m48s and was still running when run 39038842049 was cancelled at 14:40:03. Its own
-     * ceiling, not a raised default: the next minute over it MUST fail.
+     * `D-230` retired the 60-minute `ios-ui-tests` exception of `D-229`: each UI test shard fits the
+     * default, so a shard that takes the old ceiling back MUST fail instead of borrowing it.
      */
     @Test
-    fun aJobAboveItsOwnCeilingFails() {
-        val mutated = workflow.replaceFirst("    timeout-minutes: 60", "    timeout-minutes: 61")
-        assertNotEquals(workflow, mutated, "The fixture mutation must exceed the ios-ui-tests ceiling")
+    fun aUiTestShardCannotKeepTheRetiredSixtyMinuteCeiling() {
+        val mutated = workflow.replaceFirst(
+            "  ios-ui-tests-audit-1:\n    name: ios-ui-tests-audit-1\n    runs-on: macos-latest\n    timeout-minutes: 40",
+            "  ios-ui-tests-audit-1:\n    name: ios-ui-tests-audit-1\n    runs-on: macos-latest\n    timeout-minutes: 60",
+        )
+        assertNotEquals(workflow, mutated, "The fixture mutation must raise the audit-1 shard to 60 minutes")
         assertEquals(
             AssertionResult.Status.FAIL,
             WorkflowTimeoutContract(mutated).validate().single { it.id == 28 }.status,
@@ -75,14 +77,17 @@ class WorkflowTimeoutContractTest {
         )
     }
 
-    /** A UI check that stops being reported under the protected name silently stops gating merges. */
+    /** A UI shard check that stops being reported under its protected name silently stops gating merges. */
     @Test
-    fun removingTheUiCheckProtectedNameFails() {
-        val mutated = workflow.replace("    name: ios-ui-tests\n", "    name: ios-ui-tests-renamed\n")
-        assertNotEquals(workflow, mutated, "The fixture mutation must rename the ios-ui-tests check")
-        assertEquals(
-            AssertionResult.Status.FAIL,
-            WorkflowTimeoutContract(mutated).validate().single { it.id == 30 }.status,
-        )
+    fun renamingAnyUiTestShardCheckFails() {
+        listOf("audit-1", "audit-2", "ax3-1", "ax3-2", "remainder").forEach { shard ->
+            val mutated = workflow.replace("    name: ios-ui-tests-$shard\n", "    name: ios-ui-tests-$shard-renamed\n")
+            assertNotEquals(workflow, mutated, "The fixture mutation must rename the ios-ui-tests-$shard check")
+            assertEquals(
+                AssertionResult.Status.FAIL,
+                WorkflowTimeoutContract(mutated).validate().single { it.id == 30 }.status,
+                "Renaming ios-ui-tests-$shard must fail assertion 30",
+            )
+        }
     }
 }
