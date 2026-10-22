@@ -41,6 +41,13 @@ class UiMessageCodeInventoryTest {
     }
 
     @Test
+    fun aLeafWithAnExplicitStringTypeIsRead() {
+        val source = """data object Typed : AuthError { override val code: String = "AUTH.TYPED" }"""
+
+        assertEquals(listOf("AUTH.TYPED"), UiMessageCodeInventory.appErrorCodes(source))
+    }
+
+    @Test
     fun everyConfirmationEntryBecomesAConfirmationCode() {
         assertEquals(
             listOf(

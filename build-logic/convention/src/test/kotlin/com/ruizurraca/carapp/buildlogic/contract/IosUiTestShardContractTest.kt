@@ -4,6 +4,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 /**
  * Assertion 45 (`D-230`, ADR-0231): the `carAppUITests` shards are complete by construction only
@@ -102,6 +103,19 @@ class IosUiTestShardContractTest {
         val mutated = workflow.replace("    name: ios-ui-tests-audit-1\n", "    name: ios-ui-tests-a1\n")
         assertNotEquals(workflow, mutated, "The fixture mutation must rename the audit-1 check")
         assertEquals(AssertionResult.Status.FAIL, validate(workflow = mutated).status)
+    }
+
+    /** A shard whose check is not protected would stop gating merges while still running (ADR-0231). */
+    @Test
+    fun aShardWhoseCheckIsNotProtectedFails() {
+        val manifestWithAudit3 = manifest + "audit-3 AccessibilityAuditUITests/testWelcomePassesTheAccessibilityAudit\n"
+        val audit3Job = "\n  ios-ui-tests-audit-3:\n    name: ios-ui-tests-audit-3\n    runs-on: macos-latest\n" +
+            "    timeout-minutes: 40\n    steps:\n      - name: Run the iOS UI test shard\n" +
+            "        run: scripts/ios-ui-test-shard.sh audit-3\n"
+        val result = validate(workflow = workflow + audit3Job, manifest = manifestWithAudit3)
+
+        assertEquals(AssertionResult.Status.FAIL, result.status, result.detail)
+        assertTrue("ios-ui-tests-audit-3 is not in PROTECTED_CHECK_NAMES" in result.detail, result.detail)
     }
 
     /** A job that selects UI tests by hand bypasses the manifest and its completeness guarantee. */

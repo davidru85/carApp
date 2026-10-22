@@ -50,6 +50,33 @@ class LocalizationKeyContractTest {
     }
 
     @Test
+    fun anAndroidPluralsOnlyOneCatalogueDeclaresIsRejected() {
+        val spanish =
+            real.androidStringsEs.replacingExactlyOnce(
+                "<plurals name=\"pending_sync_body\">",
+                "<plurals name=\"fixture_renamed_body\">",
+            )
+        val result = validate(real.withAndroidXml(HostLocalizationInputs.ANDROID_STRINGS_ES, spanish))
+
+        assertRejected("${HostLocalizationInputs.ANDROID_STRINGS_ES} lacks plurals [pending_sync_body]", result)
+        assertRejected("${HostLocalizationInputs.ANDROID_STRINGS_EN} lacks plurals [fixture_renamed_body]", result)
+    }
+
+    @Test
+    fun anAndroidPluralsReferenceMissingFromBothCataloguesIsRejected() {
+        val result = validate(real.withAndroidSource(ANDROID_FIXTURE, "val body = R.plurals.fixture_missing_body"))
+
+        assertRejected(
+            "$ANDROID_FIXTURE:1 references R.plurals.fixture_missing_body, missing from ${HostLocalizationInputs.ANDROID_STRINGS_EN}",
+            result,
+        )
+        assertRejected(
+            "$ANDROID_FIXTURE:1 references R.plurals.fixture_missing_body, missing from ${HostLocalizationInputs.ANDROID_STRINGS_ES}",
+            result,
+        )
+    }
+
+    @Test
     fun anUntranslatableAndroidStringIsExemptFromTheSpanishCatalogue() {
         val english = real.androidStringsEn.withAndroidString("fixture_brand", "carApp", " translatable=\"false\"")
         val inputs =
@@ -134,6 +161,9 @@ class LocalizationKeyContractTest {
                 "String.LocalizationValue(\"fixture_missing_key\")",
                 "NSLocalizedString(\"fixture_missing_key\", comment: \"\")",
                 "func fixtureKey() -> String { return \"fixture_missing_key\" }",
+                "func fixtureKey(_ flag: Bool) -> String? { flag ? \"fixture_missing_key\" : nil }",
+                "IndicatorBadge(key: \"fixture_missing_key\", tint: .orange)",
+                "CalculatedRow(labelKey: \"fixture_missing_key\", value: total)",
             )
 
         shapes.forEach { shape ->
