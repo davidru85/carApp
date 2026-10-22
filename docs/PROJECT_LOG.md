@@ -38,6 +38,45 @@
 
 ## Entries
 
+### 2026-10-23 — PR #91 review round 2 corrections (bundle `E4-B1`)
+
+- **Type:** correction
+- **Story / Decision:** `E4-B1` (`E4-01`, `E4-05`, `E4-02`) / `D-231`, `D-232`, `D-233`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** the settings holder keeps known settings across a renewed observation (F1, RED then
+  GREEN) and gains two pinned behaviour tests (F2); the Android reachability helper now fails for an
+  unreachable node, which exposed and fixed a dialog-locale test that had passed vacuously (F3); the
+  Android collision dialog has a heading and a scrolling body (F4); the iOS account rows set accessible
+  label colours, the Debug fixtures match production, and the unknown and saving settings, the
+  permanent-account rows and the departure failure are audited (F5-F9); es-ES refuel vocabulary is
+  corrected and two dead iOS keys removed (F10); `contractCheck` protects every shard check and reads
+  labelled iOS keys and typed leaf codes (F11, RED then GREEN); the iOS UI shards are rebalanced (F12);
+  `D-231` records the 2026-10-17 audit approvals, `D-232` the session-channel copy and `D-233` the
+  account-replacement write window, and the `D-227` sentence of `§20.10` states what the code checks
+  (F13-F15, F24); the current-state records are corrected and `E1-19`, `E1-20`, `E2-11` and `E4-07` are
+  added (F16-F23).
+- **Corrects:** the 2026-10-17 `E4-02` entry's statement that every measured contrast failure is fixed
+  (system-rendered findings are allowlisted under `D-231`), and the `D-230` entries that say the owner
+  "replaces `ios-ui-tests`" (it was never in branch protection; the owner adds the five shard checks).
+- **Why:** the PR #91 review round 2 found a contract deviation in the shared holder, vacuous
+  reachability assertions, unmeasured AA failures, decisions recorded only in handoffs and an
+  unrecorded data-loss window.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §14.1`, `§15.3`, `§18`, `§20.10`,
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
+  ADR-0177, ADR-0218, ADR-0221, ADR-0224, ADR-0228, ADR-0229, ADR-0231, ADR-0232, ADR-0233, ADR-0234,
+  `docs/SECURITY.md`, `docs/BACKLOG.md`, `docs/DESIGN.md`, `docs/handoffs/E4-01.md`, `E4-02.md`,
+  `E4-05.md`, `E4-B1.md`.
+- **Verification:** `./gradlew --rerun-tasks …` (the complete non-instrumented `AGENTS.md` command) is
+  `BUILD SUCCESSFUL`; `contractCheck` reports 233 decisions, 233 ADRs and 45 assertions with no `FAIL`
+  or `PENDING`; `:androidApp:testDebugUnitTest` 120/0, `testAndroidHostTest` 275/0 and
+  `iosSimulatorArm64Test` 282/0, all executed without a cached task; the golden `Shared.h` `diff -u` is
+  empty. Android instrumented 152/0 on `emulator-5554` (API 36), shut down and proven. iOS:
+  `** TEST SUCCEEDED **` on the erased simulator `B3094DD6-582D-4055-92A9-5F7E732CE372`
+  (iPhone Air, iOS 26.4.1), `carAppTests` 144/0 and every listed UI test passed.
+- **Follow-ups / risks:** the owner adds the five `ios-ui-tests-*` checks to `main`'s branch protection;
+  the three owner-run acceptances stay open; `E1-19`, `E1-20`, `E2-11` and `E4-07` are not Ready; `D-233`
+  stays open until `E2-10`.
+
 ### 2026-10-22 — D-230 shards the iOS UI tests into five parallel protected checks
 
 - **Type:** decision
