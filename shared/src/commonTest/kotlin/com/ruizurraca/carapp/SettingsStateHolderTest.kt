@@ -3,6 +3,7 @@ package com.ruizurraca.carapp
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
+import com.ruizurraca.carapp.core.common.STATE_HOLDER_TIMEOUT_MS
 import com.ruizurraca.carapp.core.common.SUPPORTED_CURRENCY_CODES
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -342,6 +344,84 @@ class SettingsStateHolderTest {
             advanceUntilIdle()
 
             assertEquals(emptyList(), repository.commands)
+        }
+
+    @Test
+    fun aRenewedObservationKeepsTheKnownSettingsUntilTheRepositoryAnswersAgain() =
+        runTest {
+            val holder =
+                SettingsStateHolder(
+                    scope = backgroundScope,
+                    repository = RecordingSettingsRepository(),
+                    // `io` is a standard dispatcher so the repository answers only on `runCurrent()`, after
+                    // anything the holder publishes on its own when the observation restarts.
+                    dispatchers =
+                        TestDispatcherProvider(
+                            UnconfinedTestDispatcher(testScheduler),
+                            StandardTestDispatcher(testScheduler),
+                        ),
+                )
+            val firstObserver =
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            runCurrent()
+            holder.assertPublishedEur()
+
+            firstObserver.cancel()
+            advanceTimeBy(STATE_HOLDER_TIMEOUT_MS + 1)
+            runCurrent()
+
+            val published = mutableListOf<SettingsUiState>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect { published += it } }
+            runCurrent()
+
+            assertEquals(
+                listOf<String?>("EUR"),
+                published.map { it.currencyCode }.distinct(),
+                "a renewed observation republished the settings as unknown: $published",
+            )
+        }
+
+    @Test
+    fun aReadFailureKeepsTheKnownSettingsUntilTheNextSuccessfulRead() =
+        runTest {
+            val repository = RecordingSettingsRepository()
+            val holder = collectedHolder(repository)
+            advanceUntilIdle()
+            holder.assertPublishedEur()
+
+            repository.emit(Outcome.Err(PersistenceError.DatabaseUnavailable))
+            advanceUntilIdle()
+            assertEquals("EUR", holder.state.value.currencyCode, "a read failure keeps the settings it followed")
+            val readFailure = holder.state.value.message
+            assertEquals("PERSISTENCE.DATABASE_UNAVAILABLE", readFailure?.code)
+
+            repository.emit(Outcome.Ok(userSettings(analyticsEnabled = false)))
+            advanceUntilIdle()
+            assertNull(holder.state.value.message, "a later successful read withdraws the read failure")
+        }
+
+    @Test
+    fun aFailedWriteReleasesTheSavingGuard() =
+        runTest {
+            val repository = RecordingSettingsRepository()
+            repository.updateResult = Outcome.Err(PersistenceError.TransactionFailed)
+            val holder = collectedHolder(repository)
+            advanceUntilIdle()
+
+            holder.selectCurrency("USD")
+            advanceUntilIdle()
+            assertFalse(holder.state.value.isSaving, "a failed write must release the saving guard")
+
+            repository.updateResult = Outcome.Ok(Unit)
+            holder.setAnalyticsEnabled(true)
+            advanceUntilIdle()
+            assertEquals(
+                listOf(
+                    UpdateSettingsCommand(currency = CurrencyCode("USD"), analyticsEnabled = null),
+                    UpdateSettingsCommand(currency = null, analyticsEnabled = true),
+                ),
+                repository.commands,
+            )
         }
 
     private fun TestScope.collectedHolder(repository: RecordingSettingsRepository): SettingsStateHolder {
