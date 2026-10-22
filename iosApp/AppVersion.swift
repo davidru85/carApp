@@ -25,6 +25,6 @@ enum AppVersion {
         if build.isEmpty {
             return marketing
         }
-        return "\(marketing) (\(build))"
+        return String(format: String(localized: "settings_version_value"), marketing, build)
     }
 }

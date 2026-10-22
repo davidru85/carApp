@@ -46,6 +46,14 @@ final class SpanishLocalizationUITests: XCTestCase {
         // Settings lives on the vehicle list, so the list is reached directly.
         reachTheVehicleListForAccessibility(in: app)
         openSettings(in: app)
+        XCTAssertTrue(
+            app.navigationBars["Ajustes"].waitForExistence(timeout: AccessibilityUITestSupport.timeout),
+            "the Settings title must be the es.lproj settings_title"
+        )
+        let distance = app.staticTexts["settings_distance_unit"]
+        XCTAssertTrue(distance.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        XCTAssertTrue(distance.label.contains("Unidad de distancia"), "Saw \(distance.label)")
+        XCTAssertTrue(distance.label.contains("Kilómetros (km)"), "Saw \(distance.label)")
         // es.lproj backup_status_idle, read through the backup_status_description label.
         let status = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", "Sincronizado localmente"))
@@ -183,7 +191,11 @@ final class SpanishLocalizationUITests: XCTestCase {
                 .firstMatch.label.contains("No se ha podido guardar el cambio"),
             "the Spanish persistence error must be present"
         )
-        XCTAssertFalse(app.buttons["departure_retry"].label.isEmpty, "the retry control must be localised")
+        XCTAssertEqual(
+            app.buttons["departure_retry"].label,
+            "Reintentar la eliminación de datos locales",
+            "the retry control must render es.lproj departure_retry_local_clear"
+        )
         attachAccessibilityEvidence(of: app, named: "es-departure-fixture")
     }
 }

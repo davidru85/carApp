@@ -164,6 +164,7 @@
 "settings_delete_local_data" = "Eliminar datos locales";
 "settings_section_about" = "Información";
 "settings_version" = "Versión";
+"settings_version_value" = "%1$@ (%2$@)";
 "ok" = "Aceptar";
 
 "pending_sync_title" = "Cambios sin copia de seguridad";

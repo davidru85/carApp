@@ -19,6 +19,7 @@ final class AccountConversionSurfaceTests: XCTestCase {
         "settings_link_account_in_progress",
         "conversion_collision_title",
         "conversion_collision_confirm",
+        "confirm_replace_existing_account",
         "error_auth_uid_would_change",
         "error_auth_credential_in_use",
         "error_auth_permission_denied",
