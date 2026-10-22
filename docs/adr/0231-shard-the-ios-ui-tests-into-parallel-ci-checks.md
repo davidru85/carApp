@@ -87,8 +87,8 @@ The selected option is **B**.
 
 ### Negative
 
-- The owner must replace `ios-ui-tests` with the five shard checks in `main`'s branch protection; until
-  then no UI check is required.
+- The owner must add the five shard checks to `main`'s branch protection (`ios-ui-tests` was never
+  added); until then no UI check is required.
 - Each pull request spends five macOS runners on the framework link and the test-app compile, and some
   shards wait a few minutes for a macOS slot.
 - The initial balance uses estimates for the tests run 39087272433 never reached; a shard can drift and

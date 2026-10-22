@@ -135,13 +135,13 @@ backlog story, never the design file.
   Android and an AX3 suite on iOS (`D-218`), and fixed only the contrast failures it measured on
   the shipped themes (`D-223`): the iOS fuel-entry badges (orange 1.95:1, red 2.91:1, purple
   3.42:1 on their tint) and the iOS error captions (system red 3.55:1) now use accessible text
-  colours, and the iOS row consumption value (accent 4.02:1) uses the primary label colour
-  and the Android fuel-entry litre and derived-total fields, whose
-  clipped labels the audit reported and which now take `.fixedSize` (E402H-31). The remaining iOS audit
-  findings are on SwiftUI-rendered chrome and need an owner decision (S-13, recorded in the E4-02
-  handoff). The design palette was not applied and the design files were not re-measured; a design
-  change that alters colours or type MUST be re-checked with the same suites. Per-screen results are in
-  `docs/handoffs/E4-02.md`.
+  colours, the iOS row consumption value (accent 4.02:1) uses the primary label colour, and the
+  iOS fuel-entry litre and derived-total fields, whose clipped labels the audit reported, now take
+  `.fixedSize` (E402H-31). The remaining iOS audit findings are on SwiftUI-rendered chrome and are
+  allowlisted with stated reasons under `D-231` (ADR-0232); the Settings account-row labels, whose
+  colour the app sets, were fixed instead. The design palette was not applied and the design files
+  were not re-measured; a design change that alters colours or type MUST be re-checked with the same
+  suites. Per-screen results are in `docs/handoffs/E4-02.md`.
 - **Three iOS screens have never been rendered in Figma.** `09-ios-forms.figma.js` and
   `10-ios-settings.figma.js` are complete but unrun; Figma's Starter plan allows 20 MCP tool calls
   per month and the quota was exhausted. Their Stitch equivalents exist and are complete.

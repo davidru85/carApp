@@ -2086,6 +2086,93 @@ decision row is added, before that intake.
 
 Depends on: E4-01, E4-02.
 
+### Defects found during Phase 4
+
+These stories were created on 2026-10-23 by the PR #91 review round 2. None is Ready, none is part of
+the `D-209` bundles, and none blocks Phase 4.
+
+### E1-19 - iOS Fuel-Entry Swipe Delete Deletes Nothing - S
+
+Status: Not Ready. Found during `E4-02`; the defect dates from `E1-09`.
+
+`iosApp/VehicleDetailView.swift` calls `confirmDelete(entryId)` from the fuel-entry swipe action without
+calling `FuelEntryListStateHolder.requestDelete(entryId)` first, and `confirmDelete` acts only on the entry
+`requestDelete` marked as pending, so the swipe deletes nothing.
+
+Acceptance criteria:
+
+- An iOS swipe delete asks for confirmation with the `INFO.CONFIRM_DELETE_FUEL_ENTRY` copy
+  (`docs/CONTRACTS.md §14.1`) through `requestDelete`, and only that confirmation calls `confirmDelete`.
+- A UI test deletes a fuel entry by swipe and asserts that it leaves the list.
+- The "Reaches a `UiMessage` today" cell of `INFO.CONFIRM_DELETE_FUEL_ENTRY` in `§14.1` is updated.
+
+Depends on: E1-09.
+
+### E1-20 - Settings Observation Survives a Read Failure - S
+
+Status: Not Ready.
+
+`SqlDelightSettingsRepository.settings` ends with `.catch { emit(Outcome.Err(...)) }`, so one read failure
+completes the flow. The `docs/CONTRACTS.md §16.1` analytics gate and `SettingsStateHolder` both observe
+it: after a single failure an analytics opt-out written through Settings never reaches the tracker until
+the process restarts. `E4-01` made that opt-out reachable from Settings.
+
+Acceptance criteria:
+
+- A settings read failure publishes its typed error and the observation continues: a later successful
+  read republishes the settings without a restart.
+- A shared test proves that, after one read failure, `SettingsStateHolder.setAnalyticsEnabled(false)`
+  disables the tracker (`§16.1`).
+- The Android settings error offers a dismiss action only for a message `clearMessage()` can withdraw.
+
+Depends on: E1-10, E3-09, E4-01.
+
+### E2-11 - Departure Marker Write Failure Leaves a Dead-End Departure Screen - S
+
+Status: Not Ready. Its intake confirms the path below against `AccountDepartureFlow`.
+
+When the durable departure marker of a permanent account deletion cannot be written, `failDeparture`
+publishes the typed failure with no `pendingDepartureRetry` while the phase stays `DELETING`. Android
+then shows the failure with no action, and iOS shows an in-progress screen after OK; only a process
+restart recovers.
+
+Acceptance criteria:
+
+- A permanent deletion whose departure marker cannot be written returns the session to `PERMANENT`
+  with the typed failure, and "Delete account" can be requested again (`docs/CONTRACTS.md §11.5`).
+- Shared tests cover a marker-write failure for sign-out, local-data deletion and permanent deletion.
+- Both hosts render that failure without an in-progress state.
+
+Depends on: E2-05, E4-01.
+
+### E4-07 - iOS UI Test and Contract-Check Hardening - S
+
+Status: Not Ready. Its intake needs a decision on diagnostics collection.
+
+Acceptance criteria:
+
+- `LargeContentSizeUITests.testPendingSyncIsReachableAtAx3`, which failed once on CI run 39830632477 and
+  passed on run 39837103094 on the same simulator (iPhone 17 Pro, iOS 26.2), scrolls within the alert
+  before asserting hittability and passes ten consecutive CI-equivalent runs.
+- The iOS read-error Settings state passes the `D-217` audit: the `Dynamic Type font sizes are partially
+  unsupported` finding on a "Loading" value text, reproduced on 2026-10-23 on iPhone Air (iOS 26.5)
+  through the `settingsReadError` review surface, is fixed or explained, and an audit test covers the
+  state.
+- `scripts/ios-ui-test-shard.sh` runs on a simulator named in `docs/versions-matrix.md` instead of the
+  first available iPhone.
+- The decision whether `xcodebuild` collects diagnostics after a test failure (about 12 minutes on run
+  39830632477) is recorded with a decision ID.
+- Each of these `contractCheck` false negatives has a failing fixture and a fix: a Compose `Text` with a
+  named argument before `text =`, `Text(if (…) "a" else "b")`, the positional `contentDescription` of
+  `Icon` and `Image`, `showSnackbar(actionLabel = "…")`, iOS raw-string and ternary literals,
+  `NavigationLink`, `LabeledContent` and `.badge` callees, a commented-out or `private` test method named
+  by the shard manifest, a shard-script invocation inside a YAML comment, and a bare `xcodebuild test`
+  that runs `carAppUITests` outside the manifest.
+- The Android and iOS intent wiring of the departure prompts and of the collision confirmation is
+  covered by tests that fail when two intents are swapped.
+
+Depends on: E4-02.
+
 ## Outstanding Owner Decisions
 
 No decision is open. The owner accepted `D-173` as option B on 2026-10-14, delivered by `E3-18` in
@@ -2191,7 +2278,8 @@ included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after
 `E4-B2` inverts the original backlog order with the owner's approval: `D-54` (ADR-0055) keeps the
 Firebase configuration debug-only and makes release builds fail closed until `E4-04` adds the
 production configuration, and `E4-03` measures release builds after Crashlytics and the splash have
-changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outside both bundles.
+changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outside both bundles, and so
+are the follow-ups `E1-19`, `E1-20`, `E2-11` and `E4-07`.
 Inside a bundle every story keeps its own ready check, handoff, TDD cycle and project-log entry.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
@@ -2268,6 +2356,10 @@ proof after E3-04.
 | E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
 | E4-04 Release preparation (bundle `E4-B2`) | 4 | M | — |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
+| E1-19 iOS fuel-entry swipe delete deletes nothing | follow-up | S | — |
+| E1-20 Settings observation survives a read failure | follow-up | S | — |
+| E2-11 Departure marker write failure leaves a dead-end departure screen | follow-up | S | Yes |
+| E4-07 iOS UI test and contract-check hardening | follow-up | S | — |
 | E5-01 Electric and hybrid vehicle energy model | 5 (Post-MVP) | L | Yes |
 | E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
 | E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |

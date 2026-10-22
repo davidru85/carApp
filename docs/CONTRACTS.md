@@ -1585,12 +1585,12 @@ switch, which `E2-04` resumes on its own. No other host function maps a `UiMessa
 | `VALIDATION.DUPLICATE_NAME` | Choose another vehicle name | `error_duplicate_vehicle_name` | — | Another vehicle already has this name. | Ya existe otro vehículo con este nombre. | Yes: vehicle validation |
 | `VALIDATION.FUTURE_DATE` | Pick a date that is not in the future | `error_future_date` | — | The date cannot be in the future. | La fecha no puede estar en el futuro. | Yes: fuel-entry validation |
 | `VALIDATION.INVALID_MONEY_INPUT` | Enter the two monetary values the entry method needs | `error_money_input` | — | Enter the two required monetary values. | Introduce los dos valores monetarios obligatorios. | Yes: `FuelEntryFormStateHolder` |
-| `VALIDATION.NO_OP` | Make a change, or leave without saving | `error_no_changes` | — | There are no changes to save. | No hay cambios que guardar. | Only through a settings write that changes nothing (`SqlDelightSettingsRepository`) |
+| `VALIDATION.NO_OP` | Make a change, or leave without saving | `error_no_changes` | — | There are no changes to save. | No hay cambios que guardar. | No: only an empty `UpdateSettingsCommand` produces it, and no production caller sends one (`SettingsStateHolder` drops same-value intents) |
 | `VALIDATION.INVALID_UNIT` | Pick a supported currency | `error_currency` | — | Select a supported currency. | Selecciona una moneda compatible. | Yes: fuel-entry validation and settings writes |
 | `VALIDATION.ENTITY_DELETED` | Go back: the item is gone | `error_entity_unavailable` | `VALIDATION.ENTITY_NOT_FOUND` | This vehicle or refuel is no longer available. | Este vehículo o repostaje ya no está disponible. | Yes: vehicle and fuel-entry writes |
 | `VALIDATION.ENTITY_NOT_FOUND` | Go back: the item is gone | `error_entity_unavailable` | `VALIDATION.ENTITY_DELETED` | This vehicle or refuel is no longer available. | Este vehículo o repostaje ya no está disponible. | Yes: vehicle form and fuel-entry writes |
 | `WARNING.ODOMETER_INCONSISTENT` | Confirm or correct the odometer | `odometer_warning_body` | `CONFIRMATION.OdometerInconsistent`; the odometer warning dialog | This value is not greater than the previous odometer. Save it only if it is correct. | Este valor no es superior al odómetro anterior. Guárdalo solo si es correcto. | Yes: `FuelEntryFormStateHolder` |
-| `WARNING.PENDING_SYNC` | Wait for the backup, cancel, or discard the pending changes | `pending_sync_title` | `CONFIRMATION.DiscardPendingChanges` | Changes not backed up yet | Cambios sin copia de seguridad | Yes: sign-out and local-data deletion (`AccountDepartureFlow`) |
+| `WARNING.PENDING_SYNC` | Wait for the backup, cancel, or discard the pending changes | `pending_sync_title` | `CONFIRMATION.DiscardPendingChanges` | Changes not backed up yet (iOS: Changes not backed up) | Cambios sin copia de seguridad | Yes: sign-out and local-data deletion (`AccountDepartureFlow`) |
 | `AUTH.CANCELLED` | Try signing in again | `error_auth_cancelled` | — | Sign-in was cancelled. You can try again. | Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo. | Yes: authentication provider |
 | `AUTH.NETWORK_UNAVAILABLE` | Go online and retry | `error_auth_network` | — | This needs a network connection. Try again when you are online. | Esta acción necesita conexión. Inténtalo de nuevo cuando vuelvas a tener red. | Yes: sign-in, conversion, re-authentication and departure |
 | `AUTH.CREDENTIAL_ALREADY_IN_USE` | Use another account | `error_auth_credential_in_use` | — | This account is already linked to another carApp account. | Esta cuenta ya está vinculada a otra cuenta de carApp. | Rare: a non-conversion sign-in; conversion publishes `CONFIRMATION.AdoptExistingAccount` instead |
@@ -1600,9 +1600,9 @@ switch, which `E2-04` resumes on its own. No other host function maps a `UiMessa
 | `AUTH.PERMISSION_DENIED` | Try the account action again later | `error_auth_permission_denied` | — | This account action is not allowed right now. Try again later. | Ahora mismo no se permite esta acción de la cuenta. Inténtalo de nuevo más tarde. | Yes: account deletion and orphan-cleanup calls |
 | `AUTH.REQUIRES_RECENT_LOGIN` | Sign in again, then delete | `error_auth_requires_recent_login` | — | For your security, sign in again to delete your account. | Por seguridad, vuelve a iniciar sesión para eliminar tu cuenta. | Yes: account deletion (`AccountDepartureFlow`) |
 | `AUTH.UID_WOULD_CHANGE` | Nothing to do: linking stopped and nothing changed | `error_auth_uid_would_change` | — | Linking was stopped because it would have replaced this account. Nothing has changed. | Se ha detenido la vinculación porque habría sustituido esta cuenta. No ha cambiado nada. | Yes: account conversion |
-| `AUTH.ACCOUNT_DELETION_REMOTE_FAILED` | Retry the deletion; local data is kept | `error_account_deletion_remote_failed` | — | Your account could not be deleted. The data on this device has been kept. Try again later. | No se ha podido eliminar tu cuenta. Se han conservado los datos de este dispositivo. Inténtalo más tarde. | Yes: account deletion |
+| `AUTH.ACCOUNT_DELETION_REMOTE_FAILED` | Retry the deletion; local data is kept | `error_account_deletion_remote_failed` | — | Your account could not be deleted. The data on this device has been kept. Try again later. (iOS: Your account could not be deleted. Your data is still on this device. Try again later.) | No se ha podido eliminar tu cuenta. Se han conservado los datos de este dispositivo. Inténtalo más tarde. (iOS: No se ha podido eliminar tu cuenta. Tus datos siguen en este dispositivo. Inténtalo más tarde.) | Yes: account deletion |
 | `AUTH.UNKNOWN` | Retry: the failure is unclassified | `error_unexpected` | `UNEXPECTED` | Something went wrong. Try again. | Algo ha salido mal. Inténtalo de nuevo. | Yes: authentication provider |
-| `PERSISTENCE.DATABASE_UNAVAILABLE` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: a closed sync engine |
+| `PERSISTENCE.DATABASE_UNAVAILABLE` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: a closed sync engine, and a settings read failure (`SettingsStateHolder`) |
 | `PERSISTENCE.TRANSACTION_FAILED` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: the backup retry (`D-193`) and local writes |
 | `PERSISTENCE.MIGRATION_FAILED` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | No: no production code constructs it |
 | `PERSISTENCE.SERIALIZATION_FAILED` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: the vehicle and fuel-entry repositories |
@@ -1625,7 +1625,7 @@ switch, which `E2-04` resumes on its own. No other host function maps a `UiMessa
 | `SECURITY.OWNER_MISMATCH` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | No: no production code constructs it |
 | `UNEXPECTED` | Retry: the failure is unclassified | `error_unexpected` | `AUTH.UNKNOWN` | Something went wrong. Try again. | Algo ha salido mal. Inténtalo de nuevo. | Yes: the sync engine and the integration boundaries |
 | `CONFIRMATION.OdometerInconsistent` | Confirm or correct the odometer | `odometer_warning_body` | `WARNING.ODOMETER_INCONSISTENT` | This value is not greater than the previous odometer. Save it only if it is correct. | Este valor no es superior al odómetro anterior. Guárdalo solo si es correcto. | No: the fuel form publishes `WARNING.ODOMETER_INCONSISTENT` carrying this confirmation |
-| `CONFIRMATION.DiscardPendingChanges` | Wait for the backup, cancel, or discard the pending changes | `pending_sync_title` | `WARNING.PENDING_SYNC` | Changes not backed up yet | Cambios sin copia de seguridad | No: published as `WARNING.PENDING_SYNC` carrying this confirmation |
+| `CONFIRMATION.DiscardPendingChanges` | Wait for the backup, cancel, or discard the pending changes | `pending_sync_title` | `WARNING.PENDING_SYNC` | Changes not backed up yet (iOS: Changes not backed up) | Cambios sin copia de seguridad | No: published as `WARNING.PENDING_SYNC` carrying this confirmation |
 | `CONFIRMATION.DeleteAccount` | Confirm the irreversible account deletion | `confirm_delete_account` | — | This permanently deletes your account and every vehicle and refuel in it, on this device and in the backup. This cannot be undone. | Esto elimina permanentemente tu cuenta y todos los vehículos y repostajes que contiene, en este dispositivo y en la copia de seguridad. No se puede deshacer. | Yes: account deletion |
 | `CONFIRMATION.DeleteLocalData` | Confirm the irreversible local deletion | `confirm_delete_local_data` | — | This permanently deletes every vehicle and refuel on this device. There is no account to recover them from, so this cannot be undone. | Esto elimina permanentemente todos los vehículos y repostajes de este dispositivo. No hay ninguna cuenta desde la que recuperarlos, así que no se puede deshacer. | Yes: local-data deletion |
 | `CONFIRMATION.AdoptExistingAccount` | Confirm replacing the existing account's data | `confirm_replace_existing_account` | — | This permanently replaces every vehicle and refuel in the existing account with the data on this device. This cannot be undone. | Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer. | Yes: an account-conversion collision |
@@ -2123,7 +2123,7 @@ Redaction is the responsibility of the `Logger` implementation, not the caller. 
 
 ## 18. CI and Branch Protection Contract
 
-D-31 and D-84 define the exact CI check names. Required checks:
+D-31, D-84, D-229 and D-230 define the exact CI check names. Required checks:
 
 - `android-assemble`
 - `shared-tests`
@@ -2151,7 +2151,8 @@ Gradle links and the `carAppTests` unit target at 40 minutes (`D-229`, ADR-0230)
 the UI suite are separate checks because a single job that ran both exceeded its 40 minutes and was
 cancelled with no test result, which is indistinguishable from a real regression; the UI suite is
 sharded because a single UI job then exceeded its own 60 minutes the same way on run 39087272433.
-The jobs run in parallel, so each split costs runner minutes rather than wall-clock.
+The jobs run in parallel, so each split costs runner minutes, and adds wall-clock only when the macOS
+concurrency limit queues jobs.
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
@@ -2261,64 +2262,66 @@ Optional checks:
     and `android.permission.ACCESS_ADSERVICES_TOPICS`; iOS disables IDFV collection (`D-203`).
     Assertion 38 enforces the no-IDFA SwiftPM product in both the source specification and the
     generated Xcode project. Each privacy setting and permission-removal rule has a failing fixture.
-    41. Every `UiMessage.code` the shared layer can publish has an explicit, single-code mapping on both
-        hosts and a row in the `§14.1` table. The code set is parsed from the sources that define it: each
-        `override val code` of `AppError.kt`, `CONFIRMATION.<entry>` for each `Confirmation` entry, and each
-        `INFO.*` string literal of the production Kotlin sources of `:shared`, the feature modules and the
-        core modules. `uiMessageStringResource` in
-        `androidApp/src/main/java/com/ruizurraca/carapp/UiMessageStrings.kt` and `uiMessageKey` in
-        `iosApp/UiMessageMapping.swift` each hold one branch per code; a commented-out branch, or one that
-        names two codes, does not count. The two hosts and the table name the same key for every code, no
-        branch or row names a code that no source defines, no code is mapped twice, each mapped key exists
-        in both catalogues of its host and carries no format argument, both fallbacks resolve to
-        `error_unexpected`, and `UiMessageStringsTest.kt` and `UiMessageMappingTests.swift` name every
-        code. Neither compiler can prove a `when` or `switch` over a `String` exhaustive, so this assertion
-        is what keeps the `§6` safety net unreachable (`D-220`).
-        42. Every string key a host references exists in both catalogues of that host, and the two catalogues
-            of each host declare the same keys. On Android the references are every `R.string` and
-            `R.plurals` use in `androidApp/src/main/java` and every `@string/` use in the other XML files of
-            `androidApp/src/main`, checked against `res/values/strings.xml` and `res/values-es/strings.xml`; a
-            string declared `translatable="false"` is exempt from the Spanish catalogue. On iOS the references
-            are the lowercase snake_case literals of the top-level `iosApp/*.swift` sources that are passed as
-            the first argument of a SwiftUI `LocalizedStringKey` initializer or modifier (`Text`, `Button`,
-            `Label`, `Toggle`, `Picker`, `Section`, `TextField`, `SecureField`, `Link`, `Menu`, `Stepper`,
-            `DatePicker`, `ProgressView`, `LocalizedStringKey`, `navigationTitle`, `accessibilityLabel`,
-            `accessibilityHint`, `accessibilityValue`, `alert`, `confirmationDialog`, `help`), passed to
-            `String(localized:)`, `String.LocalizationValue` or `NSLocalizedString`, or returned by a function
-            whose name ends in `Key`, checked against `en.lproj` and `es.lproj` `Localizable.strings`. A key
-            rendered without arguments, through a SwiftUI initializer or modifier or through Compose
-            `stringResource(R.string.x)` or `getString(R.string.x)` with no further argument, carries no format
-            argument in either catalogue, because nothing would fill it. Neither build fails on a missing
-            translation or an unfilled placeholder, so no other check sees these gaps (`D-221`).
-            43. Every constructor property of a `UiState` class (a `data class` named `*UiState` or `*Ui`) and of
-                `UiMessage`, in the production Kotlin sources of `:shared`, the feature modules and the core
-                modules, whose type is `String`, `CharSequence` or contains either, is listed in the `§14.2` table,
-                and every row of that table names such a property with one of its four kinds. Comments and string
-                literals are masked before the parse, so KDoc and default values are not read as types. The table
-                is the allowlist, so a new text field in shared presentation state is a contract change reviewed
-                with its kind (`D-221`).
-                44. No host UI source passes literal text to a rendering API, as `§14.3` defines. On Android no string
-                    literal in `androidApp/src/main/java` reaches Compose `Text` (positional or `text =`),
-                    `contentDescription`, `stateDescription`, `onClickLabel`, `onLongClickLabel`, `paneTitle` or
-                    `showSnackbar`. In the top-level `iosApp/*.swift` sources no `Text(verbatim:)` appears, and every
-                    literal passed to a SwiftUI `LocalizedStringKey` initializer or modifier, to `String(localized:)`,
-                    `String.LocalizationValue` or `NSLocalizedString` is a lowercase snake_case key with no
-                    interpolation. Comments are masked before the scan. The Debug-only allowlist is explicit:
-                    `iosApp/DiagnosticsView.swift` (`D-100`) on iOS and no source on Android. An allowlisted source must
-                    exist, and every construction of an allowlisted iOS view outside its own file must sit inside an
-                    `#if DEBUG` branch that is not negated, joined by `||`, or an `#else`/`#elseif` branch, so the
-                    allowlist cannot exempt a production screen. Text computed at run time is outside this textual
-                    check (`D-221`).
-                45. Every line of `scripts/ios-ui-test-shards.txt` is `<shard> <TestClass>` or
-                    `<shard> <TestClass>/<testMethod>`, and names an `XCTestCase` class declared in
-                    `iosApp/UITests` and, when present, a `test` method declared in that class. No identifier is
-                    assigned twice and the implicit `remainder` shard is never listed. Every shard the manifest
-                    defines, plus `remainder`, runs in exactly one job whose id and check name are both
-                    `ios-ui-tests-<shard>`, through `scripts/ios-ui-test-shard.sh`, and no job passes
-                    `-only-testing:carAppUITests` or `-skip-testing:carAppUITests` to `xcodebuild` itself. With the
-                    class-entry and remainder rules, this keeps every UI test in exactly one shard: a stale
-                    entry, which would run nothing, and a shard without its job, whose tests the remainder skips,
-                    both fail (`D-230`).
+41. Every `UiMessage.code` the shared layer can publish has an explicit, single-code mapping on both
+    hosts and a row in the `§14.1` table. The code set is parsed from the sources that define it: each
+    `override val code` of `AppError.kt`, `CONFIRMATION.<entry>` for each `Confirmation` entry, and each
+    `INFO.*` string literal of the production Kotlin sources of `:shared`, the feature modules and the
+    core modules. `uiMessageStringResource` in
+    `androidApp/src/main/java/com/ruizurraca/carapp/UiMessageStrings.kt` and `uiMessageKey` in
+    `iosApp/UiMessageMapping.swift` each hold one branch per code; a commented-out branch, or one that
+    names two codes, does not count. The two hosts and the table name the same key for every code, no
+    branch or row names a code that no source defines, no code is mapped twice, each mapped key exists
+    in both catalogues of its host and carries no format argument, both fallbacks resolve to
+    `error_unexpected`, and `UiMessageStringsTest.kt` and `UiMessageMappingTests.swift` name every
+    code. Neither compiler can prove a `when` or `switch` over a `String` exhaustive, so this assertion
+    is what keeps the `§6` safety net unreachable (`D-220`).
+42. Every string key a host references exists in both catalogues of that host, and the two catalogues
+    of each host declare the same keys. On Android the references are every `R.string` and
+    `R.plurals` use in `androidApp/src/main/java` and every `@string/` use in the other XML files of
+    `androidApp/src/main`, checked against `res/values/strings.xml` and `res/values-es/strings.xml`; a
+    string declared `translatable="false"` is exempt from the Spanish catalogue. On iOS the references
+    are the lowercase snake_case literals of the top-level `iosApp/*.swift` sources that are passed as
+    the first argument of a SwiftUI `LocalizedStringKey` initializer or modifier (`Text`, `Button`,
+    `Label`, `Toggle`, `Picker`, `Section`, `TextField`, `SecureField`, `Link`, `Menu`, `Stepper`,
+    `DatePicker`, `ProgressView`, `LocalizedStringKey`, `navigationTitle`, `accessibilityLabel`,
+    `accessibilityHint`, `accessibilityValue`, `alert`, `confirmationDialog`, `help`), passed to
+    `String(localized:)`, `String.LocalizationValue` or `NSLocalizedString`, or returned by a function
+    whose name ends in `Key`, checked against `en.lproj` and `es.lproj` `Localizable.strings`. A key
+    rendered without arguments, through a SwiftUI initializer or modifier or through Compose
+    `stringResource(R.string.x)` or `getString(R.string.x)` with no further argument, carries no format
+    argument in either catalogue, because nothing would fill it. Neither build fails on a missing
+    translation or an unfilled placeholder, so no other check sees these gaps (`D-221`).
+43. Every constructor property of a `UiState` class (a `data class` named `*UiState` or `*Ui`) and of
+    `UiMessage`, in the production Kotlin sources of `:shared`, the feature modules and the core
+    modules, whose type is `String`, `CharSequence` or contains either, is listed in the `§14.2` table,
+    and every row of that table names such a property with one of its four kinds. Comments and string
+    literals are masked before the parse, so KDoc and default values are not read as types. The table
+    is the allowlist, so a new text field in shared presentation state is a contract change reviewed
+    with its kind (`D-221`).
+44. No host UI source passes literal text to a rendering API, as `§14.3` defines. On Android no string
+    literal in `androidApp/src/main/java` reaches Compose `Text` (positional or `text =`),
+    `contentDescription`, `stateDescription`, `onClickLabel`, `onLongClickLabel`, `paneTitle` or
+    `showSnackbar`. In the top-level `iosApp/*.swift` sources no `Text(verbatim:)` appears, and every
+    literal passed to a SwiftUI `LocalizedStringKey` initializer or modifier, to `String(localized:)`,
+    `String.LocalizationValue` or `NSLocalizedString` is a lowercase snake_case key with no
+    interpolation. Comments are masked before the scan. The Debug-only allowlist is explicit:
+    `iosApp/DiagnosticsView.swift` (`D-100`) on iOS and no source on Android. An allowlisted source must
+    exist, and every construction of an allowlisted iOS view outside its own file must sit inside an
+    `#if DEBUG` branch that is not negated, joined by `||`, or an `#else`/`#elseif` branch, so the
+    allowlist cannot exempt a production screen. Text computed at run time is outside this textual
+    check (`D-221`).
+45. Every line of `scripts/ios-ui-test-shards.txt` is `<shard> <TestClass>` or
+    `<shard> <TestClass>/<testMethod>`, and names an `XCTestCase` class declared in
+    `iosApp/UITests` and, when present, a `test` method declared in that class. No identifier is
+    assigned twice and the implicit `remainder` shard is never listed. Every shard the manifest
+    defines, plus `remainder`, runs in exactly one job whose id and check name are both
+    `ios-ui-tests-<shard>`, through `scripts/ios-ui-test-shard.sh`, and no job passes
+    `-only-testing:carAppUITests` or `-skip-testing:carAppUITests` to `xcodebuild` itself. With the
+    class-entry and remainder rules, this keeps every UI test in exactly one shard: a stale
+    entry, which would run nothing, and a shard without its job, whose tests the remainder skips,
+    both fail. Every `ios-ui-tests-<shard>` check is in
+    `PROTECTED_CHECK_NAMES`, and no protected `ios-ui-tests-*` name lacks a manifest shard
+    (`D-230`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -3513,5 +3516,5 @@ The Kotlin-facing `AppGraph`, `AppProviders`, `AppGraphDependencies` and
 `buildAppGraph(isDebugBuild, providers)` MUST be absent from the Objective-C header.
 `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState`
 classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`,
-`ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind`
-MUST be present.
+`ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger`, `UiMessageKind`,
+`DistanceUnit`, `VolumeUnit` and `NativeSignInFailure` MUST be present.

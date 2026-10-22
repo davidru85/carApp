@@ -8,7 +8,9 @@ The clause that gives every job the same 40-minute ceiling is superseded by `D-2
 `E4-B1`, 2026-10-17): 40 minutes becomes `DEFAULT_JOB_CEILING_MINUTES`, and a job with a measured
 reason to exceed it is named in `JOB_CEILING_MINUTES` instead. The rule that the ceiling MUST stay
 above the slowest measured healthy run, and that it MUST NOT be reused as the `E0-05` objective, is
-unchanged and applies to each per-job ceiling as it applied to the uniform one.
+unchanged and applies to each per-job ceiling as it applied to the uniform one. `D-230` (ADR-0231,
+2026-10-22) retired the only per-job entry, so `JOB_CEILING_MINUTES` is empty and every job uses the
+default.
 
 ## Context
 

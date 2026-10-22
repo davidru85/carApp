@@ -210,8 +210,14 @@ review.
   `E2-10`, account conversion interruption hardening, was added on 2026-10-16 by `D-228`
   (ADR-0229) during `E4-05`, under the new `docs/BACKLOG.md` subsection "Defects found after Phase 2
   closed": it is a correctness follow-up of the conversion flow, outside the `D-209` bundles, that
-  closes two `E2-04` hazards the `E4-05` surface made reachable. They are accepted meanwhile as
-  residual risks in `docs/SECURITY.md`, and the story is not Ready.
+  closes two `E2-04` hazards the `E4-05` surface made reachable; `D-233` (ADR-0234) added the write window
+  of a successful confirmed replacement on 2026-10-23. All three are accepted meanwhile as residual risks
+  in `docs/SECURITY.md`, and the story is not Ready.
+  `E1-19` (iOS fuel-entry swipe delete deletes nothing), `E1-20` (settings observation survives a read
+  failure), `E2-11` (a departure-marker write failure leaves a dead-end departure screen) and `E4-07`
+  (iOS UI test and contract-check hardening) were added on 2026-10-23 by the PR #91 review round 2,
+  under the `docs/BACKLOG.md` subsection "Defects found during Phase 4": they are not Ready, they are
+  outside the `D-209` bundles, and none blocks Phase 4.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
   as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
@@ -260,7 +266,7 @@ review.
   under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
   account conversion host surface, `E4-02` accessibility and localization), is implemented on
   `story/E4-B1-product-surface` through pull request #91 and awaits the owner's gated review; it
-  introduced `D-209` through `D-230`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
+  introduced `D-209` through `D-233`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
   splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231) runs them as five
   protected shard checks. Bundle `E4-B2`,
   release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts
@@ -397,9 +403,10 @@ the host. It is the one iOS-named command here that owes no cleanup.
 
 ### What is enforced, and what is not
 
-`main` is protected: fifteen required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`, `D-84`, `D-229`, `D-230`). Administrator enforcement is off, so the owner can bypass; nobody
-else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
+`main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
+(`D-31`, `D-34`, `D-84`). `D-229` and `D-230` add the five `ios-ui-tests-*` shard checks that
+`docs/CONTRACTS.md §18` requires, fifteen in total once the owner adds them to branch protection.
+Administrator enforcement is off, so the owner can bypass; nobody else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made
 `testAppGraphDependencies` parity executable. `E3-08` made the `:wiring:firebase` product-logic rule
@@ -433,7 +440,7 @@ shard drifts past about 20 minutes of tests, rather than raising a ceiling. A jo
 40-minute default only through a named entry in `WorkflowTimeoutContract.JOB_CEILING_MINUTES`, which
 assertion 28 enforces and which is empty today; raising the default to fit one job is the mistake
 `D-176` already made once. The five shard checks are required on `main` only after the owner
-replaces `ios-ui-tests` with them in branch protection.
+adds them to branch protection (`ios-ui-tests` was never added).
 
 `contractCheck` prints the live list; trust its output over this one.
 
