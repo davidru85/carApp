@@ -6,6 +6,11 @@ Accepted
 
 The owner selected option A on 2026-10-16.
 
+Correction (2026-10-23, PR #91 review round 2, chosen by the owner): the Decision below says
+`confirmAccountConversion` acts "while that confirmation is the published collision message". The
+`E2-04` code checks that the collision credential is still held, not that the message is published.
+`docs/CONTRACTS.md §20.10` now states the checked condition; no code changes, as this decision intended.
+
 ## Context
 
 `docs/CONTRACTS.md §11.3` requires that cancelling the credential collision leaves the anonymous

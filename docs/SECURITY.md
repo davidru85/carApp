@@ -134,6 +134,12 @@ Requirements:
   resumed replacement rebuilds the local rows from the snapshot; the device's own vehicles and
   refuels are not lost, because the resume restores them. The correctness follow-up `E2-10`
   owns the fix.
+- **A write made while a confirmed account replacement runs can be lost** (`D-233`, accepted as option A
+  on 2026-10-23). Confirming the credential collision captures the local snapshot before the
+  orphan-cleanup ticket, the sign-in to the existing permanent account and the remote replacement; the
+  local rebuild then clears every local row and restores that snapshot. A vehicle or refuel written in
+  that interval is lost even though the replacement succeeds, and outside Settings no host shows that
+  the replacement is running. The correctness follow-up `E2-10` owns the fix.
 - **One orphan-cleanup authorization can outlive a successful account deletion** (`D-149`, accepted
   as option D on 2026-10-15). `deleteAccount` deletes the remote data, purges the
   `orphanCleanupTickets` records bound to the UID and then deletes the Firebase Auth user. If a

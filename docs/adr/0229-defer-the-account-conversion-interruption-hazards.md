@@ -6,6 +6,9 @@ Accepted
 
 The owner selected option A on 2026-10-16.
 
+Extended by `D-233` (ADR-0234, 2026-10-23): the write window of a successful confirmed replacement is a
+third accepted residual risk, and `E2-10` closes it with the two hazards below.
+
 ## Context
 
 `E2-04` delivered the account-conversion flow in shared code, but no host invoked it until `E4-05`.

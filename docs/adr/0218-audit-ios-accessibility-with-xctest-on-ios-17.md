@@ -6,6 +6,9 @@ Accepted
 
 The owner selected option A on 2026-10-16.
 
+The allowlist scope is amended by `D-231` (ADR-0232, 2026-10-23): a SwiftUI `alert`, which exposes no
+identifiers, may be allowlisted per audited screen and issue type.
+
 ## Context
 
 `E4-02` makes VoiceOver usable on F-1 to F-3, Settings, the departure screens and the `E4-05`

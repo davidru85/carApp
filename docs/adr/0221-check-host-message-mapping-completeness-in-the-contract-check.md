@@ -6,6 +6,9 @@ Accepted
 
 The owner selected option A on 2026-10-16.
 
+`D-232` (ADR-0233, 2026-10-23) adds the one documented exception to the single mapping source: the
+session-channel copy of `REMOTE.*` codes.
+
 ## Context
 
 `docs/CONTRACTS.md §6`: "Presentation MUST handle it with an exhaustive `when` and MUST NOT use an

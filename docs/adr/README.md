@@ -236,5 +236,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-228 | [ADR-0229](0229-defer-the-account-conversion-interruption-hazards.md) | Defer the account conversion interruption hazards to a follow-up story. | Accepted |
 | D-229 | [ADR-0230](0230-split-ios-ui-tests-into-their-own-ci-job.md) | Split the iOS UI tests into their own protected CI job with its own ceiling. | Accepted |
 | D-230 | [ADR-0231](0231-shard-the-ios-ui-tests-into-parallel-ci-checks.md) | Shard the iOS UI tests into five parallel protected CI checks. | Accepted |
+| D-231 | [ADR-0232](0232-record-the-ios-accessibility-audit-allowlist-scope.md) | Record the iOS accessibility-audit allowlist scope. | Accepted |
+| D-232 | [ADR-0233](0233-render-remote-session-failures-as-a-pending-replacement.md) | Render remote session failures as a pending account replacement. | Accepted |
+| D-233 | [ADR-0234](0234-accept-the-account-replacement-write-window-as-a-residual-risk.md) | Accept the account replacement write window as a residual risk. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

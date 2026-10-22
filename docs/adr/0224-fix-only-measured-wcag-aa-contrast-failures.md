@@ -6,6 +6,10 @@ Accepted
 
 The owner selected option A on 2026-10-16.
 
+Amended by `D-231` (ADR-0232, 2026-10-23): a contrast finding on a system-rendered element whose colours
+the app cannot set may be allowlisted with its reason; a failure on an element the app styles is still
+fixed.
+
 ## Context
 
 `docs/SPECIFICATION.md §11` requires WCAG AA contrast. No contrast audit has been run
@@ -42,7 +46,8 @@ been run.
 
 ## Verification
 
-- The audits report no contrast failure on the final head.
+- The audits report no contrast failure on the final head other than the reasoned system-renderer
+  entries of `D-231`.
 
 ## References
 

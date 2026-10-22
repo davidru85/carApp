@@ -1999,13 +1999,14 @@ Human review required.
 
 ### E2-10 - Account Conversion Interruption Hardening - M
 
-Status: Not Ready. Created on 2026-10-16 by `D-228` (ADR-0229) during `E4-05`. A
+Status: Not Ready. Created on 2026-10-16 by `D-228` (ADR-0229) during `E4-05` and extended on
+2026-10-23 by `D-233` (ADR-0234). A
 correctness follow-up: it is not part of the `D-209` bundles and does not block Phase 4. Its intake
 needs a decision for the `docs/CONTRACTS.md §11.3` amendment.
 
-Close the two interruption hazards of the `E2-04` replacement protocol that the `E4-05` host
-surface made reachable. Both are accepted residual risks in `docs/SECURITY.md` until this story
-merges.
+Close the two interruption hazards (`D-228`) and the write window (`D-233`) of the `E2-04`
+replacement protocol that the `E4-05` host surface made reachable. All three are accepted residual risks
+in `docs/SECURITY.md` until this story merges.
 
 Acceptance criteria:
 
@@ -2021,8 +2022,11 @@ Acceptance criteria:
 - Deterministic shared tests cover a failure and a process death at each pre-switch checkpoint
   (`SNAPSHOT_CAPTURED`, `CLEANUP_TICKET_SAVED`), and an offline relaunch at `SESSION_SWITCHED` and at
   `REMOTE_REPLACED`.
-- `docs/CONTRACTS.md §11.3` states the corrected semantics, and the two `D-228` entries of
-  `docs/SECURITY.md` are removed or rewritten as closed in the same change.
+- A vehicle or fuel entry written while a confirmed replacement runs, from the snapshot capture to the
+  local rebuild, is either part of the replacement or refused with a typed message, and every host shows
+  the replacement progress until it settles, wherever the owner is (`D-233`).
+- `docs/CONTRACTS.md §11.3` states the corrected semantics, and the two `D-228` entries and the `D-233`
+  entry of `docs/SECURITY.md` are removed or rewritten as closed in the same change.
 
 Depends on: E2-04, E4-05.
 
