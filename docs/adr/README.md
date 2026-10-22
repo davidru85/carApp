@@ -235,5 +235,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-227 | [ADR-0228](0228-cancel-the-credential-collision-through-clear-message.md) | Cancel the credential collision through `clearMessage()`. | Accepted |
 | D-228 | [ADR-0229](0229-defer-the-account-conversion-interruption-hazards.md) | Defer the account conversion interruption hazards to a follow-up story. | Accepted |
 | D-229 | [ADR-0230](0230-split-ios-ui-tests-into-their-own-ci-job.md) | Split the iOS UI tests into their own protected CI job with its own ceiling. | Accepted |
+| D-230 | [ADR-0231](0231-shard-the-ios-ui-tests-into-parallel-ci-checks.md) | Shard the iOS UI tests into five parallel protected CI checks. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -38,6 +38,38 @@
 
 ## Entries
 
+### 2026-10-22 — D-230 shards the iOS UI tests into five parallel protected checks
+
+- **Type:** decision
+- **Story / Decision:** `E4-B1` / `D-230` (ADR-0231), superseding the single-job clause of `D-229`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** `.github/workflows/ci.yml` replaces `ios-ui-tests` with `ios-ui-tests-audit-1`,
+  `ios-ui-tests-audit-2`, `ios-ui-tests-ax3-1`, `ios-ui-tests-ax3-2` and `ios-ui-tests-remainder`,
+  each at the 40-minute default. `scripts/ios-ui-test-shards.txt` assigns test classes and methods to
+  shards, the implicit `remainder` shard runs every unlisted test, `scripts/ios-ui-test-shard.sh`
+  turns a shard into `xcodebuild` selection, and `scripts/check-xcode-pin.sh` gives the pinned-Xcode
+  check one definition. `WorkflowTimeoutContract.JOB_CEILING_MINUTES` is empty and protects the five
+  shard names; the new `IosUiTestShardContract` implements `docs/CONTRACTS.md §18` assertion 45.
+- **Why:** run 39087272433 cancelled the single `ios-ui-tests` job at its 60-minute ceiling after
+  ~11.5 minutes of build and 48.7 minutes of tests, with five test classes not started; the suite had
+  grown from 54 to 85 tests. One job per class (option A) would still need the 60-minute exception,
+  sharing build products (C) saves minutes but no wall-clock, and parallel testing on one runner (D)
+  gives no separate checks.
+- **Documents touched:** `.github/workflows/ci.yml`; `scripts/`; `docs/CONTRACTS.md §18`;
+  `AGENTS.md`; `docs/CONTRIBUTING.md`; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0231, and the supersession notes in ADR-0230
+  and ADR-0103; `build-logic/convention/**/contract/`; `docs/handoffs/E4-B1.md`.
+- **Verification:** RED `bf94255d`: `20 tests completed, 13 failed` on the two contract test classes.
+  GREEN: `:build-logic:convention:test --rerun-tasks` is 321 tests, 0 failures; `contractCheck
+  --rerun-tasks` reports 230 decisions and 230 ADRs and assertions 28, 30 and 45 `[PASS]` with no
+  `FAIL` or `PENDING`; `xcodebuild … -enumerate-tests` enables 3, 14, 3, 13 and 52 tests for the five
+  shards, whose union is the 85-test suite with no overlap.
+- **Follow-ups / risks:** the owner replaces `ios-ui-tests` with the five shard checks in `main`'s
+  branch protection. The initial balance is partly estimated and is checked against the first CI run.
+  `AccessibilityAuditUITests.testCollisionPassesTheAccessibilityAudit` still fails on an uncovered
+  `elementDetection` issue, and 37.8 of the 48.7 measured minutes were spent re-resolving audit issue
+  elements; both are open for the owner and outside this decision.
+
 ### 2026-10-17 — PR #91 review corrections R1–R6
 
 - **Type:** correction

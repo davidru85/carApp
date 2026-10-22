@@ -6,6 +6,13 @@ Accepted
 
 The owner selected option A on 2026-10-17.
 
+The single `ios-ui-tests` job and its 60-minute `JOB_CEILING_MINUTES` entry are superseded by `D-230`
+(ADR-0231, `E4-B1`, 2026-10-22): run 39087272433 cancelled that job at its 60-minute ceiling with
+five test classes not started, and the suite now runs as five protected shard checks inside the
+40-minute default. The rest of this decision stands: `ios-simulator-build` keeps the `carAppTests`
+unit target and the Gradle links at 40 minutes, the UI suite stays out of it, and a job exceeds the
+default only through a named `JOB_CEILING_MINUTES` entry.
+
 ## Context
 
 `docs/CONTRACTS.md §18` assertion 28 encoded a single 40-minute job ceiling, introduced by `D-176`

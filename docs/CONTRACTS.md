@@ -2118,7 +2118,11 @@ D-31 and D-84 define the exact CI check names. Required checks:
 - `android-assemble`
 - `shared-tests`
 - `ios-simulator-build`
-- `ios-ui-tests`
+- `ios-ui-tests-audit-1`
+- `ios-ui-tests-audit-2`
+- `ios-ui-tests-ax3-1`
+- `ios-ui-tests-ax3-2`
+- `ios-ui-tests-remainder`
 - `ktlint`
 - `detekt`
 - `architecture-check`
@@ -2127,12 +2131,17 @@ D-31 and D-84 define the exact CI check names. Required checks:
 - `objc-header-golden-check`
 - `android-instrumented-tests`
 
-The `ios-ui-tests` check runs only the `carAppUITests` test target, the nine `AccessibilityAuditUITests`
-audits included, in its own macOS job with its own 60-minute ceiling (`D-229`, ADR-0230). The
-`ios-simulator-build` check keeps the pinned-Xcode check, the Gradle links and the `carAppTests` unit
-target at 40 minutes. The two are separate because a single job that ran both exceeded its own 40
-minutes and was cancelled with no test result, which is indistinguishable from a real regression;
-they also run in parallel, so separating them costs no wall-clock beyond the second runner.
+The `carAppUITests` test target, the `AccessibilityAuditUITests` audits included, runs only in the
+five `ios-ui-tests-*` shard checks, each a macOS job inside the 40-minute default ceiling (`D-230`,
+ADR-0231). `scripts/ios-ui-test-shards.txt` assigns test classes and methods to the shards
+`audit-1`, `audit-2`, `ax3-1` and `ax3-2`: a class entry runs every method of the class that another
+shard does not name, and the implicit `remainder` shard runs every test no entry names, so a new test
+always runs in exactly one shard. The `ios-simulator-build` check keeps the pinned-Xcode check, the
+Gradle links and the `carAppTests` unit target at 40 minutes (`D-229`, ADR-0230). The unit target and
+the UI suite are separate checks because a single job that ran both exceeded its 40 minutes and was
+cancelled with no test result, which is indistinguishable from a real regression; the UI suite is
+sharded because a single UI job then exceeded its own 60 minutes the same way on run 39087272433.
+The jobs run in parallel, so each split costs runner minutes rather than wall-clock.
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
@@ -2187,10 +2196,9 @@ Optional checks:
     measured distribution, not sit near its worst observed success. Over 58 sampled runs
     `ios-simulator-build` succeeded between 12.1 and 23.9 minutes, so its duration varies by nearly a
     factor of two with runner speed. A job that genuinely needs more gets its own named ceiling
-    rather than a raised default, because a raised default widens the guard for every job; the only
-    such entry is `ios-ui-tests` at 60 minutes (`D-229`, ADR-0230), whose UI suite and nine
-    accessibility audits measured 21m48s and were still running when run 39038842049 was cancelled at
-    14:40:03.
+    rather than a raised default, because a raised default widens the guard for every job. No job has
+    one today: `D-230` (ADR-0231) retired the `ios-ui-tests` entry of 60 minutes (`D-229`, ADR-0230)
+    by sharding the UI suite into jobs that each fit the default.
 29. The `shared-tests` Android-host and Kotlin/Native steps retain stricter platform-specific limits.
 30. Every protected check name required by branch protection remains present in `ci.yml`.
 31. The workflow-level GitHub permission is exactly `contents: read`.
@@ -2291,6 +2299,16 @@ Optional checks:
                     `#if DEBUG` branch that is not negated, joined by `||`, or an `#else`/`#elseif` branch, so the
                     allowlist cannot exempt a production screen. Text computed at run time is outside this textual
                     check (`D-221`).
+                45. Every line of `scripts/ios-ui-test-shards.txt` is `<shard> <TestClass>` or
+                    `<shard> <TestClass>/<testMethod>`, and names an `XCTestCase` class declared in
+                    `iosApp/UITests` and, when present, a `test` method declared in that class. No identifier is
+                    assigned twice and the implicit `remainder` shard is never listed. Every shard the manifest
+                    defines, plus `remainder`, runs in exactly one job whose id and check name are both
+                    `ios-ui-tests-<shard>`, through `scripts/ios-ui-test-shard.sh`, and no job passes
+                    `-only-testing:carAppUITests` or `-skip-testing:carAppUITests` to `xcodebuild` itself. With the
+                    class-entry and remainder rules, this keeps every UI test in exactly one shard: a stale
+                    entry, which would run nothing, and a shard without its job, whose tests the remainder skips,
+                    both fail (`D-230`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

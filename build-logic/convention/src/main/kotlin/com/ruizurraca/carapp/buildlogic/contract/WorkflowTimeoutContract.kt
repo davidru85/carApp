@@ -28,7 +28,7 @@ internal class WorkflowTimeoutContract private constructor(
         val excessive = jobs
             .filter { (it.timeoutMinutes ?: 0) > ceilingFor(it.id) }
             .map { "${it.id} declares ${it.timeoutMinutes} minutes, its ceiling is ${ceilingFor(it.id)}" }
-        val ceilings = JOB_CEILING_MINUTES.entries.joinToString { "${it.key} ${it.value}" }
+        val ceilings = JOB_CEILING_MINUTES.entries.joinToString { "${it.key} ${it.value}" }.ifEmpty { "no per-job exceptions" }
         return result(
             28,
             "no CI job exceeds its own safety limit (default $DEFAULT_JOB_CEILING_MINUTES minutes; $ceilings)",
@@ -102,13 +102,11 @@ internal class WorkflowTimeoutContract private constructor(
         /**
          * Jobs whose own measured duration legitimately exceeds [DEFAULT_JOB_CEILING_MINUTES]. Each
          * entry needs a decision, because raising the default instead would widen the guard for
-         * every job (`D-229`, ADR-0230): `ios-ui-tests` runs the UI suite, and the nine
-         * `AccessibilityAuditUITests` audits inside it measured 21m48s and were still running when
-         * the combined job was cancelled at 14:40:03 on run 39038842049. The audits are genuinely
-         * expensive — the `odometer-warning` audit alone spends 126 s in one `XCUIElement` query —
-         * so this is not recoverable by trimming waits.
+         * every job (`D-229`, ADR-0230). The map is empty: its only entry, `ios-ui-tests` at 60
+         * minutes, was retired by `D-230` (ADR-0231) when the UI suite became five shards that each
+         * fit the default, after run 39087272433 cancelled the single job at 60 minutes.
          */
-        val JOB_CEILING_MINUTES = mapOf("ios-ui-tests" to 60)
+        val JOB_CEILING_MINUTES: Map<String, Int> = emptyMap()
         val JOB_START = Regex("^  ([A-Za-z0-9_-]+):$")
         val NAME = Regex("^\\s{4}name: (.+)$")
         val STEP_NAME = Regex("^\\s{6}- name: (.+)$")
@@ -123,7 +121,11 @@ internal class WorkflowTimeoutContract private constructor(
             "android-instrumented-tests",
             "shared-tests",
             "ios-simulator-build",
-            "ios-ui-tests",
+            "ios-ui-tests-audit-1",
+            "ios-ui-tests-audit-2",
+            "ios-ui-tests-ax3-1",
+            "ios-ui-tests-ax3-2",
+            "ios-ui-tests-remainder",
             "objc-header-golden-check",
             "provider-decoupling",
         )
