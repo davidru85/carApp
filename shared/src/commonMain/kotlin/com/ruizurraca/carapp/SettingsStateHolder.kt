@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.runningFold
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -48,6 +48,11 @@ class SettingsStateHolder internal constructor(
     private val saving = MutableStateFlow(false)
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var closed = false
+
+    // The last snapshot folded from the repository. It outlives a `WhileSubscribed` restart, so a renewed
+    // observation starts from the settings already published instead of republishing them as unknown
+    // (`docs/CONTRACTS.md §20.10`). Only the single `stateIn` upstream collector touches it, on `main`.
+    private var lastSnapshot = EMPTY_SNAPSHOT
 
     val state: StateFlow<SettingsUiState> =
         combine(
@@ -97,11 +102,12 @@ class SettingsStateHolder internal constructor(
     }
 
     // `docs/CONTRACTS.md §14`: the database flow is collected on `io`; the fold that maps each
-    // `Outcome` runs downstream of `flowOn`, in the `stateIn` coroutine on `main`.
+    // `Outcome` runs downstream of `flowOn`, in the `stateIn` coroutine on `main`. It emits no seed: before
+    // the first repository answer the published state is the `stateIn` initial value.
     private fun settingsSnapshots(): Flow<SettingsSnapshot> =
         repository.settings
             .flowOn(dispatchers.io)
-            .runningFold(EMPTY_SNAPSHOT) { snapshot, result -> snapshot.next(result) }
+            .map { result -> lastSnapshot.next(result).also { snapshot -> lastSnapshot = snapshot } }
 
     private fun write(command: UpdateSettingsCommand) {
         saving.value = true
