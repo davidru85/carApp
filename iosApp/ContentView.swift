@@ -25,8 +25,8 @@ struct ContentView: View {
     var body: some View {
         #if DEBUG
         // `E4-02`: UI tests cannot reach every audited state, so this Debug-only seam renders one of a
-        // closed set of review surfaces. It cannot exist in a Release build, like
-        // CARAPP_UI_TEST_FORCE_WELCOME.
+        // closed set of review surfaces. It cannot exist in a Release build. (CARAPP_UI_TEST_FORCE_WELCOME,
+        // which predates `E4-02`, is read in every build configuration.)
         if let surface = DebugReviewSurface.selected {
             DebugReviewSurfaceView(surface: surface)
         } else if ProcessInfo.processInfo.environment["CARAPP_UI_TEST_FORCE_DEPARTURE_FAILURE"] == "1" {
@@ -125,6 +125,7 @@ private enum DebugReviewSurface: String {
     case settingsOff
     case settingsOn
     case settingsSaving
+    case settingsAccountPermanent
     case reauthentication
     case reauthenticationFailure
     case departureFailure
@@ -161,15 +162,22 @@ private struct DebugReviewSurfaceView: View {
         switch surface {
         case .settingsUnknown, .settingsReadError, .settingsOff, .settingsOn, .settingsSaving:
             List {
-                Section(header: Text("settings_section_units")) {
+                Section(header: Text("settings_section_units").foregroundStyle(.primary)) {
                     SettingsUnitRows(state: settings)
+                    if let message = settings.message {
+                        SettingsMessageRow(message: message)
+                    }
                 }
-                Section(header: Text("settings_section_privacy")) {
+                Section(header: Text("settings_section_privacy").foregroundStyle(.primary)) {
                     SettingsAnalyticsRow(state: settings, onChange: { _ in })
                 }
-                if let message = settings.message {
-                    Text(message.localizedText)
-                        .accessibilityIdentifier("settings_message")
+            }
+        case .settingsAccountPermanent:
+            // The account rows of a permanent session, which CI cannot reach because its sessions stay
+            // `LOCAL` without an App Check debug token.
+            List {
+                Section(header: Text("settings_section_account").foregroundStyle(.primary)) {
+                    SettingsSessionRows(phase: .permanent, isBusy: false, onSignOut: {}, onDeleteAccount: {})
                 }
             }
         case .reauthentication, .reauthenticationFailure, .departureFailure:

@@ -46,13 +46,13 @@ struct AccessibilityAuditAllowance {
 }
 
 /// `D-217`: the reviewed list of audit issues the app cannot fix itself. The owner approved these
-/// documented exceptions on 2026-10-17 (the `E402H-31` S-13 decision); every entry names the concrete
+/// documented exceptions on 2026-10-17 (`D-231`, ADR-0232); every entry names the concrete
 /// cause, and the whole list is recorded in `docs/handoffs/E4-02.md`. An issue that matches no entry
 /// fails the test.
 @available(iOS 17.0, *)
 enum AccessibilityAuditAllowlist {
     static let allowances: [AccessibilityAuditAllowance] = [
-        // Pre-approved by the `E402H-28` spec: the AuthenticationServices system button.
+        // `D-231`: the AuthenticationServices system button, which Apple requires unmodified.
         AccessibilityAuditAllowance(
             screen: "welcome",
             auditType: .dynamicType,
@@ -65,7 +65,7 @@ enum AccessibilityAuditAllowlist {
             elementIdentifier: "welcome_apple",
             reason: "SignInWithAppleButton is rendered by AuthenticationServices at the fixed 50-point height the guidelines recommend."
         ),
-        // `E402H-31`, owner decision 2026-10-17.
+        // `D-231`, owner decision 2026-10-17.
         AccessibilityAuditAllowance(
             screen: "vehicle-form",
             auditType: .dynamicType,
@@ -204,12 +204,6 @@ enum AccessibilityAuditAllowlist {
             reason: "`settings_delete_local_data` is a SwiftUI `Button` inside a `Form`; the system renders its label and the app cannot change a `Form` button label's type style."
         ),
         AccessibilityAuditAllowance(
-            screen: "settings",
-            auditType: .contrast,
-            elementIdentifier: "settings_delete_local_data",
-            reason: "`settings_delete_local_data` is a destructive SwiftUI `Button` inside a `Form`; the system draws its red label over the grouped background and the app cannot set that label's colour."
-        ),
-        AccessibilityAuditAllowance(
             screen: "departure",
             auditType: .contrast,
             elementIdentifier: "departure_retry",
@@ -229,7 +223,7 @@ enum AccessibilityAuditAllowlist {
             elementLabel: "New refuel",
             reason: "The `New refuel` toolbar control is a SwiftUI navigation-bar item; the system draws its label with the accent colour on the bar, which the app cannot set."
         ),
-        // `E402H-34`, owner decision 2026-10-17 (R5). The four departure and conversion alerts are SwiftUI
+        // `D-231`, owner decision 2026-10-17 (R5). The four departure and conversion alerts are SwiftUI
         // `alert`s: the system renders their title, body and buttons with its own type style, in its own
         // window, and with no identifiers the app can query. `elementLabel: ""` is the existing matcher's
         // "any labelled or unlabelled element of this screen and type" form, the same one the accepted
@@ -262,10 +256,10 @@ enum AccessibilityAuditAllowlist {
             elementLabel: "",
             reason: "The credential-collision confirmation is a SwiftUI `alert`; the system renders its title, body and buttons and the app cannot change an alert's type style (`docs/CONTRACTS.md §11.3`, `D-227`)."
         ),
-        // `E402H-34` (R5, `B1`): the analytics row is a conditional `List` row. `R3` forbids rendering a
+        // `D-231` (R5): the analytics row is a conditional `List` row. `R3` forbids rendering a
         // switch while the stored settings are unknown (`docs/CONTRACTS.md §20.10`), and this runtime's
         // audit reports the label and footer of a `Toggle` gated by any view-shaped conditional while the
-        // unconditional `Toggle` passes; six bounded probes isolated it. Extending `S-13` keeps `R3` as
+        // unconditional `Toggle` passes; six bounded probes isolated it. Extending `D-231` keeps `R3` as
         // written instead of re-wording the contract.
         AccessibilityAuditAllowance(
             screen: "settings",

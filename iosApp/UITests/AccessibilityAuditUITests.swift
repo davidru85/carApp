@@ -184,4 +184,28 @@ final class AccessibilityAuditUITests: XCTestCase {
         try auditAccessibility(of: app, screen: "conversion-collision")
     }
 
+    @MainActor
+    func testUnknownSettingsPassTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("settingsUnknown", arguments: english)
+        requireReviewControls(["settings_distance_unit", "settings_analytics_loading"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-settings-unknown")
+        try auditAccessibility(of: app, screen: "settings")
+    }
+
+    @MainActor
+    func testSavingSettingsPassTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("settingsSaving", arguments: english)
+        requireReviewControls(["settings_analytics_toggle"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-settings-saving")
+        try auditAccessibility(of: app, screen: "settings")
+    }
+
+    @MainActor
+    func testPermanentAccountRowsPassTheAccessibilityAudit() throws {
+        let app = launchReviewSurface("settingsAccountPermanent", arguments: english)
+        requireReviewControls(["settings_sign_out", "settings_delete_account"], in: app)
+        attachAccessibilityEvidence(of: app, named: "audit-settings-account-permanent")
+        try auditAccessibility(of: app, screen: "settings-account-permanent")
+    }
+
 }

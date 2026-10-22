@@ -238,4 +238,20 @@ final class LargeContentSizeUITests: XCTestCase {
         try auditLargeContent(of: app, screen: "conversion-collision")
     }
 
+    @MainActor
+    func testDepartureFailureIsReachableAtAx3() throws {
+        let app = launchReviewSurface("departureFailure", arguments: largeEnglish)
+        requireReviewControls(["departure_failure", "departure_retry"], in: app)
+        attachAccessibilityEvidence(of: app, named: "ax3-departure-failure")
+        try auditLargeContent(of: app, screen: "departure")
+    }
+
+    @MainActor
+    func testPermanentAccountRowsAreReachableAtAx3() throws {
+        let app = launchReviewSurface("settingsAccountPermanent", arguments: largeEnglish)
+        requireReviewControls(["settings_sign_out", "settings_delete_account"], in: app)
+        attachAccessibilityEvidence(of: app, named: "ax3-settings-account-permanent")
+        try auditLargeContent(of: app, screen: "settings-account-permanent")
+    }
+
 }

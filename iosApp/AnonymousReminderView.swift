@@ -33,6 +33,8 @@ struct AnonymousReminderView: View {
             HStack {
                 Spacer()
                 Button(LocalizedStringKey("anonymous_reminder_dismiss"), action: onDismiss)
+                    // The system accent measures about 3.4:1 on this tinted background (`D-223`).
+                    .tint(AccessibleColors.controlAccent)
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("anonymous_reminder_dismiss")
             }

@@ -35,12 +35,7 @@ struct SettingsView: View {
                 currencyRow
                 SettingsUnitRows(state: viewModel.state)
                 if let message = viewModel.state.message {
-                    let text = message.localizedText
-                    Text(text)
-                        .font(.footnote)
-                        .foregroundStyle(AccessibleColors.errorText)
-                        .announcedOnAppearance(text)
-                        .accessibilityIdentifier("settings_message")
+                    SettingsMessageRow(message: message)
                 }
             }
 
@@ -67,9 +62,12 @@ struct SettingsView: View {
                     state: skeletonModel.sessionState,
                     signInCoordinator: skeletonModel.signInCoordinator
                 )
-                ForEach(settingsSessionRows(for: skeletonModel.sessionState.phase), id: \.self) { row in
-                    sessionRow(row)
-                }
+                SettingsSessionRows(
+                    phase: skeletonModel.sessionState.phase,
+                    isBusy: skeletonModel.sessionState.isBusy,
+                    onSignOut: skeletonModel.requestSignOut,
+                    onDeleteAccount: skeletonModel.requestDeleteAccount
+                )
                 if skeletonModel.sessionState.isBusy {
                     ProgressView()
                         .accessibilityLabel(Text("loading"))
@@ -122,31 +120,61 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private func sessionRow(_ row: SettingsSessionRow) -> some View {
-        switch row {
-        case .signOut:
-            Button(action: skeletonModel.requestSignOut) {
-                Text("settings_sign_out")
+}
+
+/// The `D-215` account rows of the Settings screen for `phase`. The labels set their own colour, because
+/// the system blue of a plain button (4.02:1 on white) and the system red of a destructive one (3.55:1)
+/// fail WCAG AA (`D-223`); an explicit `foregroundStyle` on the label replaces the colour the role would
+/// draw. They are a production component, so the Debug review fixtures render the same view.
+struct SettingsSessionRows: View {
+    let phase: SessionPhase
+    let isBusy: Bool
+    let onSignOut: () -> Void
+    let onDeleteAccount: () -> Void
+
+    var body: some View {
+        ForEach(settingsSessionRows(for: phase), id: \.self) { row in
+            switch row {
+            case .signOut:
+                Button(action: onSignOut) {
+                    Text("settings_sign_out")
+                        .foregroundStyle(AccessibleColors.controlAccent)
+                }
+                .disabled(isBusy)
+                .accessibilityIdentifier("settings_sign_out")
+            case .deleteAccount:
+                Button(role: .destructive, action: onDeleteAccount) {
+                    Text("settings_delete_account")
+                        .foregroundStyle(AccessibleColors.errorText)
+                }
+                .disabled(isBusy)
+                .accessibilityIdentifier("settings_delete_account")
+            case .deleteLocalData:
+                Button(role: .destructive, action: onDeleteAccount) {
+                    Text("settings_delete_local_data")
+                        .foregroundStyle(AccessibleColors.errorText)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .disabled(isBusy)
+                .accessibilityIdentifier("settings_delete_local_data")
             }
-            .disabled(skeletonModel.sessionState.isBusy)
-            .accessibilityIdentifier("settings_sign_out")
-        case .deleteAccount:
-            Button(role: .destructive, action: skeletonModel.requestDeleteAccount) {
-                Text("settings_delete_account")
-            }
-            .disabled(skeletonModel.sessionState.isBusy)
-            .accessibilityIdentifier("settings_delete_account")
-        case .deleteLocalData:
-            Button(role: .destructive, action: skeletonModel.requestDeleteAccount) {
-                Text("settings_delete_local_data")
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .tint(AccessibleColors.controlAccent)
-            .disabled(skeletonModel.sessionState.isBusy)
-            .accessibilityIdentifier("settings_delete_local_data")
         }
+    }
+}
+
+/// The typed settings failure under the unit rows: error colour, footnote size and a VoiceOver
+/// announcement. The Debug review fixtures render the same view.
+struct SettingsMessageRow: View {
+    let message: UiMessage
+
+    var body: some View {
+        let text = message.localizedText
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(AccessibleColors.errorText)
+            .announcedOnAppearance(text)
+            .accessibilityIdentifier("settings_message")
     }
 }
 
@@ -196,6 +224,7 @@ struct SettingsAnalyticsRow: View {
                 Spacer()
                 Text("loading")
             }
+            .accessibilityElement(children: .combine)
             .accessibilityIdentifier("settings_analytics_loading")
         } else {
             Toggle(isOn: Binding(

@@ -4,8 +4,6 @@ import UIKit
 /// Colours that keep the WCAG AA 4.5:1 text contrast in light and dark appearance (`E4-02`,
 /// `D-223`). The system `.red` measures 3.55:1 on white, so error copy uses `errorText` instead.
 enum AccessibleColors {
-    /// #B3261E in light appearance (6.54:1 on white, 5.86:1 on the grouped background) and #FF6961
-    /// in dark appearance (7.45:1 on black, 6.03:1 on the grouped cell).
     /// The accent used on the controls whose system accent (system blue, 4.02:1 on white and 2.78:1 on
     /// black) fails the audit: #0040DD measures 7.56:1 on white in light appearance, and #1E9BFF
     /// measures 7.19:1 on black and 5.82:1 on the grouped cell in dark appearance.
@@ -19,6 +17,8 @@ enum AccessibleColors {
     /// so the app sets the label colour explicitly instead of relying on the system's pairing.
     static let controlAccentOnFill = Color(red: 0.0, green: 64.0 / 255.0, blue: 221.0 / 255.0)
 
+    /// #B3261E in light appearance (6.54:1 on white, 5.86:1 on the grouped background) and #FF6961
+    /// in dark appearance (7.45:1 on black, 6.03:1 on the grouped cell).
     static let errorText = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 1.0, green: 105.0 / 255.0, blue: 97.0 / 255.0, alpha: 1.0)
