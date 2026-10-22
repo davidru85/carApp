@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -130,8 +132,12 @@ internal fun AccountConversionCollisionDialog(
     AlertDialog(
         onDismissRequest = onCancel,
         modifier = Modifier.testTag(SettingsTestTags.CONVERSION_DIALOG),
-        title = { Text(stringResource(R.string.conversion_collision_title)) },
-        text = { Text(stringResource(message.stringResource())) },
+        title = { Text(stringResource(R.string.conversion_collision_title), modifier = Modifier.screenHeading()) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(message.stringResource()))
+            }
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
