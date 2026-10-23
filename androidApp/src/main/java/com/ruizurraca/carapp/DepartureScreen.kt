@@ -85,10 +85,9 @@ internal fun DepartureScreen(
 
 @Composable
 private fun DepartureProgress() {
-    LabelledProgressIndicator(
-        modifier = Modifier.testTag(DepartureTestTags.PROGRESS),
-        labelResource = R.string.departure_progress,
-    )
+    // The text below already says what is happening, so the indicator keeps the generic "Loading" label
+    // instead of reading the same sentence to TalkBack twice.
+    LabelledProgressIndicator(modifier = Modifier.testTag(DepartureTestTags.PROGRESS))
     Text(
         text = stringResource(R.string.departure_progress),
         textAlign = TextAlign.Center,
@@ -109,7 +108,7 @@ private fun DepartureReauthentication(
         text = stringResource(R.string.reauthenticate_title),
         style = MaterialTheme.typography.headlineSmall,
         textAlign = TextAlign.Center,
-        modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_TITLE),
+        modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_TITLE).screenHeading(),
     )
     // The reason is the `§20.10` recent-login requirement itself, so it stays on screen when the shared
     // provider rejects the credential and the session message becomes a different typed failure.
@@ -147,7 +146,7 @@ private fun DepartureFailure(
         text = stringResource(R.string.departure_failed_title),
         style = MaterialTheme.typography.headlineSmall,
         textAlign = TextAlign.Center,
-        modifier = Modifier.testTag(DepartureTestTags.FAILURE_TITLE),
+        modifier = Modifier.testTag(DepartureTestTags.FAILURE_TITLE).screenHeading(),
     )
     SessionErrorText(session.message, testTag = DepartureTestTags.ERROR)
     session.pendingDepartureRetry?.let { retry ->

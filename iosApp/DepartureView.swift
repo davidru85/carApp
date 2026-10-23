@@ -67,9 +67,14 @@ struct DepartureView: View {
         Text("departure_failure_title")
             .font(.headline)
             .multilineTextAlignment(.center)
+            .accessibilityAddTraits(.isHeader)
         if let code {
-            Text(localizedUiMessage(for: code))
+            // `D-232`: a session message renders through the session-channel mapping, and a failure is
+            // announced without moving focus (`E4-02`).
+            let failureText = localizedSessionMessage(forCode: code)
+            Text(failureText)
                 .multilineTextAlignment(.center)
+                .announcedOnAppearance(failureText)
                 .accessibilityIdentifier("departure_failure")
         }
         if let retry {
@@ -103,11 +108,12 @@ struct DepartureView: View {
         Text("reauth_title")
             .font(.headline)
             .multilineTextAlignment(.center)
+            .accessibilityAddTraits(.isHeader)
         Text(localizedUiMessage(for: requiresRecentLoginCode))
             .multilineTextAlignment(.center)
             .accessibilityIdentifier("departure_reauth_message")
         if let failureCode {
-            let failureText = localizedUiMessage(for: failureCode)
+            let failureText = localizedSessionMessage(forCode: failureCode)
             Text(failureText)
                 .font(.footnote)
                 .foregroundStyle(AccessibleColors.errorText)
