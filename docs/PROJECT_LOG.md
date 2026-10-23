@@ -62,8 +62,17 @@
 - **Verification:** the complete non-instrumented `AGENTS.md` command is `BUILD SUCCESSFUL` with
   `--rerun-tasks`; `contractCheck` reports 235 decisions, 235 ADRs and 45 assertions with no `FAIL` or
   `PENDING`; Android instrumented 154/0 on `emulator-5554` (API 36); iOS `carAppTests` 147/0 and the
-  selected UI classes green on an erased simulator; CI `<run id>` on `<head SHA>`: `<result>`.
-- **Follow-ups / risks:** none new; `E4-07` carries the deferred `contractCheck` items.
+  selected UI classes green on an erased simulator; CI run 39983925899 on `43bf03bc`: fourteen of the
+  fifteen checks `pass`, and `ios-ui-tests-ax3-2` `fail` on
+  `LargeContentSizeUITests.testFuelFormFieldsAndActionsAreReachableAtAx3` with
+  `add_vehicle is unreachable`. That helper and that suite are untouched by this round: `main` at
+  `28354df8` failed the same precondition on run 39975946860 (`audit-2`
+  `testConversionRowPassesTheAccessibilityAudit`, `add_vehicle is unreachable`; `audit-1`
+  `testCollisionPassesTheAccessibilityAudit`, an application-launch timeout), and the failing test
+  passes locally on an erased simulator. The flake is `E4-07`'s and is not caused by these corrections.
+- **Follow-ups / risks:** none new from G1-G8; `E4-07` carries the deferred `contractCheck` items, and
+  the `add_vehicle is unreachable` AX3 flake confirmed on `main` joins the intermittent
+  `testPendingSyncIsReachableAtAx3` there.
 
 ### 2026-10-23 — PR #91 review round 2 corrections (bundle `E4-B1`)
 

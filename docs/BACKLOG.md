@@ -2154,6 +2154,14 @@ Acceptance criteria:
 - `LargeContentSizeUITests.testPendingSyncIsReachableAtAx3`, which failed once on CI run 39830632477 and
   passed on run 39837103094 on the same simulator (iPhone 17 Pro, iOS 26.2), scrolls within the alert
   before asserting hittability and passes ten consecutive CI-equivalent runs.
+- The `add_vehicle is unreachable` precondition failure seen on 2026-10-23 at
+  `AccessibilityUITestSupport.swift:535` is reproduced and fixed. It failed
+  `LargeContentSizeUITests.testFuelFormFieldsAndActionsAreReachableAtAx3` on run 39983925899
+  (`ios-ui-tests-ax3-2`) and `AccessibilityAuditUITests.testConversionRowPassesTheAccessibilityAudit` on
+  run 39975946860 (`ios-ui-tests-audit-2`, `main` at `28354df8`), while the same tests pass on an erased
+  local simulator; run 39975946860 also lost `testCollisionPassesTheAccessibilityAudit` to an
+  application-launch timeout. Either the helper's bounded scroll does not reach the control on a loaded
+  runner, or the navigation it depends on has not settled, and the ten-run criterion above proves it.
 - The iOS read-error Settings state passes the `D-217` audit: the `Dynamic Type font sizes are partially
   unsupported` finding on a "Loading" value text, reproduced on 2026-10-23 on iPhone Air (iOS 26.5)
   through the `settingsReadError` review surface, is fixed or explained, and an audit test covers the
