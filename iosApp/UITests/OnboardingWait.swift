@@ -166,6 +166,23 @@ enum OnboardingWaitBudget {
     }
 }
 
+/// Arrival at the vehicle list, kept free of `XCUIElement` so the decision is testable without the app.
+///
+/// RED stub: it expresses the arrival decision but still answers presence-only, so the test that
+/// requires a reachable control fails.
+enum VehicleListArrival {
+    static func isReached(
+        addVehicleExists: Bool,
+        addVehicleHittable: Bool,
+        addFuelEntryExists: Bool,
+        addFuelEntryHittable: Bool,
+        vehicleFormVisible: Bool
+    ) -> Bool {
+        _ = (addVehicleHittable, addFuelEntryHittable, vehicleFormVisible)
+        return addVehicleExists || addFuelEntryExists
+    }
+}
+
 /// Pure retry policy for the onboarding wait. It is deliberately free of `XCUIElement` so its
 /// branches are exercised without driving the UI.
 struct OnboardingWaitState {
