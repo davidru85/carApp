@@ -184,7 +184,8 @@ review.
   `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-15`, `E1-17` and `E1-18`.
+- **Follow-ups outside the phase milestones:** `E1-15`, `E1-17` and `E1-18`, then `E4-06`, `E2-10`,
+  `E1-19`, `E1-20`, `E2-11` and `E4-07`, each described below.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16`, the Vehicle
   UI fuel type selector, merged on 2026-09-28 through pull request #80 as a true merge of
@@ -404,8 +405,9 @@ the host. It is the one iOS-named command here that owes no cleanup.
 ### What is enforced, and what is not
 
 `main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`, `D-84`). `D-229` and `D-230` add the five `ios-ui-tests-*` shard checks that
-`docs/CONTRACTS.md §18` requires, fifteen in total once the owner adds them to branch protection.
+(`D-31`, `D-34`, `D-84`). `D-230`, which replaces the single `ios-ui-tests` check of `D-229`, adds the
+five `ios-ui-tests-*` shard checks that `docs/CONTRACTS.md §18` requires, fifteen in total once the
+owner adds them to branch protection.
 Administrator enforcement is off, so the owner can bypass; nobody else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made

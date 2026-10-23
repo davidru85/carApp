@@ -2168,6 +2168,21 @@ Acceptance criteria:
   `NavigationLink`, `LabeledContent` and `.badge` callees, a commented-out or `private` test method named
   by the shard manifest, a shard-script invocation inside a YAML comment, and a bare `xcodebuild test`
   that runs `carAppUITests` outside the manifest.
+- Each of these further `contractCheck` false negatives, found by the PR #91 review round 3, has a
+  failing fixture and a fix: a `UiMessage` producer that passes a literal `code` (for example
+  `"WARNING.X"` or a misspelled `"CONFIRMATION.*"`) outside the assertion-41 inventory; a single-word
+  key (`return "delete"`) returned by a `…Key` function, which `KEY_RETURN` does not read; a key that a
+  `…Key` function returns and the caller renders without arguments while it carries a format argument;
+  a `UiState` text property declared in a class body, in a non-`data` class, in a sealed hierarchy or in
+  a nested row type without the `Ui` suffix (assertion 43); `#if !(DEBUG)`, `#if(DEBUG)` and a tab after
+  `#if` around an allowlisted iOS view, plus failing fixtures for the `||` and `#elseif` exclusions
+  (assertion 44); assertion-45 fixtures that assert only `FAIL` and trip a second rule, so deleting the
+  unknown-job branch leaves the suite green; a host test file that names a code only in a comment
+  (assertion 41); a Swift source in an `iosApp` subdirectory, and a checkout path that contains
+  `/build/` (assertions 42 and 44).
+- `scripts/ios-ui-test-shard.sh` runs under the macOS system bash 3.2 with an empty manifest (an empty
+  `IDENTIFIERS` array under `set -u`), and prints its `No available iPhone simulator.` error when no
+  simulator matches instead of aborting inside the pipeline.
 - The Android and iOS intent wiring of the departure prompts and of the collision confirmation is
   covered by tests that fail when two intents are swapped.
 
@@ -2279,7 +2294,7 @@ included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after
 Firebase configuration debug-only and makes release builds fail closed until `E4-04` adds the
 production configuration, and `E4-03` measures release builds after Crashlytics and the splash have
 changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outside both bundles, and so
-are the follow-ups `E1-19`, `E1-20`, `E2-11` and `E4-07`.
+are the follow-ups `E2-10`, `E1-19`, `E1-20`, `E2-11` and `E4-07`.
 Inside a bundle every story keeps its own ready check, handoff, TDD cycle and project-log entry.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
