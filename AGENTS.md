@@ -266,7 +266,7 @@ review.
   under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
   account conversion host surface, `E4-02` accessibility and localization), is implemented on
   `story/E4-B1-product-surface` through pull request #91 and awaits the owner's gated review; it
-  introduced `D-209` through `D-233`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
+  introduced `D-209` through `D-235`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
   splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231) runs them as five
   protected shard checks. Bundle `E4-B2`,
   release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts

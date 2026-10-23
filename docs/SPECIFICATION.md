@@ -725,6 +725,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-231 | iOS accessibility-audit allowlist scope | A system alert may be allowlisted per audited screen and issue type, and a contrast finding on a system-rendered element the app cannot style may be allowlisted with its reason; app-styled elements are fixed. | Accepted |
 | D-232 | Session-channel copy for remote failures | A `REMOTE.*` failure on the session channel says the account replacement keeps being retried; it is the one exception to the single host message mapping. | Accepted |
 | D-233 | Account replacement write window | A write made while a confirmed account replacement runs can be lost; accepted as a residual risk until `E2-10`. | Accepted |
+| D-234 | Departure hand-over routing | The departure screen also shows the hand-over between a successful remote departure step and the local clear, on both hosts. | Accepted |
+| D-235 | No-account sign-in copy | The no-account sign-in error tells the owner to add an account in the device settings and try again, in every sign-in context. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

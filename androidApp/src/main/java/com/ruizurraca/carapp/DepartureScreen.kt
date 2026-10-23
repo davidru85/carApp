@@ -245,7 +245,7 @@ internal fun rememberReauthenticationInFlight(
  * A departure owns the window while it runs (`DELETING`), while it retains a step to retry
  * (`pendingDepartureRetry != null`, in whatever phase the failure left), and during the hand-over
  * between a successful remote step and the local clear, which `AccountDepartureFlow` publishes as
- * `UNKNOWN` with `isBusy`. The authenticated `NavHost` is not mounted in any of those states, so
+ * `UNKNOWN` with `isBusy` (`D-234`). The authenticated `NavHost` is not mounted in any of those states, so
  * routing them anywhere else would leave the typed failure and `retryDeparture()` unreachable.
  *
  * It also carries `§20.10` re-authentication: a permanent owner whose deletion was refused with
