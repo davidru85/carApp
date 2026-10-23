@@ -38,6 +38,33 @@
 
 ## Entries
 
+### 2026-10-23 — E4-B1 record closure
+
+- **Type:** milestone
+- **Story / Decision:** `E4-01`, `E4-05`, `E4-02` (bundle `E4-B1`) / — (no decision changed)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E4-B1-record-closeout`)
+- **What changed:** bundle `E4-B1` merged on 2026-10-23 after the owner's gated review: pull request
+  #91 as a true merge of `story/E4-B1-product-surface` into `main` (merge commit `28354df8`, whose
+  second parent is the branch head `730d51ed`), after two review correction rounds and the `D-229`
+  and `D-230` CI corrections, and pull request #92 with the review round 3 corrections (merge commit
+  `ec5b54bc`, branch head `ea3fad8b`). `AGENTS.md` names `E4-B2` as next and records both merges
+  and the fifteen required checks the owner added to branch protection; the backlog status blocks
+  and index rows, the `docs/TECHNICAL_PLAN.md` Phase 4 status and the bundle and story handoffs, each
+  with a dated `Closure update`, state the merge.
+- **Why:** `AGENTS.md` §Repository State must tell an incoming agent what is built; a merged bundle
+  must not read as in review, and `main`'s protection must not read as ten checks.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/handoffs/E4-B1.md`, `E4-01.md`, `E4-05.md`, `E4-02.md`, this log.
+- **Verification:** documentation only. The head of pull request #91, `730d51ed`, passed all fifteen
+  checks on attempt `1` (run `39878252725`), and the head of pull request #92, `ea3fad8b`, passed all
+  fifteen on attempt `1` (run `39991230379`). The push run of `main` at `28354df8` (run
+  `39975946860`) failed `ios-ui-tests-audit-1` and `ios-ui-tests-audit-2` on two intermittent audit
+  tests of the kind `E4-07` tracks. `contractCheck` and `architectureCheck` are run before the pull
+  request.
+- **Follow-ups / risks:** the owner-run acceptances of `E4-01`, `E4-05` and `E4-02` stay open; the
+  not-Ready follow-ups `E1-19`, `E1-20`, `E2-10`, `E2-11`, `E4-06` and `E4-07` are unchanged. Bundle
+  `E4-B2` (`E4-04`, then `E4-03`) is next.
+
 ### 2026-10-23 — PR #91 review round 3 corrections (bundle `E4-B1`)
 
 - **Type:** correction

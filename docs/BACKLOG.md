@@ -1344,7 +1344,9 @@ Human review required.
 
 ### E4-01 - Settings UI - L
 
-Status: implemented as the first story of bundle `E4-B1` (`D-209`, ADR-0210) through pull request #91, awaiting the owner's gated review.
+Status: the first story of bundle `E4-B1` (`D-209`, ADR-0210), merged on 2026-10-23 through pull request #91 (merge commit `28354df8`), with the review round 3
+corrections through pull request #92 (merge commit `ec5b54bc`), after the owner's gated review.
+The owner-run departure checklists in `docs/handoffs/E4-01.md` are still open.
 Re-estimated from S to L at the bundle intake on 2026-10-16: no host invokes any
 `SessionStateHolder` departure or conversion intent yet, so besides the Settings rows this story owns
 the complete host departure surface that `E2-05` shipped only as a callable contract (`D-162`,
@@ -1370,7 +1372,9 @@ Acceptance criteria:
 
 ### E4-05 - Account Conversion Host Surface - M
 
-Status: implemented as the second story of bundle `E4-B1` (`D-209`, ADR-0210) through pull request #91, awaiting the owner's gated review.
+Status: the second story of bundle `E4-B1` (`D-209`, ADR-0210), merged on 2026-10-23 through pull request #91 (merge commit `28354df8`), with the review round 3
+corrections through pull request #92 (merge commit `ec5b54bc`), after the owner's gated review.
+The owner-run provider acceptance in `docs/handoffs/E4-05.md` is still open.
 Created on 2026-10-15 by `D-210` (ADR-0211), which places the anonymous account-conversion entry
 point in Settings. The row's behaviour while the session is `LOCAL` was put to the owner at the
 bundle intake and is recorded at this story's intake; the row and the credential-collision
@@ -1405,7 +1409,9 @@ Human review required.
 
 ### E4-02 - Accessibility and Localization - M
 
-Status: implemented as the third story of bundle `E4-B1` (`D-209`, ADR-0210) through pull request #91, awaiting the owner's gated review.
+Status: the third story of bundle `E4-B1` (`D-209`, ADR-0210), merged on 2026-10-23 through pull request #91 (merge commit `28354df8`), with the review round 3
+corrections through pull request #92 (merge commit `ec5b54bc`), after the owner's gated review.
+The owner-run screen-reader walkthrough of `D-226` in `docs/handoffs/E4-02.md` is still open.
 The owner accepted its eight technical decisions, its audit scope and its screen-reader acceptance
 method at the bundle intake; they are recorded as `D-216` to `D-223`, `D-225` and `D-226` (ADR-0217
 to ADR-0224, ADR-0226 and ADR-0227).
@@ -1427,7 +1433,7 @@ Acceptance criteria:
 ### E4-03 - Performance and Reliability Hardening - M
 
 Status: scheduled, second story of bundle `E4-B2` (`D-209`, ADR-0210), after `E4-04`.
-`E4-B2` starts after bundle `E4-B1` merges. `E4-04` runs first because `D-54` (ADR-0055) keeps
+`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first because `D-54` (ADR-0055) keeps
 release builds failing closed until it adds the production configuration, and this story measures
 release builds.
 
@@ -1441,8 +1447,8 @@ Acceptance criteria:
 
 ### E4-04 - Release Preparation - M
 
-Status: scheduled, first story of bundle `E4-B2` (`D-209`, ADR-0210), which starts after bundle
-`E4-B1` merges.
+Status: next, first story of bundle `E4-B2` (`D-209`, ADR-0210), which starts now that bundle
+`E4-B1` has merged (2026-10-23).
 
 Prepare release assets and store requirements.
 
@@ -2373,9 +2379,9 @@ proof after E3-04.
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
-| E4-01 Settings UI (bundle `E4-B1`, implemented, PR #91) | 4 | L | — |
-| E4-05 Account conversion host surface (bundle `E4-B1`, implemented, PR #91) | 4 | M | Yes |
-| E4-02 Accessibility and localization (bundle `E4-B1`, implemented, PR #91) | 4 | M | — |
+| E4-01 Settings UI (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | L | — |
+| E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
+| E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
 | E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
 | E4-04 Release preparation (bundle `E4-B2`) | 4 | M | — |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |

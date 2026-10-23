@@ -170,10 +170,9 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** Phase 4, delivered as two bundles under `D-209` (ADR-0210): `E4-B1` (`E4-01`, `E4-05`,
-  `E4-02`) is implemented through pull request #91 and awaits the owner's gated review, and
-  `E4-B2` (`E4-04`, `E4-03`) follows its
-  merge. Both are listed below and in `docs/BACKLOG.md`. Phase 3 closed
+- **Next:** bundle `E4-B2` (`E4-04`, then `E4-03`), the second of the two Phase 4 bundles of `D-209`
+  (ADR-0210). Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests
+  #91 and #92. Both are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
   `docs/handoffs/E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
@@ -263,16 +262,21 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-01`, `E4-05`, `E4-02`, `E4-04` and `E4-03`, delivered as two bundles
-  under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
-  account conversion host surface, `E4-02` accessibility and localization), is implemented on
-  `story/E4-B1-product-surface` through pull request #91 and awaits the owner's gated review; it
-  introduced `D-209` through `D-235`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
-  splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231) runs them as five
-  protected shard checks. Bundle `E4-B2`,
-  release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts
-  after `E4-B1` merges. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which places the
-  anonymous account-conversion entry point in Settings.
+- **Remaining Phase 4:** `E4-04` and `E4-03`, delivered as bundle `E4-B2` under `D-209` (ADR-0210).
+  Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05` account conversion host surface,
+  `E4-02` accessibility and localization), merged on 2026-10-23 after the owner's gated review. Pull
+  request #91 merged `story/E4-B1-product-surface` into `main` (merge commit `28354df8`, whose second
+  parent is the branch head `730d51ed`) after two review correction rounds and the `D-229` and
+  `D-230` CI corrections; pull request #92 then merged the third review round's corrections from
+  `story/E4-B1-review-round-3-corrections` (merge commit `ec5b54bc`, branch head `ea3fad8b`). The
+  bundle introduced `D-209` through `D-235`, and its record is `docs/handoffs/E4-B1.md`. `D-229`
+  (ADR-0230) splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231) runs them
+  as five protected shard checks. Its owner-run acceptances (the `E4-01` departure checklists, the
+  `E4-05` provider acceptance and the `E4-02` screen-reader walkthrough of `D-226`) are still open
+  and are recorded in the story handoffs. Bundle `E4-B2`, release readiness (`E4-04` release
+  preparation, then `E4-03` performance and reliability), is next on
+  `story/E4-B2-release-readiness`. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which
+  places the anonymous account-conversion entry point in Settings.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
   Auth-State Reconciliation).
@@ -404,10 +408,10 @@ the host. It is the one iOS-named command here that owes no cleanup.
 
 ### What is enforced, and what is not
 
-`main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
+`main` is protected: fifteen required checks, a pull request, no force pushes, no branch deletion
 (`D-31`, `D-34`, `D-84`). `D-230`, which replaces the single `ios-ui-tests` check of `D-229`, adds the
-five `ios-ui-tests-*` shard checks that `docs/CONTRACTS.md §18` requires, fifteen in total once the
-owner adds them to branch protection.
+five `ios-ui-tests-*` shard checks that `docs/CONTRACTS.md §18` requires; the owner added them to
+branch protection, which lists all fifteen (read through the GitHub API on 2026-10-23).
 Administrator enforcement is off, so the owner can bypass; nobody else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made
@@ -441,8 +445,8 @@ A slow new test therefore lands in its class's shard or in `remainder`; rebalanc
 shard drifts past about 20 minutes of tests, rather than raising a ceiling. A job may exceed the
 40-minute default only through a named entry in `WorkflowTimeoutContract.JOB_CEILING_MINUTES`, which
 assertion 28 enforces and which is empty today; raising the default to fit one job is the mistake
-`D-176` already made once. The five shard checks are required on `main` only after the owner
-adds them to branch protection (`ios-ui-tests` was never added).
+`D-176` already made once. The five shard checks are required on `main` (`ios-ui-tests` was never
+added).
 
 `contractCheck` prints the live list; trust its output over this one.
 
