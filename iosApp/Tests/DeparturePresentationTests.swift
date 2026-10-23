@@ -18,6 +18,50 @@ final class DeparturePresentationTests: XCTestCase {
         )
     }
 
+    /// `D-234`: the hand-over between a successful remote step and the local clear is published as
+    /// `UNKNOWN` with `isBusy`, and the departure screen keeps the window, exactly as on Android.
+    func testTheHandoverAfterARemoteStepRequiresTheDepartureScreen() {
+        XCTAssertTrue(
+            requiresDepartureScreen(
+                phase: .unknown,
+                messageCode: nil,
+                hasPendingDepartureRetry: false,
+                isReauthenticating: false,
+                isBusy: true
+            )
+        )
+    }
+
+    /// `D-234`: an `UNKNOWN` session that is not busy is the cold start and keeps waiting.
+    func testAnIdleUnknownSessionDoesNotRequireTheDepartureScreen() {
+        XCTAssertFalse(
+            requiresDepartureScreen(
+                phase: .unknown,
+                messageCode: nil,
+                hasPendingDepartureRetry: false,
+                isReauthenticating: false,
+                isBusy: false
+            )
+        )
+    }
+
+    /// `D-234`: `isBusy` routes only the `UNKNOWN` hand-over; a busy signed-in or signed-out session keeps
+    /// its `D-214` routing.
+    func testABusySessionOutsideUnknownDoesNotRequireTheDepartureScreen() {
+        for phase in [SessionPhase.local, .anonymous, .permanent, .signedOut] {
+            XCTAssertFalse(
+                requiresDepartureScreen(
+                    phase: phase,
+                    messageCode: nil,
+                    hasPendingDepartureRetry: false,
+                    isReauthenticating: false,
+                    isBusy: true
+                ),
+                "\(phase) must not route a busy session to the departure screen"
+            )
+        }
+    }
+
     /// A failed step keeps the phase it failed in: `DELETING`, `UNKNOWN` after the remote handover, or
     /// `PERMANENT` for a sign-out whose provider sign-out failed. The retry is reachable in every one.
     func testAPublishedRetryRequiresTheDepartureScreenInEveryPhase() {

@@ -85,10 +85,9 @@ internal fun DepartureScreen(
 
 @Composable
 private fun DepartureProgress() {
-    LabelledProgressIndicator(
-        modifier = Modifier.testTag(DepartureTestTags.PROGRESS),
-        labelResource = R.string.departure_progress,
-    )
+    // The text below already says what is happening, so the indicator keeps the generic "Loading" label
+    // instead of reading the same sentence to TalkBack twice.
+    LabelledProgressIndicator(modifier = Modifier.testTag(DepartureTestTags.PROGRESS))
     Text(
         text = stringResource(R.string.departure_progress),
         textAlign = TextAlign.Center,
@@ -109,7 +108,7 @@ private fun DepartureReauthentication(
         text = stringResource(R.string.reauthenticate_title),
         style = MaterialTheme.typography.headlineSmall,
         textAlign = TextAlign.Center,
-        modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_TITLE),
+        modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_TITLE).screenHeading(),
     )
     // The reason is the `§20.10` recent-login requirement itself, so it stays on screen when the shared
     // provider rejects the credential and the session message becomes a different typed failure.
@@ -147,7 +146,7 @@ private fun DepartureFailure(
         text = stringResource(R.string.departure_failed_title),
         style = MaterialTheme.typography.headlineSmall,
         textAlign = TextAlign.Center,
-        modifier = Modifier.testTag(DepartureTestTags.FAILURE_TITLE),
+        modifier = Modifier.testTag(DepartureTestTags.FAILURE_TITLE).screenHeading(),
     )
     SessionErrorText(session.message, testTag = DepartureTestTags.ERROR)
     session.pendingDepartureRetry?.let { retry ->
@@ -245,7 +244,7 @@ internal fun rememberReauthenticationInFlight(
  * A departure owns the window while it runs (`DELETING`), while it retains a step to retry
  * (`pendingDepartureRetry != null`, in whatever phase the failure left), and during the hand-over
  * between a successful remote step and the local clear, which `AccountDepartureFlow` publishes as
- * `UNKNOWN` with `isBusy`. The authenticated `NavHost` is not mounted in any of those states, so
+ * `UNKNOWN` with `isBusy` (`D-234`). The authenticated `NavHost` is not mounted in any of those states, so
  * routing them anywhere else would leave the typed failure and `retryDeparture()` unreachable.
  *
  * It also carries `§20.10` re-authentication: a permanent owner whose deletion was refused with

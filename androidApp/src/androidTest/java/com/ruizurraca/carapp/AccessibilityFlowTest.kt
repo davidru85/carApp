@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp
 
 import android.os.Build
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -99,9 +100,9 @@ class AccessibilityFlowTest {
     fun settingsPassesAccessibilityChecks() {
         openVehicleList()
         composeRule.onNodeWithTag(SETTINGS_ENTRY_TAG).performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodes(hasTestTagPrefix("settings_")).fetchSemanticsNodes().isNotEmpty()
-        }
+        // The entry button is itself tagged `settings_entry`, so only the screen's own tag proves navigation.
+        composeRule.waitUntil(timeoutMillis = 5_000) { composeRule.hasNodeWithTag(SettingsTestTags.SCREEN) }
+        composeRule.onNodeWithTag(SettingsTestTags.SCREEN).assertIsDisplayed()
         composeRule.checkAccessibilityOfEveryWindow()
     }
 

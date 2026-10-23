@@ -38,6 +38,42 @@
 
 ## Entries
 
+### 2026-10-23 — PR #91 review round 3 corrections (bundle `E4-B1`)
+
+- **Type:** correction
+- **Story / Decision:** `E4-B1` (`E4-01`, `E4-05`, `E4-02`) / `D-234`, `D-235`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-review-round-3-corrections`, the
+  replacement branch for the merged pull request #91)
+- **What changed:** iOS routes the departure hand-over (`UNKNOWN` with `isBusy`) to the departure screen
+  as Android does (`D-234`, RED then GREEN); the iOS departure failure is announced, the welcome and
+  departure screens of both hosts render session messages through the `D-232` session mapping, the
+  departure titles are headings and the Android departure progress is labelled once; the no-account
+  copy is valid in every sign-in context (`D-235`); the iOS conversion-row audit runs with the App Check
+  debug token; vacuous or partial Android and iOS tests now require every control they name; stale
+  records are corrected and `E4-07` gains the further `contractCheck` false negatives (G1-G8).
+- **Corrects:** the 2026-10-23 round-2 entry, whose "Corrects" line names a 2026-10-17 `E4-02` entry; the
+  contrast statement it corrects is in the 2026-10-16 `E4-02` entry.
+- **Why:** the PR #91 review round 3 found a host routing divergence from `D-214`, an unannounced iOS
+  failure, copy that misdirected two sign-in contexts, an audit that always skipped, tests that could
+  not fail and false records.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §14.1`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0215, ADR-0235,
+  ADR-0236, `docs/BACKLOG.md`, `docs/handoffs/E4-01.md`, `E4-02.md`, `E4-B1.md`.
+- **Verification:** the complete non-instrumented `AGENTS.md` command is `BUILD SUCCESSFUL` with
+  `--rerun-tasks`; `contractCheck` reports 235 decisions, 235 ADRs and 45 assertions with no `FAIL` or
+  `PENDING`; Android instrumented 154/0 on `emulator-5554` (API 36); iOS `carAppTests` 147/0 and the
+  selected UI classes green on an erased simulator; CI run 39983925899 on `43bf03bc`: fourteen of the
+  fifteen checks `pass`, and `ios-ui-tests-ax3-2` `fail` on
+  `LargeContentSizeUITests.testFuelFormFieldsAndActionsAreReachableAtAx3` with
+  `add_vehicle is unreachable`. That helper and that suite are untouched by this round: `main` at
+  `28354df8` failed the same precondition on run 39975946860 (`audit-2`
+  `testConversionRowPassesTheAccessibilityAudit`, `add_vehicle is unreachable`; `audit-1`
+  `testCollisionPassesTheAccessibilityAudit`, an application-launch timeout), and the failing test
+  passes locally on an erased simulator. The flake is `E4-07`'s and is not caused by these corrections.
+- **Follow-ups / risks:** none new from G1-G8; `E4-07` carries the deferred `contractCheck` items, and
+  the `add_vehicle is unreachable` AX3 flake confirmed on `main` joins the intermittent
+  `testPendingSyncIsReachableAtAx3` there.
+
 ### 2026-10-23 — PR #91 review round 2 corrections (bundle `E4-B1`)
 
 - **Type:** correction

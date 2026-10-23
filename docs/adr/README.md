@@ -239,5 +239,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-231 | [ADR-0232](0232-record-the-ios-accessibility-audit-allowlist-scope.md) | Record the iOS accessibility-audit allowlist scope. | Accepted |
 | D-232 | [ADR-0233](0233-render-remote-session-failures-as-a-pending-replacement.md) | Render remote session failures as a pending account replacement. | Accepted |
 | D-233 | [ADR-0234](0234-accept-the-account-replacement-write-window-as-a-residual-risk.md) | Accept the account replacement write window as a residual risk. | Accepted |
+| D-234 | [ADR-0235](0235-route-the-departure-hand-over-to-the-departure-screen.md) | Route the departure hand-over to the departure screen. | Accepted |
+| D-235 | [ADR-0236](0236-make-the-no-account-copy-valid-in-every-sign-in-context.md) | Make the no-account copy valid in every sign-in context. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

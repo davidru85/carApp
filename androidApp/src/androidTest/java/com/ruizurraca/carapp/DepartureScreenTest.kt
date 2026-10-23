@@ -1,5 +1,8 @@
 package com.ruizurraca.carapp
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -179,6 +182,25 @@ class DepartureScreenTest {
         composeRule.onNodeWithTag(DepartureTestTags.CANCEL_REAUTHENTICATION).performClick()
 
         assertEquals(listOf("cancelReauthentication"), calls)
+    }
+
+    /** `E4-02`: the departure titles are headings, like every other title of the bundle's screens. */
+    @Test
+    fun theFailureTitleIsAHeading() {
+        showDeparture(failedLocalClear())
+
+        composeRule
+            .onNodeWithTag(DepartureTestTags.FAILURE_TITLE)
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun theReauthenticationTitleIsAHeading() {
+        showDeparture(staleLogin(listOf(AuthProvider.GOOGLE)))
+
+        composeRule
+            .onNodeWithTag(DepartureTestTags.REAUTHENTICATION_TITLE)
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 
     private fun providerRejection(): SessionUiState =

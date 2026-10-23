@@ -6,6 +6,9 @@ Accepted
 
 The owner selected option A on 2026-10-16.
 
+Extended by `D-234` (ADR-0235) on 2026-10-23: a session published as `UNKNOWN` with `isBusy`, the
+hand-over that follows a successful remote step, also routes to the departure screen on both hosts.
+
 ## Context
 
 A confirmed deletion sets `SessionPhase.DELETING`, and a success ends in `UNKNOWN`. A failure keeps

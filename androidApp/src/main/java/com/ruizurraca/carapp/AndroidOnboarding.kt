@@ -285,7 +285,8 @@ internal fun WelcomeScreen(
                 }
             }
             if (state.isBusy) LabelledProgressIndicator()
-            state.message?.let { ErrorText(it) }
+            // `D-232`: a session message renders through the session-channel mapping.
+            SessionErrorText(state.message, testTag = VehicleTestTags.ERROR)
         }
     }
 }

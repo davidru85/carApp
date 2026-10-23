@@ -62,11 +62,13 @@ struct WelcomeView: View {
                     .accessibilityLabel(Text("loading"))
             }
             if let message = state.message {
-                Text(message.localizedText)
+                // `D-232`: a session message renders through the session-channel mapping.
+                let messageText = localizedSessionMessage(message)
+                Text(messageText)
                     .foregroundStyle(AccessibleColors.errorText)
                     .font(.footnote)
                     .fixedSize(horizontal: false, vertical: true)
-                    .announcedOnAppearance(message.localizedText)
+                    .announcedOnAppearance(messageText)
             }
         }
         .padding(24)

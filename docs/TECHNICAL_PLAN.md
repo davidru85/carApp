@@ -227,7 +227,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-211 | Settings state holder location | `SettingsStateHolder` in `:shared`, exposed through `AppGraph` and `SwiftAppGraph` | Accepted | Follows `D-155`; no new `:composition:ios` export and no `§4` change. Needed by `E4-01`. See ADR-0212. |
 | D-212 | App version source | Native per host: `PackageManager` `versionName`; `Bundle.main` `CFBundleShortVersionString` and `CFBundleVersion` | Accepted | Keeps `AppGraphDependencies` at its sixteen `§11.6` members. Needed by `E4-01`. See ADR-0213. |
 | D-213 | Wait for sync on the pending-sync prompt | `SessionStateHolder.clearMessage()` plus `SyncStateHolder.requestSync(SyncTrigger.PullToRefresh)` | Accepted | No new departure state in `:shared`. Needed by `E4-01`. See ADR-0214. |
-| D-214 | Departure progress and failure surface | Root-level `DepartureScreen` (Android) and `DepartureView` (iOS) while `DELETING` or while `pendingDepartureRetry` is not null | Accepted | Host routing only; shared tests only if the routing input changes. Needed by `E4-01`. See ADR-0215. |
+| D-214 | Departure progress and failure surface | Root-level `DepartureScreen` (Android) and `DepartureView` (iOS) while `DELETING` or while `pendingDepartureRetry` is not null | Accepted | Host routing only; shared tests only if the routing input changes. Needed by `E4-01`. Extended by `D-234`. See ADR-0215. |
 | D-215 | Settings session rows per phase | `PERMANENT`: sign-out and account deletion; `LOCAL` and `ANONYMOUS`: one local-data deletion row through `requestDeleteAccount()` | Accepted | Host rendering over existing intents. Needed by `E4-01`. See ADR-0216. |
 | D-216 | Android automated accessibility checks | BOM-managed `ui-test-junit4-accessibility` with `enableAccessibilityChecks()` | Accepted | Test-only dependency; version through `composeBom`. Needed by `E4-02`. See ADR-0217. |
 | D-217 | iOS automated accessibility audit | `performAccessibilityAudit()` under `#available(iOS 17, *)` plus a recorded VoiceOver walkthrough | Accepted | No deployment-target change. Needed by `E4-02`. See ADR-0218. |
@@ -247,6 +247,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-231 | iOS accessibility-audit allowlist scope | Per-screen entries for SwiftUI alerts; reasoned contrast entries only for system-rendered elements | Accepted | Amends `D-217` and `D-223`. The list lives in `iosApp/UITests/AccessibilityUITestSupport.swift` and `docs/handoffs/E4-02.md`. See ADR-0232. |
 | D-232 | Session-channel copy for remote failures | `sessionMessageStringResource` / `sessionMessageKey` map every `REMOTE.*` session message to `error_conversion_replacement_pending` | Accepted | Amends `D-220`; documented in `docs/CONTRACTS.md §14.1`. See ADR-0233. |
 | D-233 | Account replacement write window | Residual risk in `docs/SECURITY.md`; closing criterion in `E2-10` | Accepted | Amends `D-228`. See ADR-0234. |
+| D-234 | Departure hand-over routing | `UNKNOWN` with `isBusy` routes to `DepartureScreen` (Android) and `DepartureView` (iOS) | Accepted | Extends `D-214`. See ADR-0235. |
+| D-235 | No-account sign-in copy | `error_auth_no_account` copy on both hosts and in `docs/CONTRACTS.md §14.1` | Accepted | Amends `D-219`. See ADR-0236. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

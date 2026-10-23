@@ -108,14 +108,21 @@ final class AccessibilityAuditUITests: XCTestCase {
 
     @MainActor
     func testConversionRowPassesTheAccessibilityAudit() throws {
-        let app = launchCarApp(arguments: english)
+        // `D-224`: the row exists only for an anonymous session, which needs the registered simulator-only
+        // App Check debug token, passed exactly as `AccountConversionUITests` passes it.
+        guard let debugToken = ProcessInfo.processInfo.environment["CARAPP_IOS_APP_CHECK_DEBUG_TOKEN"],
+              !debugToken.isEmpty else {
+            throw XCTSkip("A registered simulator-only App Check debug token is required for an anonymous session.")
+        }
+        let app = launchCarApp(arguments: english, environment: ["AppCheckDebugToken": debugToken])
         createVehicleAndOpenDetail(in: app, odometer: "1000")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         openSettings(in: app)
         let row = app.descendants(matching: .any)["settings_link_account_row"]
-        // `D-224`: the row exists only for an anonymous session; a run without the App Check debug
-        // token stays LOCAL and records the skip as evidence.
-        try XCTSkipUnless(row.waitForExistence(timeout: 10), "The session is not anonymous, so the conversion row is hidden.")
+        XCTAssertTrue(
+            row.waitForExistence(timeout: 10),
+            "An anonymous session must see the link-account row; a LOCAL fallback means App Check rejected the debug token"
+        )
         attachAccessibilityEvidence(of: app, named: "audit-conversion-row")
         try auditAccessibility(of: app, screen: "conversion")
     }

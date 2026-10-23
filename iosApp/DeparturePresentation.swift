@@ -113,7 +113,8 @@ func departurePrompt(
 
 /// Whether the root shows the departure screen instead of the onboarding destination (`D-214`).
 ///
-/// A running deletion is `DELETING`. A failed step keeps whichever phase it failed in and publishes
+/// A running deletion is `DELETING`, and the hand-over that follows a successful remote step is
+/// `UNKNOWN` with `isBusy` (`D-234`). A failed step keeps whichever phase it failed in and publishes
 /// what a retry would repeat, so a published retry routes here in every phase. A permanent deletion
 /// refused for a stale login stays `PERMANENT` while it waits for a fresh credential, and the screen
 /// keeps the attempt the owner started there mounted until it ends.
@@ -121,10 +122,16 @@ func requiresDepartureScreen(
     phase: SessionPhase,
     messageCode: String?,
     hasPendingDepartureRetry: Bool,
-    isReauthenticating: Bool
+    isReauthenticating: Bool,
+    isBusy: Bool = false
 ) -> Bool {
     if hasPendingDepartureRetry || phase == .deleting {
         return true
+    }
+    // `D-234`: the hand-over between a successful remote step and the local clear is published as
+    // `UNKNOWN` with `isBusy`; an idle `UNKNOWN` session is the cold start and keeps waiting.
+    if phase == .unknown {
+        return isBusy
     }
     guard phase == .permanent else {
         return false

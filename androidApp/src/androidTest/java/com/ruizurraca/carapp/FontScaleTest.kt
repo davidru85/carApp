@@ -165,8 +165,15 @@ class FontScaleTest {
     @Test
     fun departureActionsStayReachableAtDoubleFontScale() {
         showAtDoubleFontScale { A11yDepartureScreen(failedDepartureSession()) }
-        val reached = composeRule.assertRenderedTagsReachable(stringConstantsOf(DepartureTestTags::class.java))
-        assertTrue("no departure action was rendered", reached.isNotEmpty())
+        composeRule.assertRenderedTagsReachable(stringConstantsOf(DepartureTestTags::class.java))
+        // `failedDepartureSession()` retains `LOCAL_CLEAR`, so the title, the typed failure, what the retry
+        // repeats and the retry itself are all required.
+        listOf(
+            DepartureTestTags.FAILURE_TITLE,
+            DepartureTestTags.ERROR,
+            DepartureTestTags.RETRY_EXPLANATION,
+            DepartureTestTags.RETRY,
+        ).forEach(composeRule::scrollToAndAssertDisplayed)
         composeRule.scrollToAndAssertDisplayed(hasTextContaining(targetString(R.string.error_persistence)))
     }
 
@@ -175,8 +182,13 @@ class FontScaleTest {
         showAtDoubleFontScale {
             SettingsSessionPrompts(session = pendingSyncSession(), callbacks = a11yPromptCallbacks())
         }
-        val reached = composeRule.assertRenderedTagsReachable(stringConstantsOf(SettingsTestTags::class.java))
-        assertTrue("the wait, cancel and discard actions were not all rendered: $reached", reached.size >= 3)
+        composeRule.assertRenderedTagsReachable(stringConstantsOf(SettingsTestTags::class.java))
+        listOf(
+            SettingsTestTags.PENDING_SYNC_BODY,
+            SettingsTestTags.PENDING_SYNC_WAIT,
+            SettingsTestTags.PENDING_SYNC_CANCEL,
+            SettingsTestTags.PENDING_SYNC_DISCARD,
+        ).forEach(composeRule::scrollToAndAssertDisplayed)
     }
 
     @Test
@@ -186,6 +198,8 @@ class FontScaleTest {
         }
         composeRule.assertRenderedTagsReachable(stringConstantsOf(SettingsTestTags::class.java))
         composeRule.scrollToAndAssertDisplayed(hasTextContaining(targetString(R.string.confirm_delete_local_data)))
+        listOf(SettingsTestTags.CONFIRM_DESTRUCTIVE, SettingsTestTags.CANCEL_DESTRUCTIVE)
+            .forEach(composeRule::scrollToAndAssertDisplayed)
     }
 
     @Test
