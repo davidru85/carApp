@@ -25,9 +25,15 @@ internal class WorkflowTimeoutContract private constructor(
     }
 
     private fun jobsDoNotExceedSafetyLimit(): AssertionResult {
-        val excessive = jobs.filter { (it.timeoutMinutes ?: 0) > MAX_JOB_MINUTES }
-            .map { "${it.id} declares ${it.timeoutMinutes} minutes" }
-        return result(28, "CI jobs do not exceed the $MAX_JOB_MINUTES-minute safety limit", excessive)
+        val excessive = jobs
+            .filter { (it.timeoutMinutes ?: 0) > ceilingFor(it.id) }
+            .map { "${it.id} declares ${it.timeoutMinutes} minutes, its ceiling is ${ceilingFor(it.id)}" }
+        val ceilings = JOB_CEILING_MINUTES.entries.joinToString { "${it.key} ${it.value}" }.ifEmpty { "no per-job exceptions" }
+        return result(
+            28,
+            "no CI job exceeds its own safety limit (default $DEFAULT_JOB_CEILING_MINUTES minutes; $ceilings)",
+            excessive,
+        )
     }
 
     private fun sharedTestsHavePlatformStepLimits(): AssertionResult {
@@ -37,11 +43,14 @@ internal class WorkflowTimeoutContract private constructor(
             listOf("shared-tests job is missing")
         } else {
             required.filterNot { name ->
-                shared.steps.any { step -> step.name == name && step.timeoutMinutes != null && step.timeoutMinutes < MAX_JOB_MINUTES }
+                shared.steps.any { step -> step.name == name && step.timeoutMinutes != null && step.timeoutMinutes < ceilingFor(shared.id) }
             }.map { "$it lacks a platform-specific step timeout" }
         }
         return result(29, "shared-tests has stricter platform-specific step limits", missing)
     }
+
+    /** The ceiling that applies to [jobId]: its own named ceiling, or the default for every other job. */
+    private fun ceilingFor(jobId: String): Int = JOB_CEILING_MINUTES[jobId] ?: DEFAULT_JOB_CEILING_MINUTES
 
     private fun protectedCheckNamesRemainPresent(): AssertionResult {
         val present = jobs.mapNotNull { it.name }.toSet()
@@ -82,29 +91,50 @@ internal class WorkflowTimeoutContract private constructor(
 
     private companion object {
         /**
-         * The ceiling for a job's `timeout-minutes`. It exists to kill a hung job, not to bound a
-         * healthy one, so it MUST retain headroom over the measured distribution: over 58 sampled
-         * `ios-simulator-build` runs, the 44 successes ranged 12.1 to 23.9 minutes with a p90 of
-         * 18.3, so a ceiling must sit well above the worst observed success rather than near it
-         * (`D-176`).
+         * The ceiling for a job's `timeout-minutes` unless the job names its own. It exists to kill a
+         * hung job, not to bound a healthy one, so it MUST retain headroom over the measured
+         * distribution: over 58 sampled `ios-simulator-build` runs, the 44 successes ranged 12.1 to
+         * 23.9 minutes with a p90 of 18.3, so a ceiling must sit well above the worst observed
+         * success rather than near it (`D-176`).
          */
-        const val MAX_JOB_MINUTES = 40
+        const val DEFAULT_JOB_CEILING_MINUTES = 40
+
+        /**
+         * Jobs whose own measured duration legitimately exceeds [DEFAULT_JOB_CEILING_MINUTES]. Each
+         * entry needs a decision, because raising the default instead would widen the guard for
+         * every job (`D-229`, ADR-0230). The map is empty: its only entry, `ios-ui-tests` at 60
+         * minutes, was retired by `D-230` (ADR-0231) when the UI suite became five shards that each
+         * fit the default, after run 39087272433 cancelled the single job at 60 minutes.
+         */
+        val JOB_CEILING_MINUTES: Map<String, Int> = emptyMap()
         val JOB_START = Regex("^  ([A-Za-z0-9_-]+):$")
         val NAME = Regex("^\\s{4}name: (.+)$")
         val STEP_NAME = Regex("^\\s{6}- name: (.+)$")
         val TIMEOUT = Regex("^\\s{4}timeout-minutes: (\\d+)$")
         val STEP_TIMEOUT = Regex("^\\s{8}timeout-minutes: (\\d+)$")
-        val PROTECTED_CHECK_NAMES = setOf(
-            "ktlint",
-            "detekt",
-            "architecture-check",
-            "contract-check",
-            "android-assemble",
-            "android-instrumented-tests",
-            "shared-tests",
-            "ios-simulator-build",
-            "objc-header-golden-check",
-            "provider-decoupling",
-        )
     }
 }
+
+/**
+ * The check names `main`'s branch protection requires (`docs/CONTRACTS.md §18`). Assertion 30 keeps each
+ * one present in the workflow, and assertion 45 keeps the `ios-ui-tests-*` names equal to the shard set
+ * of `scripts/ios-ui-test-shards.txt` (`D-230`, ADR-0231).
+ */
+internal val PROTECTED_CHECK_NAMES: Set<String> =
+    setOf(
+        "ktlint",
+        "detekt",
+        "architecture-check",
+        "contract-check",
+        "android-assemble",
+        "android-instrumented-tests",
+        "shared-tests",
+        "ios-simulator-build",
+        "ios-ui-tests-audit-1",
+        "ios-ui-tests-audit-2",
+        "ios-ui-tests-ax3-1",
+        "ios-ui-tests-ax3-2",
+        "ios-ui-tests-remainder",
+        "objc-header-golden-check",
+        "provider-decoupling",
+    )

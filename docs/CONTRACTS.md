@@ -408,7 +408,7 @@ Public use cases and repositories return `Outcome<T, AppError>` or `Flow<Outcome
 
 `kotlin.Result` and exceptions-as-control-flow are FORBIDDEN in public signatures. Arrow MUST NOT be added without an ADR.
 
-`AppError` is a `sealed interface`; every leaf is a `data class` or `data object` carrying a stable `code` (§20). Presentation MUST handle it with an exhaustive `when` and MUST NOT use an `else` branch. Retry and poison decisions are made on `code`, never on a message string.
+`AppError` is a `sealed interface`; every leaf is a `data class` or `data object` carrying a stable `code` (§20). Presentation MUST handle it with an exhaustive `when` and MUST NOT use an `else` branch. A platform host is the one exception, because it receives `UiMessage.code` (§20.10), a `String`, and no compiler can prove a `when` or `switch` over a `String` exhaustive: each host maps that code through its single mapping source of `§14.1`, which holds one explicit branch per code, and MAY end in an `else` or `default` branch only as an unreachable safety net that resolves to the generic `error_unexpected` copy. `contract-check` assertion 41 fails when either host lacks an explicit branch for any `AppError` leaf code, `CONFIRMATION.<entry>` or `INFO.*` code, so the safety net never stands in for a missing mapping (`D-220`). Retry and poison decisions are made on `code`, never on a message string.
 
 ### Categories
 
@@ -1506,8 +1506,8 @@ Contract: `entries` MUST contain only non-deleted entries for one vehicle, in an
 
 Shared state holders:
 
-- Live in feature `presentation` packages. `SyncStateHolder` is the app-level exception and lives
-  in `:shared`.
+- Live in feature `presentation` packages. `SessionStateHolder`, `SyncStateHolder` and
+  `SettingsStateHolder` are the app-level exceptions and live in `:shared` (`D-155`, `D-211`).
 - Expose immutable `StateFlow<UiState>` built with `stateIn(scope = scope + dispatchers.main, started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS), initialValue = initialValue)`.
 - Accept intent functions.
 - Kotlin-facing factories take a `scope: CoroutineScope` parameter and the caller owns that scope. Android passes `viewModelScope`.
@@ -1521,7 +1521,7 @@ Shared state holders:
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
-`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
+`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code. Each host renders a `UiMessage.code` through the `§14.1` table. The only text-typed fields a `UiState` may carry are listed in `§14.2`. Host UI sources render no literal text (`§14.3`).
 
 Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status` from `SyncStateHolder`) observes the same `SyncController.status: StateFlow<SyncStatus>` flow. The values are eventually consistent and converge to the same `SyncStatus`. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
 
@@ -1546,6 +1546,138 @@ exceptions, wire every exposing holder to the single controller and add the two-
 test.
 
 Platform adapters contain rendering and lifecycle glue only. Validation, formatting decisions, repository calls and business logic remain shared.
+
+### 14.1 UiMessage code-to-copy table
+
+Each host renders a `UiMessage.code` (§20.10) through exactly one mapping source: `uiMessageStringResource`
+in `androidApp/src/main/java/com/ruizurraca/carapp/UiMessageStrings.kt` on Android and `uiMessageKey` in
+`iosApp/UiMessageMapping.swift` on iOS. Both hold one explicit branch per code and both name the key this
+table assigns (`D-219`). Copy is assigned per user-actionable outcome, not per leaf: codes that ask
+the owner for the same action share a key, and a key is shared only where the "Shared with" column says
+so. The generic `error_unexpected` copy is reserved for the two unclassified failures, `AUTH.UNKNOWN` and
+`UNEXPECTED`.
+
+Every key exists in `values/strings.xml` and `values-es/strings.xml` on Android and in `en.lproj` and
+`es.lproj` `Localizable.strings` on iOS. A host renders the mapped value without arguments, so no value
+in this table carries a format argument; a screen that shows a count or a date formats it through a key
+of its own (the pending-sync prompt formats `SessionUiState.pendingSyncCount` that way). The English and
+Spanish columns give the Android copy; where the iOS copy differs, the cell says so. "Reaches a
+`UiMessage` today" records whether a production path publishes the code when `E4-02` was delivered; a
+code nothing publishes still has a row, because every code of §20.10 is mapped. `contract-check`
+assertion 41 keeps both host mappings, both host test lists and this table in step.
+
+**Session-channel exception (`D-232`).** A `SessionUiState.message` that carries no confirmation is
+rendered through `sessionMessageStringResource` in
+`androidApp/src/main/java/com/ruizurraca/carapp/AccountConversionSurface.kt` and `sessionMessageKey` in
+`iosApp/AccountConversionSurface.swift`. Both map every `REMOTE.*` code to
+`error_conversion_replacement_pending` ("The data could not be copied to the account yet. carApp will
+keep trying automatically." / "Aún no se han podido copiar los datos a la cuenta. carApp seguirá
+intentándolo automáticamente.") and defer every other code to the mapping above. On that channel a
+`REMOTE.*` code is published only by a confirmed account replacement that failed after the session
+switch, which `E2-04` resumes on its own. No other host function maps a `UiMessage.code`.
+
+| Code | User-actionable outcome | Key | Shared with | English (`en`) | Spanish (`es-ES`) | Reaches a `UiMessage` today |
+|------|-------------------------|-----|-------------|----------------|-------------------|-----------------------------|
+| `VALIDATION.REQUIRED_FIELD` | Fill in the missing field | `error_required_field` | — | Complete the required field. | Completa el campo obligatorio. | Yes: vehicle validation |
+| `VALIDATION.INVALID_LENGTH` | Shorten or lengthen the field | `error_invalid_length` | — | Check the field length. | Comprueba la longitud del campo. | Yes: vehicle and fuel-entry validation |
+| `VALIDATION.OUT_OF_RANGE` | Enter a value inside the allowed range | `error_out_of_range` | — | Enter a value within the allowed range. | Introduce un valor dentro del intervalo permitido. | Yes: vehicle and fuel-entry validation |
+| `VALIDATION.EDIT_NOT_ALLOWED` | Leave the locked initial odometer unchanged | `error_edit_not_allowed` | — | The initial odometer can no longer be changed. | Ya no se puede cambiar el kilometraje inicial. | Yes: vehicle validation |
+| `VALIDATION.DUPLICATE_NAME` | Choose another vehicle name | `error_duplicate_vehicle_name` | — | Another vehicle already has this name. | Ya existe otro vehículo con este nombre. | Yes: vehicle validation |
+| `VALIDATION.FUTURE_DATE` | Pick a date that is not in the future | `error_future_date` | — | The date cannot be in the future. | La fecha no puede estar en el futuro. | Yes: fuel-entry validation |
+| `VALIDATION.INVALID_MONEY_INPUT` | Enter the two monetary values the entry method needs | `error_money_input` | — | Enter the two required monetary values. | Introduce los dos valores monetarios obligatorios. | Yes: `FuelEntryFormStateHolder` |
+| `VALIDATION.NO_OP` | Make a change, or leave without saving | `error_no_changes` | — | There are no changes to save. | No hay cambios que guardar. | No: only an empty `UpdateSettingsCommand` produces it, and no production caller sends one (`SettingsStateHolder` drops same-value intents) |
+| `VALIDATION.INVALID_UNIT` | Pick a supported currency | `error_currency` | — | Select a supported currency. | Selecciona una moneda compatible. | Yes: fuel-entry validation and settings writes |
+| `VALIDATION.ENTITY_DELETED` | Go back: the item is gone | `error_entity_unavailable` | `VALIDATION.ENTITY_NOT_FOUND` | This vehicle or refuel is no longer available. | Este vehículo o repostaje ya no está disponible. | Yes: vehicle and fuel-entry writes |
+| `VALIDATION.ENTITY_NOT_FOUND` | Go back: the item is gone | `error_entity_unavailable` | `VALIDATION.ENTITY_DELETED` | This vehicle or refuel is no longer available. | Este vehículo o repostaje ya no está disponible. | Yes: vehicle form and fuel-entry writes |
+| `WARNING.ODOMETER_INCONSISTENT` | Confirm or correct the odometer | `odometer_warning_body` | `CONFIRMATION.OdometerInconsistent`; the odometer warning dialog | This value is not greater than the previous odometer. Save it only if it is correct. | Este valor no es superior al odómetro anterior. Guárdalo solo si es correcto. | Yes: `FuelEntryFormStateHolder` |
+| `WARNING.PENDING_SYNC` | Wait for the backup, cancel, or discard the pending changes | `pending_sync_title` | `CONFIRMATION.DiscardPendingChanges` | Changes not backed up yet (iOS: Changes not backed up) | Cambios sin copia de seguridad | Yes: sign-out and local-data deletion (`AccountDepartureFlow`) |
+| `AUTH.CANCELLED` | Try signing in again | `error_auth_cancelled` | — | Sign-in was cancelled. You can try again. | Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo. | Yes: authentication provider |
+| `AUTH.NETWORK_UNAVAILABLE` | Go online and retry | `error_auth_network` | — | This needs a network connection. Try again when you are online. | Esta acción necesita conexión. Inténtalo de nuevo cuando vuelvas a tener red. | Yes: sign-in, conversion, re-authentication and departure |
+| `AUTH.CREDENTIAL_ALREADY_IN_USE` | Use another account | `error_auth_credential_in_use` | — | This account is already linked to another carApp account. | Esta cuenta ya está vinculada a otra cuenta de carApp. | Rare: a non-conversion sign-in; conversion publishes `CONFIRMATION.AdoptExistingAccount` instead |
+| `AUTH.PROVIDER_UNAVAILABLE` | Use another sign-in option | `error_auth_provider` | — | This sign-in provider is not configured yet. | Este proveedor de inicio de sesión aún no está configurado. | Yes: `SessionStateHolder` and `AccountDepartureFlow` |
+| `AUTH.NO_ACCOUNT_AVAILABLE` | Add an account to the device, or continue without one | `error_auth_no_account` | — | There is no Google account on this device. Add one in Settings, or continue without an account. (iOS: There is no account available on this device. Add one in Settings, or continue without an account.) | No hay ninguna cuenta de Google en este dispositivo. Añádela desde los Ajustes o continúa sin cuenta. (iOS: No hay ninguna cuenta disponible en este dispositivo. Añádela desde los Ajustes o continúa sin cuenta.) | Yes: native sign-in |
+| `AUTH.TOKEN_EXPIRED` | Sign in again | `error_auth_session_expired` | — | Your session has expired. Sign in again to continue. | Tu sesión ha caducado. Vuelve a iniciar sesión para continuar. | No: no production code constructs it |
+| `AUTH.PERMISSION_DENIED` | Try the account action again later | `error_auth_permission_denied` | — | This account action is not allowed right now. Try again later. | Ahora mismo no se permite esta acción de la cuenta. Inténtalo de nuevo más tarde. | Yes: account deletion and orphan-cleanup calls |
+| `AUTH.REQUIRES_RECENT_LOGIN` | Sign in again, then delete | `error_auth_requires_recent_login` | — | For your security, sign in again to delete your account. | Por seguridad, vuelve a iniciar sesión para eliminar tu cuenta. | Yes: account deletion (`AccountDepartureFlow`) |
+| `AUTH.UID_WOULD_CHANGE` | Nothing to do: linking stopped and nothing changed | `error_auth_uid_would_change` | — | Linking was stopped because it would have replaced this account. Nothing has changed. | Se ha detenido la vinculación porque habría sustituido esta cuenta. No ha cambiado nada. | Yes: account conversion |
+| `AUTH.ACCOUNT_DELETION_REMOTE_FAILED` | Retry the deletion; local data is kept | `error_account_deletion_remote_failed` | — | Your account could not be deleted. The data on this device has been kept. Try again later. (iOS: Your account could not be deleted. Your data is still on this device. Try again later.) | No se ha podido eliminar tu cuenta. Se han conservado los datos de este dispositivo. Inténtalo más tarde. (iOS: No se ha podido eliminar tu cuenta. Tus datos siguen en este dispositivo. Inténtalo más tarde.) | Yes: account deletion |
+| `AUTH.UNKNOWN` | Retry: the failure is unclassified | `error_unexpected` | `UNEXPECTED` | Something went wrong. Try again. | Algo ha salido mal. Inténtalo de nuevo. | Yes: authentication provider |
+| `PERSISTENCE.DATABASE_UNAVAILABLE` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: a closed sync engine, and a settings read failure (`SettingsStateHolder`) |
+| `PERSISTENCE.TRANSACTION_FAILED` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: the backup retry (`D-193`) and local writes |
+| `PERSISTENCE.MIGRATION_FAILED` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | No: no production code constructs it |
+| `PERSISTENCE.SERIALIZATION_FAILED` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | Yes: the vehicle and fuel-entry repositories |
+| `PERSISTENCE.CONSTRAINT_VIOLATION` | Retry on this device | `error_persistence` | every `PERSISTENCE.*` code | The change could not be saved on this device. Try again. | No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo. | No: no production code constructs it |
+| `SYNC.RETRYABLE_NETWORK` | Go online; the backup resumes by itself | `error_backup_offline` | `SYNC.REMOTE_UNAVAILABLE`, `REMOTE.UNAVAILABLE`, `REMOTE.DEADLINE_EXCEEDED` | The backup could not be reached. Your data is safe on this device; try again when you are online. | No se ha podido conectar con la copia de seguridad. Tus datos están a salvo en este dispositivo; inténtalo de nuevo cuando tengas conexión. | No: no production code constructs it |
+| `SYNC.AUTH_EXPIRED` | Wait: the backup resumes once the session is renewed | `error_backup_session` | `REMOTE.UNAUTHENTICATED` | The backup is paused until your session is renewed. Your data is safe on this device. | La copia de seguridad está en pausa hasta que se renueve tu sesión. Tus datos están a salvo en este dispositivo. | No: no production code constructs it |
+| `SYNC.PERMISSION_DENIED` | Nothing to retry: the backup refused the data | `error_backup_rejected` | `SYNC.VALIDATION_REJECTED`, `SYNC.PAYLOAD_POISONED`, `REMOTE.PERMISSION_DENIED`, `REMOTE.INVALID_ARGUMENT`, `SECURITY.RULES_REJECTED`, `SECURITY.OWNER_MISMATCH` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | No: reported to the poison handler only |
+| `SYNC.VALIDATION_REJECTED` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | No: reported to the poison handler only |
+| `SYNC.PAYLOAD_POISONED` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | No: reported to the poison handler only |
+| `SYNC.CONFLICT_UNRESOLVED` | Try the restore again later | `error_restore` | `REMOTE.NOT_FOUND`, `REMOTE.UNKNOWN` | The backup could not be restored. Your local data is still available. | No se ha podido recuperar la copia. Tus datos locales siguen disponibles. | Yes: a pull that cannot progress fails the cycle a refresh awaits |
+| `SYNC.REMOTE_UNAVAILABLE` | Go online; the backup resumes by itself | `error_backup_offline` | see `SYNC.RETRYABLE_NETWORK` | The backup could not be reached. Your data is safe on this device; try again when you are online. | No se ha podido conectar con la copia de seguridad. Tus datos están a salvo en este dispositivo; inténtalo de nuevo cuando tengas conexión. | No: no production code constructs it |
+| `REMOTE.UNAVAILABLE` | Go online; the backup resumes by itself | `error_backup_offline` | see `SYNC.RETRYABLE_NETWORK` | The backup could not be reached. Your data is safe on this device; try again when you are online. | No se ha podido conectar con la copia de seguridad. Tus datos están a salvo en este dispositivo; inténtalo de nuevo cuando tengas conexión. | Yes: a failed pull during a refresh, and account conversion |
+| `REMOTE.DEADLINE_EXCEEDED` | Go online; the backup resumes by itself | `error_backup_offline` | see `SYNC.RETRYABLE_NETWORK` | The backup could not be reached. Your data is safe on this device; try again when you are online. | No se ha podido conectar con la copia de seguridad. Tus datos están a salvo en este dispositivo; inténtalo de nuevo cuando tengas conexión. | Yes: a failed pull during a refresh, and account conversion |
+| `REMOTE.PERMISSION_DENIED` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | Yes: a failed pull during a refresh, and account conversion |
+| `REMOTE.UNAUTHENTICATED` | Wait: the backup resumes once the session is renewed | `error_backup_session` | `SYNC.AUTH_EXPIRED` | The backup is paused until your session is renewed. Your data is safe on this device. | La copia de seguridad está en pausa hasta que se renueve tu sesión. Tus datos están a salvo en este dispositivo. | Yes: a failed pull during a refresh |
+| `REMOTE.INVALID_ARGUMENT` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | Yes: a failed pull, and a malformed document during account conversion |
+| `REMOTE.NOT_FOUND` | Try the restore again later | `error_restore` | see `SYNC.CONFLICT_UNRESOLVED` | The backup could not be restored. Your local data is still available. | No se ha podido recuperar la copia. Tus datos locales siguen disponibles. | Yes: a failed pull |
+| `REMOTE.UNKNOWN` | Try the restore again later | `error_restore` | see `SYNC.CONFLICT_UNRESOLVED` | The backup could not be restored. Your local data is still available. | No se ha podido recuperar la copia. Tus datos locales siguen disponibles. | Yes: a failed pull during a refresh, and account conversion |
+| `SECURITY.RULES_REJECTED` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | No: no production code constructs it |
+| `SECURITY.OWNER_MISMATCH` | Nothing to retry: the backup refused the data | `error_backup_rejected` | see `SYNC.PERMISSION_DENIED` | The backup rejected this data, so retrying will not help. Your data is still on this device. | La copia de seguridad ha rechazado estos datos, así que volver a intentarlo no servirá. Tus datos siguen en este dispositivo. | No: no production code constructs it |
+| `UNEXPECTED` | Retry: the failure is unclassified | `error_unexpected` | `AUTH.UNKNOWN` | Something went wrong. Try again. | Algo ha salido mal. Inténtalo de nuevo. | Yes: the sync engine and the integration boundaries |
+| `CONFIRMATION.OdometerInconsistent` | Confirm or correct the odometer | `odometer_warning_body` | `WARNING.ODOMETER_INCONSISTENT` | This value is not greater than the previous odometer. Save it only if it is correct. | Este valor no es superior al odómetro anterior. Guárdalo solo si es correcto. | No: the fuel form publishes `WARNING.ODOMETER_INCONSISTENT` carrying this confirmation |
+| `CONFIRMATION.DiscardPendingChanges` | Wait for the backup, cancel, or discard the pending changes | `pending_sync_title` | `WARNING.PENDING_SYNC` | Changes not backed up yet (iOS: Changes not backed up) | Cambios sin copia de seguridad | No: published as `WARNING.PENDING_SYNC` carrying this confirmation |
+| `CONFIRMATION.DeleteAccount` | Confirm the irreversible account deletion | `confirm_delete_account` | — | This permanently deletes your account and every vehicle and refuel in it, on this device and in the backup. This cannot be undone. | Esto elimina permanentemente tu cuenta y todos los vehículos y repostajes que contiene, en este dispositivo y en la copia de seguridad. No se puede deshacer. | Yes: account deletion |
+| `CONFIRMATION.DeleteLocalData` | Confirm the irreversible local deletion | `confirm_delete_local_data` | — | This permanently deletes every vehicle and refuel on this device. There is no account to recover them from, so this cannot be undone. | Esto elimina permanentemente todos los vehículos y repostajes de este dispositivo. No hay ninguna cuenta desde la que recuperarlos, así que no se puede deshacer. | Yes: local-data deletion |
+| `CONFIRMATION.AdoptExistingAccount` | Confirm replacing the existing account's data | `confirm_replace_existing_account` | — | This permanently replaces every vehicle and refuel in the existing account with the data on this device. This cannot be undone. | Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer. | Yes: an account-conversion collision |
+| `INFO.CONFIRM_DELETE_VEHICLE` | Confirm the vehicle deletion | `delete_vehicle_confirmation` | the vehicle delete dialog body | This also deletes its fuel entries from this device. | También se eliminarán sus repostajes de este dispositivo. | Yes: `VehicleListStateHolder.requestDelete` |
+| `INFO.CONFIRM_DELETE_FUEL_ENTRY` | Confirm the refuel deletion | `delete_fuel_entry_confirmation` | — | This refuel will be permanently deleted. | Este repostaje se eliminará de forma permanente. | No: no host calls `FuelEntryListStateHolder.requestDelete` |
+
+### 14.2 UiState text-field allowlist
+
+A `UiState` carries no user-facing text. A constructor property of a `UiState` class (a `data class`
+named `*UiState` or `*Ui`) or of `UiMessage` whose type is `String`, `CharSequence` or contains either
+(for example `List<String>`) is allowed only when this table lists it with one of four kinds:
+**Identifier** (a lowercase UUID string, §15.3), **Currency code** (an ISO 4217 code the host renders
+through its platform currency API), **User-entered** (a value the owner typed, which the host shows back
+unchanged) or **Programmatic code** (a stable code the host maps to its own resources, §14.1).
+`contract-check` assertion 43 reads this table: a text field it does not list fails, and so does a row
+that no longer names such a field or that uses another kind (`D-221`).
+
+| Field | Kind | Why it is not display copy |
+|-------|------|----------------------------|
+| `UiMessage.code` | Programmatic code | A stable code of §20.10, rendered through §14.1. |
+| `VehicleListUiState.selectedVehicleId` | Identifier | The selected vehicle's UUID. |
+| `VehicleListItemUi.id` | Identifier | The vehicle's UUID. |
+| `VehicleListItemUi.name` | User-entered | The vehicle name the owner typed. |
+| `VehicleFormUiState.vehicleId` | Identifier | The edited vehicle's UUID, or none while creating. |
+| `VehicleFormUiState.savedVehicleId` | Identifier | The UUID of the vehicle the last save wrote. |
+| `VehicleFormUiState.name` | User-entered | The vehicle name being typed. |
+| `VehicleFormUiState.brand` | User-entered | The optional brand being typed. |
+| `VehicleFormUiState.model` | User-entered | The optional model being typed. |
+| `FuelEntryListUiState.vehicleId` | Identifier | The listed vehicle's UUID. |
+| `FuelEntryListItemUi.id` | Identifier | The fuel entry's UUID. |
+| `FuelEntryListItemUi.currencyCode` | Currency code | The ISO 4217 code of the entry's cost. |
+| `FuelEntryFormUiState.vehicleId` | Identifier | The vehicle's UUID. |
+| `FuelEntryFormUiState.entryId` | Identifier | The edited entry's UUID, or none while creating. |
+| `FuelEntryFormUiState.currencyCode` | Currency code | The ISO 4217 code of the entry's cost. |
+| `FuelEntryFormUiState.notes` | User-entered | The optional notes being typed. |
+| `SettingsUiState.currencyCode` | Currency code | The selected ISO 4217 code. |
+| `SettingsUiState.supportedCurrencyCodes` | Currency code | `SUPPORTED_CURRENCY_CODES` as ISO 4217 strings, in contract order. |
+
+### 14.3 Host literal text
+
+Host UI sources render text only through their catalogues. On Android no string literal reaches Compose
+`Text` (positional or `text =`), `contentDescription`, `stateDescription`, `onClickLabel`,
+`onLongClickLabel`, `paneTitle` or `showSnackbar`. On iOS no `Text(verbatim:)` is used, and every literal
+passed to a SwiftUI `LocalizedStringKey` initializer or modifier, to `String(localized:)`,
+`String.LocalizationValue` or `NSLocalizedString` is a catalogue key: lowercase snake_case with no
+interpolation. A value computed at run time, such as a user-entered vehicle name or a formatted number,
+is passed as a variable and is outside this textual rule; a composed string goes through a catalogue key
+with format arguments. The Debug-only diagnostics screen of `D-100`, `iosApp/DiagnosticsView.swift`, is
+the one allowlisted source, and it may be constructed only inside `#if DEBUG`. Android allowlists no
+source: its diagnostics screen is part of `MainActivity.kt` and renders values, not literals.
+`contract-check` assertion 44 enforces this section, and assertion 42 checks that every key a host
+references exists in both of its catalogues (`D-221`).
 
 ## 15. Platform Boundary Contract
 
@@ -1991,11 +2123,16 @@ Redaction is the responsibility of the `Logger` implementation, not the caller. 
 
 ## 18. CI and Branch Protection Contract
 
-D-31 and D-84 define the exact CI check names. Required checks:
+D-31, D-84, D-229 and D-230 define the exact CI check names. Required checks:
 
 - `android-assemble`
 - `shared-tests`
 - `ios-simulator-build`
+- `ios-ui-tests-audit-1`
+- `ios-ui-tests-audit-2`
+- `ios-ui-tests-ax3-1`
+- `ios-ui-tests-ax3-2`
+- `ios-ui-tests-remainder`
 - `ktlint`
 - `detekt`
 - `architecture-check`
@@ -2003,6 +2140,19 @@ D-31 and D-84 define the exact CI check names. Required checks:
 - `contract-check`
 - `objc-header-golden-check`
 - `android-instrumented-tests`
+
+The `carAppUITests` test target, the `AccessibilityAuditUITests` audits included, runs only in the
+five `ios-ui-tests-*` shard checks, each a macOS job inside the 40-minute default ceiling (`D-230`,
+ADR-0231). `scripts/ios-ui-test-shards.txt` assigns test classes and methods to the shards
+`audit-1`, `audit-2`, `ax3-1` and `ax3-2`: a class entry runs every method of the class that another
+shard does not name, and the implicit `remainder` shard runs every test no entry names, so a new test
+always runs in exactly one shard. The `ios-simulator-build` check keeps the pinned-Xcode check, the
+Gradle links and the `carAppTests` unit target at 40 minutes (`D-229`, ADR-0230). The unit target and
+the UI suite are separate checks because a single job that ran both exceeded its 40 minutes and was
+cancelled with no test result, which is indistinguishable from a real regression; the UI suite is
+sharded because a single UI job then exceeded its own 60 minutes the same way on run 39087272433.
+The jobs run in parallel, so each split costs runner minutes, and adds wall-clock only when the macOS
+concurrency limit queues jobs.
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
@@ -2051,10 +2201,15 @@ Optional checks:
 26. The foundational GitHub Actions are recorded as Node.js 24 generations in the version matrix;
     an obsolete runtime generation fails the check.
 27. Every protected CI job declares a `timeout-minutes` safety limit.
-28. No CI job declares a safety limit above 40 minutes. The limit kills a hung job; it is not a
-    bound on a healthy one and MUST retain headroom over the measured distribution, not sit near its
-    worst observed success. Over 58 sampled runs `ios-simulator-build` succeeded between 12.1 and
-    23.9 minutes, so its duration varies by nearly a factor of two with runner speed.
+28. No CI job declares a safety limit above its own ceiling: 40 minutes by default, and the explicit
+    per-job ceiling `WorkflowTimeoutContract.JOB_CEILING_MINUTES` names when 40 does not fit. The
+    limit kills a hung job; it is not a bound on a healthy one and MUST retain headroom over the
+    measured distribution, not sit near its worst observed success. Over 58 sampled runs
+    `ios-simulator-build` succeeded between 12.1 and 23.9 minutes, so its duration varies by nearly a
+    factor of two with runner speed. A job that genuinely needs more gets its own named ceiling
+    rather than a raised default, because a raised default widens the guard for every job. No job has
+    one today: `D-230` (ADR-0231) retired the `ios-ui-tests` entry of 60 minutes (`D-229`, ADR-0230)
+    by sharding the UI suite into jobs that each fit the default.
 29. The `shared-tests` Android-host and Kotlin/Native steps retain stricter platform-specific limits.
 30. Every protected check name required by branch protection remains present in `ci.yml`.
 31. The workflow-level GitHub permission is exactly `contents: read`.
@@ -2107,6 +2262,66 @@ Optional checks:
     and `android.permission.ACCESS_ADSERVICES_TOPICS`; iOS disables IDFV collection (`D-203`).
     Assertion 38 enforces the no-IDFA SwiftPM product in both the source specification and the
     generated Xcode project. Each privacy setting and permission-removal rule has a failing fixture.
+41. Every `UiMessage.code` the shared layer can publish has an explicit, single-code mapping on both
+    hosts and a row in the `§14.1` table. The code set is parsed from the sources that define it: each
+    `override val code` of `AppError.kt`, `CONFIRMATION.<entry>` for each `Confirmation` entry, and each
+    `INFO.*` string literal of the production Kotlin sources of `:shared`, the feature modules and the
+    core modules. `uiMessageStringResource` in
+    `androidApp/src/main/java/com/ruizurraca/carapp/UiMessageStrings.kt` and `uiMessageKey` in
+    `iosApp/UiMessageMapping.swift` each hold one branch per code; a commented-out branch, or one that
+    names two codes, does not count. The two hosts and the table name the same key for every code, no
+    branch or row names a code that no source defines, no code is mapped twice, each mapped key exists
+    in both catalogues of its host and carries no format argument, both fallbacks resolve to
+    `error_unexpected`, and `UiMessageStringsTest.kt` and `UiMessageMappingTests.swift` name every
+    code. Neither compiler can prove a `when` or `switch` over a `String` exhaustive, so this assertion
+    is what keeps the `§6` safety net unreachable (`D-220`).
+42. Every string key a host references exists in both catalogues of that host, and the two catalogues
+    of each host declare the same keys. On Android the references are every `R.string` and
+    `R.plurals` use in `androidApp/src/main/java` and every `@string/` use in the other XML files of
+    `androidApp/src/main`, checked against `res/values/strings.xml` and `res/values-es/strings.xml`; a
+    string declared `translatable="false"` is exempt from the Spanish catalogue. On iOS the references
+    are the lowercase snake_case literals of the top-level `iosApp/*.swift` sources that are passed as
+    the first argument of a SwiftUI `LocalizedStringKey` initializer or modifier (`Text`, `Button`,
+    `Label`, `Toggle`, `Picker`, `Section`, `TextField`, `SecureField`, `Link`, `Menu`, `Stepper`,
+    `DatePicker`, `ProgressView`, `LocalizedStringKey`, `navigationTitle`, `accessibilityLabel`,
+    `accessibilityHint`, `accessibilityValue`, `alert`, `confirmationDialog`, `help`), passed to
+    `String(localized:)`, `String.LocalizationValue` or `NSLocalizedString`, or returned by a function
+    whose name ends in `Key`, checked against `en.lproj` and `es.lproj` `Localizable.strings`. A key
+    rendered without arguments, through a SwiftUI initializer or modifier or through Compose
+    `stringResource(R.string.x)` or `getString(R.string.x)` with no further argument, carries no format
+    argument in either catalogue, because nothing would fill it. Neither build fails on a missing
+    translation or an unfilled placeholder, so no other check sees these gaps (`D-221`).
+43. Every constructor property of a `UiState` class (a `data class` named `*UiState` or `*Ui`) and of
+    `UiMessage`, in the production Kotlin sources of `:shared`, the feature modules and the core
+    modules, whose type is `String`, `CharSequence` or contains either, is listed in the `§14.2` table,
+    and every row of that table names such a property with one of its four kinds. Comments and string
+    literals are masked before the parse, so KDoc and default values are not read as types. The table
+    is the allowlist, so a new text field in shared presentation state is a contract change reviewed
+    with its kind (`D-221`).
+44. No host UI source passes literal text to a rendering API, as `§14.3` defines. On Android no string
+    literal in `androidApp/src/main/java` reaches Compose `Text` (positional or `text =`),
+    `contentDescription`, `stateDescription`, `onClickLabel`, `onLongClickLabel`, `paneTitle` or
+    `showSnackbar`. In the top-level `iosApp/*.swift` sources no `Text(verbatim:)` appears, and every
+    literal passed to a SwiftUI `LocalizedStringKey` initializer or modifier, to `String(localized:)`,
+    `String.LocalizationValue` or `NSLocalizedString` is a lowercase snake_case key with no
+    interpolation. Comments are masked before the scan. The Debug-only allowlist is explicit:
+    `iosApp/DiagnosticsView.swift` (`D-100`) on iOS and no source on Android. An allowlisted source must
+    exist, and every construction of an allowlisted iOS view outside its own file must sit inside an
+    `#if DEBUG` branch that is not negated, joined by `||`, or an `#else`/`#elseif` branch, so the
+    allowlist cannot exempt a production screen. Text computed at run time is outside this textual
+    check (`D-221`).
+45. Every line of `scripts/ios-ui-test-shards.txt` is `<shard> <TestClass>` or
+    `<shard> <TestClass>/<testMethod>`, and names an `XCTestCase` class declared in
+    `iosApp/UITests` and, when present, a `test` method declared in that class. No identifier is
+    assigned twice and the implicit `remainder` shard is never listed. Every shard the manifest
+    defines, plus `remainder`, runs in exactly one job whose id and check name are both
+    `ios-ui-tests-<shard>`, through `scripts/ios-ui-test-shard.sh`, and no job passes
+    `-only-testing:carAppUITests` or `-skip-testing:carAppUITests` to `xcodebuild` itself. With the
+    class-entry and remainder rules, this keeps every UI test in exactly one shard: a stale
+    entry, which would run nothing, and a shard without its job, whose tests the remainder skips,
+    both fail. Every `ios-ui-tests-<shard>` check is in
+    `PROTECTED_CHECK_NAMES`, and no protected `ios-ui-tests-*` name lacks a manifest shard
+    (`D-230`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -2813,6 +3028,7 @@ interface AppGraph {
     fun fuelEntryListStateHolder(scope: CoroutineScope, vehicleId: String): FuelEntryListStateHolder
     fun fuelEntryFormStateHolder(scope: CoroutineScope, vehicleId: String, entryId: String?): FuelEntryFormStateHolder
     fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder
+    fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder
     fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
     fun syncController(): SyncController
     fun close()
@@ -2832,6 +3048,7 @@ class SwiftAppGraph {
     fun fuelEntryFormStateHolder(vehicleId: String, entryId: String?): FuelEntryFormStateHolder
     fun releaseFuelEntryFormStateHolder(vehicleId: String, entryId: String?)
     fun sessionStateHolder(): SessionStateHolder
+    fun settingsStateHolder(): SettingsStateHolder
     fun syncStateHolder(): SyncStateHolder
     fun close()
 }
@@ -2918,6 +3135,14 @@ class SyncStateHolder {
     fun retryFailed()
     fun clearMessage()
     fun refreshDebug()
+    fun close()
+}
+
+class SettingsStateHolder {
+    val state: StateFlow<SettingsUiState>
+    fun selectCurrency(code: String)
+    fun setAnalyticsEnabled(enabled: Boolean)
+    fun clearMessage()
     fun close()
 }
 
@@ -3014,6 +3239,16 @@ data class SyncUiState(
     val message: UiMessage?,
 )
 
+data class SettingsUiState(
+    val currencyCode: String?,
+    val supportedCurrencyCodes: List<String>,
+    val distanceUnit: DistanceUnit,
+    val volumeUnit: VolumeUnit,
+    val analyticsEnabled: Boolean,
+    val isSaving: Boolean,
+    val message: UiMessage?,
+)
+
 // UiMessage and UiMessageKind are declared in §20.3 and owned by :core:common.
 ```
 
@@ -3067,7 +3302,9 @@ message, which is the owner transition.
 
 `SyncStateHolder.onForegroundReturn(backgroundMillis)` is the `§9.8` foreground entry point, and `backgroundMillis` is nullable on purpose. Each host observes its own lifecycle and calls this member with how long the app spent in the background, or with `null` on a cold start: a cold start has no measurable background duration and `§9.8` names it as a trigger in its own right, so it MUST NOT be encoded as a duration. The `FOREGROUND_RESUME_THRESHOLD_MS` comparison is applied here, so both hosts share one rule and one test instead of repeating the comparison, and a return of exactly the threshold is not a trigger because `§9.8` requires **more than** the threshold in the background. The member fires `SyncTrigger.AppForeground`, never `Periodic` or `ConnectivityRecovered`, and it is a no-op after `close()`. `SyncTrigger.ConnectivityRecovered` remains platform-owned and is derived by the graph from the `ConnectivityObserver` offline-to-online edge, never invoked from Swift UI code. The host's background measurement MUST outlive the UI that reports it: recreating a view, a scene or an Activity is not a cold start, so a measurement discarded with that UI would report `null` and request a cycle `§9.8` does not permit. Each host therefore holds it for the process.
 
-`SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
+`SettingsStateHolder` is the Settings surface of `SPECIFICATION.md §3.1` (`D-211`). It observes the graph's single `SettingsRepository.settings` flow, the same flow the `§16.1` opt-in gate observes, so an opt-in or an opt-out written through it reaches the analytics tracker without a restart. `SettingsUiState.currencyCode` is `null` until the repository has emitted the settings once; until then the other settings fields are placeholders that a host MUST NOT render as known values. `supportedCurrencyCodes` is `SUPPORTED_CURRENCY_CODES` (§20.0.1) in its declared order. Currency codes cross as `String` (§15.3) and carry no display name: each host produces the name through its platform currency API. `distanceUnit` and `volumeUnit` are read-only in the MVP (§3), so the holder exposes no intent for them. `selectCurrency(code)` writes nothing when `code` equals the published `currencyCode`; for a code outside `SUPPORTED_CURRENCY_CODES` it writes nothing and publishes a `UiMessage` with `code = "VALIDATION.INVALID_UNIT"`; for any other code it writes exactly `UpdateSettingsCommand(currency = CurrencyCode(code), analyticsEnabled = null)`. `setAnalyticsEnabled(enabled)` writes nothing when the published value already equals `enabled`, and otherwise writes exactly `UpdateSettingsCommand(currency = null, analyticsEnabled = enabled)`. Published values change only when the repository emits; an intent never updates them optimistically. `isSaving` is `true` from an accepted write until the repository answers, and both write intents do nothing while it is `true`, so a host disables the two controls for that interval. A settings read failure and a failed write each publish their `AppError` code as an `ERROR` `UiMessage`, and `clearMessage()` withdraws the message an intent published. Backup status and the session rows of the Settings screen stay on `SyncStateHolder` and `SessionStateHolder`.
+
+`SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, aborts with `AuthError.UidWouldChange` when the provider would change it (§11.3), and maps `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` acts only on `Confirmation.AdoptExistingAccount`, and only while the collision credential captured with the published collision is still held: `clearMessage()` while the collision is shown, every new sign-in, conversion or re-authentication attempt (`startAnonymousSignIn`, `startPermanentSignIn`, `startAccountConversion`, `startReauthentication`, `failSignIn`), `close()` and the confirmation itself discard it; any other confirmation acts on nothing (`D-227`). The collision is cancelled with `clearMessage()` while that confirmation is shown: it discards the in-memory collision credential (`D-154`), leaves the anonymous session and all local and remote data untouched, and reports `AccountConversionFailed(CANCELLED)`. `failSignIn(NativeSignInFailure.CANCELLED)` remains the cancellation of a native acquisition that has not completed; a host does not use it to answer a collision that is already shown.
 
 `SessionStateHolder.requestSignOut()` is offered only to a permanently authenticated user. It reads the
 pending outbox count; when the outbox is non-empty it publishes a `UiMessage` with
@@ -3279,5 +3516,5 @@ The Kotlin-facing `AppGraph`, `AppProviders`, `AppGraphDependencies` and
 `buildAppGraph(isDebugBuild, providers)` MUST be absent from the Objective-C header.
 `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState`
 classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`,
-`ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind`
-MUST be present.
+`ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger`, `UiMessageKind`,
+`DistanceUnit`, `VolumeUnit` and `NativeSignInFailure` MUST be present.

@@ -30,6 +30,60 @@ func formatScaled(_ value: Int64, scale: Int) -> String {
     return "\(sign)\(whole).\(fraction)"
 }
 
+/// A scaled quantity for display, grouped and with the locale's decimal separator: `7,24` in `es_ES`,
+/// `7.24` in `en_US` (`E4-02`, `D-222`). The value and its scale are the `docs/CONTRACTS.md §2`
+/// representation: an exact `NSDecimalNumber` with exactly `scale` fraction digits is printed with
+/// exactly `scale` fraction digits, so nothing is rounded; only separators and grouping follow the
+/// locale.
+func formatScaledDecimal(_ value: Int64, scale: Int, locale: Locale) -> String {
+    let formatter = exactFormatter(style: .decimal, scale: scale, locale: locale)
+    return formatter.string(from: exactDecimal(value, scale: scale)) ?? formatScaled(value, scale: scale)
+}
+
+/// A scaled quantity for an editable field. It is never grouped and it uses a comma only where the
+/// locale's decimal separator is a comma, because `parseScaled` reads exactly `.` and `,`.
+func formatScaledInput(_ value: Int64, scale: Int, locale: Locale) -> String {
+    let canonical = formatScaled(value, scale: scale)
+    return locale.decimalSeparator == "," ? canonical.replacingOccurrences(of: ".", with: ",") : canonical
+}
+
+/// A scaled amount of `currencyCode` with the locale's currency placement: `12.345,67 €` in `es_ES`,
+/// `€12,345.67` in `en_US`.
+func formatCurrencyAmount(_ value: Int64, scale: Int, currencyCode: String, locale: Locale) -> String {
+    let formatter = exactFormatter(style: .currency, scale: scale, locale: locale)
+    formatter.currencyCode = currencyCode
+    // Setting the currency may reset the fraction digits, so they are applied again afterwards.
+    formatter.minimumFractionDigits = scale
+    formatter.maximumFractionDigits = scale
+    let fallback = formatScaledDecimal(value, scale: scale, locale: locale) + " " + currencyCode
+    return formatter.string(from: exactDecimal(value, scale: scale)) ?? fallback
+}
+
+/// A whole number grouped for the locale, such as an odometer: `142.500` in `es_ES`.
+func formatInteger(_ value: Int64, locale: Locale) -> String {
+    let formatter = NumberFormatter()
+    formatter.locale = locale
+    formatter.numberStyle = .decimal
+    formatter.usesGroupingSeparator = true
+    formatter.maximumFractionDigits = 0
+    return formatter.string(from: NSNumber(value: value)) ?? String(value)
+}
+
+private func exactFormatter(style: NumberFormatter.Style, scale: Int, locale: Locale) -> NumberFormatter {
+    let formatter = NumberFormatter()
+    formatter.locale = locale
+    formatter.numberStyle = style
+    formatter.usesGroupingSeparator = true
+    formatter.minimumFractionDigits = scale
+    formatter.maximumFractionDigits = scale
+    formatter.roundingMode = .halfUp
+    return formatter
+}
+
+private func exactDecimal(_ value: Int64, scale: Int) -> NSDecimalNumber {
+    NSDecimalNumber(mantissa: value.magnitude, exponent: Int16(-scale), isNegative: value < 0)
+}
+
 func parseScaled(_ input: String, scale: Int) -> Int64? {
     let normalised = input.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
     let parts = normalised.split(separator: ".", omittingEmptySubsequences: false).map(String.init)

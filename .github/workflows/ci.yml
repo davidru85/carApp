@@ -4,10 +4,12 @@
 # branch protection for main requires them by name.
 #
 # The `timeout-minutes` on each job is a hang guard, not a speed budget: it kills a job that has
-# stopped making progress. It MUST stay well above the slowest healthy run, which is why it is 40 and
-# not 20 (`D-176`): `ios-simulator-build` has succeeded in as little as 12 minutes and as much as
-# 23.9. CI duration under 20 minutes is the separate monitored objective of `E0-05`, and the
-# test-heavy jobs keep stricter per-step limits.
+# stopped making progress. It MUST stay well above the slowest healthy run, which is why the default
+# is 40 and not 20 (`D-176`): `ios-simulator-build` has succeeded in as little as 12 minutes and as
+# much as 23.9. CI duration under 20 minutes is the separate monitored objective of `E0-05`, and the
+# test-heavy jobs keep stricter per-step limits. A job whose own measured duration legitimately
+# exceeds the default names its own ceiling in `WorkflowTimeoutContract.JOB_CEILING_MINUTES` instead
+# of raising the default for every job (`D-229`, ADR-0230).
 
 name: CI
 
@@ -241,29 +243,119 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Check the pinned Xcode major version
-        run: |
-          # docs/versions-matrix.md pins Xcode 26.6 and says it is pinned on the CI runner too.
-          # A different major version is a real toolchain drift and fails; a different patch is
-          # reported, because runner images move faster than a pin can be reviewed.
-          PINNED=$(grep -E '^xcode = ' gradle/libs.versions.toml | sed -E 's/.*"([^"]+)".*/\1/')
-          ACTUAL=$(xcodebuild -version | head -1 | awk '{print $2}')
-          echo "pinned=$PINNED actual=$ACTUAL"
-          if [ "${PINNED%%.*}" != "${ACTUAL%%.*}" ]; then
-            echo "::error::Xcode major version drift: pinned $PINNED, runner has $ACTUAL. Update docs/versions-matrix.md and gradle/libs.versions.toml in a reviewed change."
-            exit 1
-          fi
-          if [ "$PINNED" != "$ACTUAL" ]; then
-            echo "::warning::Xcode patch drift: pinned $PINNED, runner has $ACTUAL."
-          fi
+        run: scripts/check-xcode-pin.sh
       - name: Link the optimized consumption device-test binary
         run: ./gradlew :feature:fuel:linkReleaseTestIosArm64 --stacktrace
       - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
-      - name: Run iOS tests
+      - name: Run iOS unit tests
         working-directory: iosApp
         run: |
           DEVICE_ID=$(xcrun simctl list devices available iPhone | grep -E -o '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' | head -n 1)
           xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator \
-            -destination "id=$DEVICE_ID" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO test
+            -destination "id=$DEVICE_ID" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO test \
+            -only-testing:carAppTests
+
+  # The carAppUITests suite runs as five parallel shards, one protected check each (D-230, ADR-0231),
+  # separate from the ios-simulator-build unit target (D-229, ADR-0230). The single 60-minute
+  # ios-ui-tests job it replaces was cancelled at its ceiling on run 39087272433 after 48.7 minutes
+  # of tests with the suite unfinished. scripts/ios-ui-test-shards.txt assigns tests to shards, the
+  # remainder shard runs every test no manifest line names, and contractCheck assertion 45 keeps
+  # the manifest, the test sources and these jobs consistent. Each shard repeats the ~11.5-minute
+  # framework link and test-app compile and stays inside the 40-minute default ceiling.
+  ios-ui-tests-audit-1:
+    name: ios-ui-tests-audit-1
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      - name: Check the pinned Xcode major version
+        run: scripts/check-xcode-pin.sh
+      - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+      - name: Run the iOS UI test shard
+        run: scripts/ios-ui-test-shard.sh audit-1
+
+  ios-ui-tests-audit-2:
+    name: ios-ui-tests-audit-2
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      - name: Check the pinned Xcode major version
+        run: scripts/check-xcode-pin.sh
+      - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+      - name: Run the iOS UI test shard
+        run: scripts/ios-ui-test-shard.sh audit-2
+
+  ios-ui-tests-ax3-1:
+    name: ios-ui-tests-ax3-1
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      - name: Check the pinned Xcode major version
+        run: scripts/check-xcode-pin.sh
+      - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+      - name: Run the iOS UI test shard
+        run: scripts/ios-ui-test-shard.sh ax3-1
+
+  ios-ui-tests-ax3-2:
+    name: ios-ui-tests-ax3-2
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      - name: Check the pinned Xcode major version
+        run: scripts/check-xcode-pin.sh
+      - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+      - name: Run the iOS UI test shard
+        run: scripts/ios-ui-test-shard.sh ax3-2
+
+  ios-ui-tests-remainder:
+    name: ios-ui-tests-remainder
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      - name: Check the pinned Xcode major version
+        run: scripts/check-xcode-pin.sh
+      - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+      - name: Run the iOS UI test shard
+        run: scripts/ios-ui-test-shard.sh remainder
 
   objc-header-golden-check:
     name: objc-header-golden-check

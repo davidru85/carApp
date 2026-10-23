@@ -20,6 +20,7 @@ class SwiftAppGraph {
     private val cachedFuelEntryLists = mutableMapOf<String, ScopedHolder<FuelEntryListStateHolder>>()
     private val cachedFuelEntryForms = mutableMapOf<Pair<String, String?>, ScopedHolder<FuelEntryFormStateHolder>>()
     private var cachedSession: ScopedHolder<SessionStateHolder>? = null
+    private var cachedSettings: ScopedHolder<SettingsStateHolder>? = null
     private var cachedSync: ScopedHolder<SyncStateHolder>? = null
     private var closed = false
 
@@ -91,6 +92,14 @@ class SwiftAppGraph {
                 .holder
     }
 
+    fun settingsStateHolder(): SettingsStateHolder {
+        val graph = requireOpenGraph()
+        return cachedSettings?.holder
+            ?: newScopedHolder { scope -> graph.settingsStateHolder(scope) }
+                .also { cachedSettings = it }
+                .holder
+    }
+
     fun syncStateHolder(): SyncStateHolder {
         val graph = requireOpenGraph()
         return cachedSync?.holder
@@ -107,12 +116,14 @@ class SwiftAppGraph {
         cachedFuelEntryLists.values.forEach { it.close(FuelEntryListStateHolder::close) }
         cachedFuelEntryForms.values.forEach { it.close(FuelEntryFormStateHolder::close) }
         cachedSession?.close(SessionStateHolder::close)
+        cachedSettings?.close(SettingsStateHolder::close)
         cachedSync?.close(SyncStateHolder::close)
         cachedVehicleList = null
         cachedVehicleForms.clear()
         cachedFuelEntryLists.clear()
         cachedFuelEntryForms.clear()
         cachedSession = null
+        cachedSettings = null
         cachedSync = null
         backingGraph?.close()
         backingGraph = null

@@ -1,0 +1,56 @@
+# iOS UI test shards of the carAppUITests target (D-230, ADR-0231).
+#
+# Read by scripts/ios-ui-test-shard.sh, which turns a shard into xcodebuild test selection, and by
+# contractCheck assertion 45, which fails when an entry names a test that does not exist, when an
+# identifier is assigned twice, or when a shard has no ios-ui-tests-<shard> job in
+# .github/workflows/ci.yml.
+#
+# Each line is "<shard> <TestClass>" or "<shard> <TestClass>/<testMethod>".
+# - A class entry runs every test of that class except the methods another shard names, so a new
+#   method added to the class runs in the class's shard without an edit here.
+# - The `remainder` shard is implicit and is never listed: it runs every carAppUITests test that no
+#   line names, so a new test class runs somewhere without an edit here.
+#
+# Balance: every shard targets about 15 to 18 minutes of tests on the macOS runner, so the job,
+# including the ~13 minute framework link and test-app compile, stays well inside the 40-minute
+# default ceiling of D-176. Durations below are the run 39837103094 measurements (head f23abecc);
+# rebalance from a complete run when a shard drifts above 20 minutes of tests.
+
+# audit-1, 1004 s measured: the three slowest system-alert audits.
+audit-1 AccessibilityAuditUITests/testPendingSyncPassesTheAccessibilityAudit
+audit-1 AccessibilityAuditUITests/testCollisionPassesTheAccessibilityAudit
+audit-1 AccessibilityAuditUITests/testDeleteLocalDataPassesTheAccessibilityAudit
+
+# audit-2, ~930 s measured plus three settings fixture audits: every other audit except
+# odometer-warning, listed by method. AccessibilityAuditUITests has no class entry, so an audit that no
+# line names, testOdometerWarningPassesTheAccessibilityAudit (368 s) included, runs in remainder.
+audit-2 AccessibilityAuditUITests/testWelcomePassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testFirstVehicleFormPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testVehicleDetailPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testVehicleListPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testFuelEntryFormPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testFuelEntryRowWithBadgesPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testSettingsPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testConversionRowPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testDepartureFailurePassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testReauthenticationPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testReauthenticationFailurePassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testDeleteAccountPassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testConversionFixturePassesTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testUnknownSettingsPassTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testSavingSettingsPassTheAccessibilityAudit
+audit-2 AccessibilityAuditUITests/testPermanentAccountRowsPassTheAccessibilityAudit
+
+# ax3-1, 1080 s measured: the three slowest system-alert AX3 audits.
+ax3-1 LargeContentSizeUITests/testPendingSyncIsReachableAtAx3
+ax3-1 LargeContentSizeUITests/testCollisionIsReachableAtAx3
+ax3-1 LargeContentSizeUITests/testDeleteAccountIsReachableAtAx3
+
+# ax3-2, 997 s measured plus the departure-failure and permanent-account AX3 cases: every other AX3
+# test, including delete-local-data and odometer-warning.
+ax3-2 LargeContentSizeUITests
+
+# remainder, 659 s measured plus testOdometerWarningPassesTheAccessibilityAudit (368 s):
+# OnboardingFlowUITests, OnboardingWaitPolicyTests, SettingsFlowUITests, SpanishLocalizationUITests,
+# VehicleAndFuelFlowUITests, AccountConversionUITests, CarAppKeychainPersistenceUITests, every
+# AccessibilityAuditUITests method no line names, and any class added later.

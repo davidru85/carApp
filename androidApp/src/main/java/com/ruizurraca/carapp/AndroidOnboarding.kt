@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -31,17 +32,19 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.ruizurraca.carapp.core.common.AuthProvider
 
-internal enum class OnboardingDestination { WAITING, WELCOME, FIRST_VEHICLE, VEHICLE_LIST }
+internal enum class OnboardingDestination { WAITING, WELCOME, FIRST_VEHICLE, VEHICLE_LIST, DEPARTURE }
 
 internal fun resolveOnboardingDestination(
     sessionPhase: SessionPhase,
     vehicleCount: Int,
 ): OnboardingDestination =
     when (sessionPhase) {
-        SessionPhase.UNKNOWN,
-        SessionPhase.DELETING,
-        -> {
+        SessionPhase.UNKNOWN -> {
             OnboardingDestination.WAITING
+        }
+
+        SessionPhase.DELETING -> {
+            OnboardingDestination.DEPARTURE
         }
 
         SessionPhase.SIGNED_OUT -> {
@@ -104,15 +107,45 @@ internal sealed interface GoogleCredentialAcquisition {
     ) : GoogleCredentialAcquisition
 }
 
+/**
+ * The native Google picker entry points the Android host offers. Each runs the one
+ * [AndroidGoogleSignInCoordinator.acquireAndComplete] path behind its own shared start intent, so
+ * re-authentication is not a second sign-in path (`docs/CONTRACTS.md §20.10`). `E4-05` adds the
+ * account-conversion entry the same way.
+ */
+internal data class GoogleSignInActions(
+    val signIn: () -> Unit,
+    val reauthenticate: () -> Unit,
+    val convert: () -> Unit,
+)
+
 internal class AndroidGoogleSignInCoordinator(
     private val acquireCredential: suspend () -> GoogleCredentialAcquisition,
     private val startPermanentSignIn: (AuthProvider) -> Unit,
+    private val startAccountConversion: (AuthProvider) -> Unit,
     private val completeGoogleSignIn: (String, String?) -> Unit,
     private val failSignIn: (NativeSignInFailure) -> Unit,
     private val setAcquisitionInFlight: (Boolean) -> Unit,
 ) {
+    /** F-1 permanent sign-in: the picker path behind `startPermanentSignIn`. */
     suspend fun signIn() {
-        startPermanentSignIn(AuthProvider.GOOGLE)
+        acquireAndComplete(startPermanentSignIn)
+    }
+
+    /** `E4-05` account conversion: the same picker path behind `startAccountConversion`. */
+    suspend fun convert() {
+        acquireAndComplete(startAccountConversion)
+    }
+
+    /**
+     * The single native Google picker path. [startEntryIntent] is the shared intent that opens the
+     * attempt: `startPermanentSignIn` for F-1 sign-in, `startReauthentication` for the `§20.10`
+     * re-authentication of a stale-login deletion, and `startAccountConversion` for `E4-05`. It always
+     * runs before the picker, so the holder knows which attempt the credential completes, and every
+     * entry completes through the same `completeGoogleSignIn` / `failSignIn` intents.
+     */
+    suspend fun acquireAndComplete(startEntryIntent: (AuthProvider) -> Unit) {
+        startEntryIntent(AuthProvider.GOOGLE)
         setAcquisitionInFlight(true)
         when (val acquisition = acquireCredential()) {
             is GoogleCredentialAcquisition.Success -> {
@@ -216,18 +249,21 @@ internal fun WelcomeScreen(
     onGoogle: () -> Unit,
     onContinueWithoutAccount: () -> Unit,
 ) {
+    // `E4-02`: the box keeps the welcome centred while it fits; the column scrolls once a 200% font
+    // scale makes the copy and both actions taller than the screen.
     Box(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.welcome_title),
                 style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.screenHeading(),
             )
             Text(stringResource(R.string.welcome_body))
             OnboardingAction {
@@ -248,7 +284,7 @@ internal fun WelcomeScreen(
                     Text(stringResource(R.string.continue_without_account))
                 }
             }
-            if (state.isBusy) CircularProgressIndicator()
+            if (state.isBusy) LabelledProgressIndicator()
             state.message?.let { ErrorText(it) }
         }
     }

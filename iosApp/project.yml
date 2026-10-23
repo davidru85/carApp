@@ -41,9 +41,24 @@ targets:
       - path: AnonymousReminderView.swift
       - path: SyncStatusVisual.swift
       - path: SyncStatusIndicatorView.swift
-      - path: en.lproj
-        buildPhase: resources
-      - path: es.lproj
+      - path: AccessibilitySupport.swift
+      - path: AccountConversionSurface.swift
+      - path: AppVersion.swift
+      - path: SettingsPresentation.swift
+      - path: DeparturePresentation.swift
+      - path: SettingsViewModel.swift
+      - path: SettingsView.swift
+      - path: DepartureView.swift
+      - path: DeparturePromptPresenter.swift
+      # E4-02: the two catalogues are walked from this directory so that XcodeGen builds one
+      # `Localizable.strings` variant group and lists `es` in knownRegions. A direct `.lproj` path
+      # is a folder reference and never registers its region.
+      - path: .
+        includes:
+          - "en.lproj"
+          - "en.lproj/**"
+          - "es.lproj"
+          - "es.lproj/**"
         buildPhase: resources
       - path: Config/Debug/GoogleService-Info-Debug.plist
     dependencies:

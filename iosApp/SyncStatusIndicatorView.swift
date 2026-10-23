@@ -15,6 +15,7 @@ import Shared
 /// deliberately left as its own element: combining the row into one accessibility element would fold
 /// a button into a non-actionable node and make manual recovery unreachable with a screen reader.
 struct SyncStatusIndicatorView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let status: SyncSyncStatus
     let message: UiMessage?
     let onRetry: () -> Void
@@ -27,24 +28,38 @@ struct SyncStatusIndicatorView: View {
 
     private var isError: Bool { syncStatusIsError(visual) }
 
+    /// `E4-02`: at accessibility text sizes the Retry action moves under the status instead of
+    /// squeezing it.
+    private var layout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 8))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                // Decorative: the adjacent text carries the accessible status.
-                Circle()
-                    .fill(isError ? Color.red : Color.accentColor)
-                    .frame(width: 8, height: 8)
-                    .accessibilityHidden(true)
+            layout {
+                HStack(spacing: 8) {
+                    // Decorative: the adjacent text carries the accessible status.
+                    Circle()
+                        .fill(isError ? Color.red : Color.accentColor)
+                        .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
 
-                Text(label)
-                    .font(.footnote)
-                    .foregroundColor(isError ? .red : .secondary)
-                    .accessibilityLabel(Text(String(format: String(localized: "backup_status_description"), label)))
-                    .accessibilityIdentifier("backup_status_indicator")
-                Spacer()
+                    // `E4-02`, `D-223`: system red measured 3.55:1 on white (C5).
+                    Text(label)
+                        .font(.footnote)
+                        .foregroundStyle(isError ? AnyShapeStyle(AccessibleColors.errorText) : AnyShapeStyle(HierarchicalShapeStyle.secondary))
+                        .accessibilityLabel(Text(String(format: String(localized: "backup_status_description"), label)))
+                        .accessibilityIdentifier("backup_status_indicator")
+                }
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Spacer()
+                }
                 if isError {
                     Button(String(localized: "backup_status_retry"), action: onRetry)
                         .font(.footnote)
+                        .frame(minHeight: 44)
                         .accessibilityIdentifier("backup_status_retry")
                 }
             }
@@ -52,8 +67,9 @@ struct SyncStatusIndicatorView: View {
             if isError, let message {
                 Text(message.localizedText)
                     .font(.footnote)
-                    .foregroundColor(.red)
+                    .foregroundStyle(AccessibleColors.errorText)
                     .accessibilityIdentifier("backup_status_error")
+                    .announcedOnAppearance(message.localizedText)
             }
         }
         .padding(.horizontal, 16)

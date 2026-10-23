@@ -170,7 +170,10 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** Phase 4, `E4-01` through `E4-04`, listed below and in `docs/BACKLOG.md`. Phase 3 closed
+- **Next:** Phase 4, delivered as two bundles under `D-209` (ADR-0210): `E4-B1` (`E4-01`, `E4-05`,
+  `E4-02`) is implemented through pull request #91 and awaits the owner's gated review, and
+  `E4-B2` (`E4-04`, `E4-03`) follows its
+  merge. Both are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
   `docs/handoffs/E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
@@ -200,6 +203,21 @@ review.
   A red `shared-tests` or `provider-decoupling` is evidence to investigate, not a reason to re-run:
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
+  `E4-06`, the in-app privacy-policy link, was added on 2026-10-15 under the new `docs/BACKLOG.md`
+  subsection "Store-submission prerequisites": the owner postponed it, it is low priority and not
+  Ready, it is not part of the `D-209` bundles, and it MUST be done before any App Store or Google
+  Play submission.
+  `E2-10`, account conversion interruption hardening, was added on 2026-10-16 by `D-228`
+  (ADR-0229) during `E4-05`, under the new `docs/BACKLOG.md` subsection "Defects found after Phase 2
+  closed": it is a correctness follow-up of the conversion flow, outside the `D-209` bundles, that
+  closes two `E2-04` hazards the `E4-05` surface made reachable; `D-233` (ADR-0234) added the write window
+  of a successful confirmed replacement on 2026-10-23. All three are accepted meanwhile as residual risks
+  in `docs/SECURITY.md`, and the story is not Ready.
+  `E1-19` (iOS fuel-entry swipe delete deletes nothing), `E1-20` (settings observation survives a read
+  failure), `E2-11` (a departure-marker write failure leaves a dead-end departure screen) and `E4-07`
+  (iOS UI test and contract-check hardening) were added on 2026-10-23 by the PR #91 review round 2,
+  under the `docs/BACKLOG.md` subsection "Defects found during Phase 4": they are not Ready, they are
+  outside the `D-209` bundles, and none blocks Phase 4.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
   as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
@@ -244,7 +262,16 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-01` through `E4-04`.
+- **Remaining Phase 4:** `E4-01`, `E4-05`, `E4-02`, `E4-04` and `E4-03`, delivered as two bundles
+  under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
+  account conversion host surface, `E4-02` accessibility and localization), is implemented on
+  `story/E4-B1-product-surface` through pull request #91 and awaits the owner's gated review; it
+  introduced `D-209` through `D-233`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
+  splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231) runs them as five
+  protected shard checks. Bundle `E4-B2`,
+  release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts
+  after `E4-B1` merges. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which places the
+  anonymous account-conversion entry point in Settings.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
   Auth-State Reconciliation).
@@ -377,8 +404,9 @@ the host. It is the one iOS-named command here that owes no cleanup.
 ### What is enforced, and what is not
 
 `main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`, `D-84`). Administrator enforcement is off, so the owner can bypass; nobody else
-can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
+(`D-31`, `D-34`, `D-84`). `D-229` and `D-230` add the five `ios-ui-tests-*` shard checks that
+`docs/CONTRACTS.md §18` requires, fifteen in total once the owner adds them to branch protection.
+Administrator enforcement is off, so the owner can bypass; nobody else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made
 `testAppGraphDependencies` parity executable. `E3-08` made the `:wiring:firebase` product-logic rule
@@ -388,10 +416,31 @@ of `docs/TECHNICAL_PLAN.md §4` executable (`D-178`), added the source rule that
 (`D-180`), made the `§20.10` iOS trigger ban executable as a source rule over both iOS platform file
 kinds, Kotlin `iosMain` and Swift `iosApp` (`D-185`), and bound the single `BGTaskScheduler`
 identifier of `§9.1` to a contract fixture that compares the Kotlin constant with
-`iosApp/Info.plist`. `contractCheck` currently reports no `PENDING` assertions.
+`iosApp/Info.plist`. `E4-02` made the localization rules executable as `docs/CONTRACTS.md §18`
+assertions 41 to 44: every `UiMessage` code has an explicit mapping on both hosts and in the `§14.1`
+table (`D-220`), every referenced key exists in both catalogues of its host, `UiState` text fields
+are limited to the `§14.2` allowlist, and no host UI source renders literal text outside the Debug-only
+allowlist (`D-221`). `contractCheck` currently reports no `PENDING` assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
 provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).
+
+`ios-simulator-build` and the iOS UI tests are separate protected checks (`D-229`, ADR-0230).
+`ios-simulator-build` runs the pinned-Xcode check, the `:feature:fuel:linkReleaseTestIosArm64`
+device-test binary and `:composition:ios:linkDebugFrameworkIosSimulatorArm64`, and runs only
+`-only-testing:carAppTests` inside its 40-minute ceiling. The UI suite runs as five shard checks,
+`ios-ui-tests-audit-1`, `ios-ui-tests-audit-2`, `ios-ui-tests-ax3-1`, `ios-ui-tests-ax3-2` and
+`ios-ui-tests-remainder`, each inside the same 40-minute default (`D-230`, ADR-0231), because the
+single `ios-ui-tests` job of `D-229` was cancelled at its own 60-minute ceiling on run 39087272433
+with five test classes not started. `scripts/ios-ui-test-shards.txt` assigns tests to shards, the
+`remainder` shard runs every test no entry names, and `docs/CONTRACTS.md §18` assertion 45 fails on a
+stale entry, a duplicate, a shard without its job or a job that selects UI tests around the manifest.
+A slow new test therefore lands in its class's shard or in `remainder`; rebalance the manifest when a
+shard drifts past about 20 minutes of tests, rather than raising a ceiling. A job may exceed the
+40-minute default only through a named entry in `WorkflowTimeoutContract.JOB_CEILING_MINUTES`, which
+assertion 28 enforces and which is empty today; raising the default to fit one job is the mistake
+`D-176` already made once. The five shard checks are required on `main` only after the owner
+adds them to branch protection (`ios-ui-tests` was never added).
 
 `contractCheck` prints the live list; trust its output over this one.
 
@@ -504,9 +553,11 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 ## Scope Discipline
 
 Work only on the assigned backlog story. `D-205` (ADR-0206) assigns the six remaining Phase 3
-stories as two bundles, `E3-B1` and `E3-B2`, each delivered through one pull request; inside a
-bundle the stories run one at a time, and each keeps its own ready check, handoff and TDD cycle.
-No other story may be bundled without a new decision. The authoritative out-of-scope list is
+stories as two bundles, `E3-B1` and `E3-B2`, and `D-209` (ADR-0210) assigns the Phase 4 stories as
+two bundles, `E4-B1` (`E4-01`, `E4-05`, `E4-02`) and `E4-B2` (`E4-04`, `E4-03`). Each bundle is
+delivered through one pull request; inside a bundle the stories run one at a time, and each keeps
+its own ready check, handoff and TDD cycle. No other story may be bundled without a new decision.
+The authoritative out-of-scope list is
 `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
 export, receipt and odometer photos and OCR, local or on-device AI text recognition, fuel and
 maintenance reminders, operating-system notifications, shared vehicles, widgets, wearables and

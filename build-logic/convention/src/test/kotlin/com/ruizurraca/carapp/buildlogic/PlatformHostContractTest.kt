@@ -46,6 +46,10 @@ class PlatformHostContractTest {
         assertTrue(application.contains("AndroidAppGraph.install(this)"))
         assertTrue(host.contains("graph.vehicleListStateHolder(scope = viewModelScope)"))
         assertTrue(host.contains("graph.vehicleFormStateHolder(scope = viewModelScope, vehicleId = vehicleId)"))
+        // `E4-01`: the Settings holder is bound to the same process-scoped graph and released with the
+        // Activity's other holders, never by closing the graph.
+        assertTrue(host.contains("graph.settingsStateHolder(scope = viewModelScope)"))
+        assertTrue(host.contains("settingsStateHolder.close()"))
         assertTrue(host.contains("NavHost("))
         assertTrue(host.contains("VehicleRoutes.LIST"))
         assertTrue(host.contains("VehicleRoutes.CREATE"))
@@ -137,8 +141,38 @@ class PlatformHostContractTest {
         assertFalse(view.contains("Greeting"))
         assertTrue(english.contains("\"walking_skeleton_title\""))
         assertTrue(spanish.contains("\"walking_skeleton_title\""))
-        assertTrue(xcodeProject.contains("en.lproj in Resources"))
-        assertTrue(xcodeProject.contains("es.lproj in Resources"))
+    }
+
+    @Test
+    fun iosProjectListsSpanishAmongItsKnownRegions() {
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+        val regions =
+            KNOWN_REGIONS
+                .find(xcodeProject)
+                ?.groupValues
+                ?.get(1)
+                .orEmpty()
+                .split(',')
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+
+        // `E4-02`: Xcode only treats `es` as a localization of the project when it is a known region;
+        // XcodeGen registers a region only for `.lproj` directories it finds while walking a group.
+        assertTrue("es" in regions, "knownRegions=$regions")
+    }
+
+    @Test
+    fun iosCataloguesAreOneLocalizedVariantGroup() {
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+
+        assertTrue(xcodeProject.contains("isa = PBXVariantGroup;"), "no localized variant group")
+        assertTrue(xcodeProject.contains("path = en.lproj/Localizable.strings;"), "no English catalogue")
+        assertTrue(xcodeProject.contains("path = es.lproj/Localizable.strings;"), "no Spanish catalogue")
+        assertTrue(xcodeProject.contains("/* Localizable.strings in Resources */"), "catalogues are not bundled")
+    }
+
+    private companion object {
+        val KNOWN_REGIONS = Regex("""knownRegions = \(([^)]*)\);""")
     }
 
     @Test

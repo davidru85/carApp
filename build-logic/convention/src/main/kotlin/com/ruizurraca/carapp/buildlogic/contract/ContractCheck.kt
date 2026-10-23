@@ -40,6 +40,7 @@ class ContractCheck(
         *SwiftSurfaceContract(repoRoot).validate().toTypedArray(),
         *GitHubActionsContract(repoRoot).validate().toTypedArray(),
         *WorkflowTimeoutContract(repoRoot).validate().toTypedArray(),
+        IosUiTestShardContract(repoRoot).validate(),
         *WorkflowPermissionsContract(repoRoot).validate().toTypedArray(),
         GradleJvmContract(repoRoot).validate(),
         *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
@@ -50,6 +51,10 @@ class ContractCheck(
             nativeTestProjects = nativeTestDependencyGraph.keys,
         ),
         *AnalyticsIntegrationContract(repoRoot).validate().toTypedArray(),
+        UiMessageMappingContract(repoRoot).validate(),
+        LocalizationKeyContract(repoRoot).validate(),
+        UiStateTextContract(repoRoot).validate(),
+        HostLiteralTextContract(repoRoot).validate(),
         reportProseInCodeFences(),
     )
 

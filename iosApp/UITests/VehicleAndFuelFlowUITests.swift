@@ -267,7 +267,7 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
     /// The detail screen keeps editing behind the navigation bar's overflow `Menu`, so the editor is
     /// reached in two taps: open the menu, then its `edit_vehicle` item.
     private func openVehicleEditor(in app: XCUIApplication) {
-        let moreButton = app.buttons["More"].firstMatch
+        let moreButton = app.buttons["vehicle_more_actions"].firstMatch
         XCTAssertTrue(moreButton.waitForExistence(timeout: timeout), "The overflow menu must be offered")
         moreButton.tap()
 

@@ -6,7 +6,9 @@ Superseded by `D-190` / ADR-0191 on 2026-09-24.
 
 Accepted on 2026-09-24 during the `E3-12` review, to unblock pull request #73. The owner then took
 Option B, which removes the deadlock at its cause, so this temporary measure is withdrawn: the two
-stalling step limits are back at 10 and 8 minutes. The body below records the decision as taken.
+stalling step limits are back at 10 and 8 minutes. The body below records the decision as taken. Its
+`MAX_JOB_MINUTES` references name a constant that `D-229` (ADR-0230, 2026-10-17) later renamed to
+`DEFAULT_JOB_CEILING_MINUTES`; the withdrawn measure itself stays withdrawn.
 
 ## Context
 

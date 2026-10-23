@@ -88,4 +88,21 @@ final class OnboardingRouteTests: XCTestCase {
         XCTAssertFalse(VehicleCreationPresentation(isFirstRun: true).offersCancellation)
         XCTAssertTrue(VehicleCreationPresentation(isFirstRun: false).offersCancellation)
     }
+
+    /// `D-214`: a running deletion is drawn by the departure screen, not by a bare indicator that would
+    /// hide its failure and retry (`docs/CONTRACTS.md §20.10`).
+    func testADeletionInProgressRoutesToTheDepartureScreen() {
+        XCTAssertEqual(resolveOnboardingDestination(sessionPhase: .deleting, vehicleCount: 0), .departure)
+        XCTAssertEqual(resolveOnboardingDestination(sessionPhase: .deleting, vehicleCount: 2), .departure)
+    }
+
+    func testTheDepartureScreenOutranksEveryPhaseWhenRequested() {
+        for phase in [SessionPhase.unknown, .local, .anonymous, .permanent, .signedOut, .deleting] {
+            XCTAssertEqual(
+                resolveOnboardingDestination(sessionPhase: phase, vehicleCount: 1, showsDepartureScreen: true),
+                .departure,
+                "\(phase)"
+            )
+        }
+    }
 }

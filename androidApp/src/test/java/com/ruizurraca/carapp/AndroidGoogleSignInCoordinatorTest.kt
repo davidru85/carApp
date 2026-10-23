@@ -16,6 +16,7 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -39,6 +40,7 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Failure(NativeSignInFailure.NETWORK)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { _, _ -> calls += "complete" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -67,6 +69,7 @@ class AndroidGoogleSignInCoordinatorTest {
                     GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
                 },
                 startPermanentSignIn = { provider -> calls += "start:$provider" },
+                startAccountConversion = { provider -> calls += "convert:$provider" },
                 completeGoogleSignIn = { _, _ -> calls += "complete" },
                 failSignIn = { failure -> calls += "fail:$failure" },
                 setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -79,4 +82,214 @@ class AndroidGoogleSignInCoordinatorTest {
             calls,
         )
     }
+
+    /**
+     * `docs/CONTRACTS.md §20.10`: re-authentication opens its own attempt before the native picker and
+     * completes through the same Google completion intent. It is the sign-in path with a different
+     * start intent, not a second picker path.
+     */
+    @Test
+    fun reauthenticationStartsItsOwnIntentBeforeTheSamePicker() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Success(idToken = "fresh-id-token", accessToken = null)
+                    },
+                    startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
+                    completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
+                    failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+                )
+
+            coordinator.acquireAndComplete { provider -> calls += "reauthenticate:$provider" }
+
+            assertEquals(
+                listOf(
+                    "reauthenticate:${AuthProvider.GOOGLE}",
+                    "inFlight:true",
+                    "inFlight:false",
+                    "complete:fresh-id-token:null",
+                ),
+                calls,
+            )
+        }
+
+    @Test
+    fun aCancelledReauthenticationPickerUsesTheClosedFailureIntent() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Failure(NativeSignInFailure.CANCELLED)
+                    },
+                    startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
+                    completeGoogleSignIn = { _, _ -> calls += "complete" },
+                    failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+                )
+
+            coordinator.acquireAndComplete { provider -> calls += "reauthenticate:$provider" }
+
+            assertEquals(
+                listOf(
+                    "reauthenticate:${AuthProvider.GOOGLE}",
+                    "inFlight:true",
+                    "inFlight:false",
+                    "fail:${NativeSignInFailure.CANCELLED}",
+                ),
+                calls,
+            )
+        }
+
+    /**
+     * `E4-05`: the account-conversion entry point is the same native picker path behind the shared
+     * `startAccountConversion` intent. It never starts the permanent sign-in flow and completes through
+     * the same Google completion intent.
+     */
+    @Test
+    fun conversionAcquisitionStartsTheConversionIntentAndCompletesWithGoogle() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
+                    },
+                    startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
+                    completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
+                    failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+                )
+
+            coordinator.convert()
+
+            assertEquals(
+                listOf("convert:${AuthProvider.GOOGLE}", "inFlight:true", "inFlight:false", "complete:id-token:null"),
+                calls,
+            )
+        }
+
+    /**
+     * R1: the one place the host stage is cleared. A native acquisition that ends without a credential —
+     * a failed picker, a cancelled picker, or a recreation that interrupted it — is abandonment, and the
+     * injected `failSignIn` binding mirrors the production one of `MainActivity.kt`
+     * (`rememberGoogleSignIn`), which clears the stage after forwarding the failure.
+     */
+    @Test
+    fun aNativeReauthenticationFailureAbandonsTheHostStage() =
+        runBlocking {
+            var hostStage = true
+            val failures = mutableListOf<NativeSignInFailure>()
+            val starts = mutableListOf<AuthProvider>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = { GoogleCredentialAcquisition.Failure(NativeSignInFailure.NETWORK) },
+                    startPermanentSignIn = {},
+                    startAccountConversion = {},
+                    completeGoogleSignIn = { _, _ -> },
+                    failSignIn = { failure ->
+                        failures += failure
+                        hostStage = false
+                    },
+                    setAcquisitionInFlight = {},
+                )
+
+            coordinator.acquireAndComplete { provider -> starts += provider }
+
+            assertEquals(listOf(AuthProvider.GOOGLE), starts)
+            assertEquals(listOf(NativeSignInFailure.NETWORK), failures)
+            kotlin.test.assertFalse(hostStage)
+        }
+
+    @Test
+    fun anInterruptedReauthenticationAcquisitionAbandonsTheHostStage() {
+        var hostStage = true
+        val failures = mutableListOf<NativeSignInFailure>()
+        val coordinator =
+            AndroidGoogleSignInCoordinator(
+                acquireCredential = { GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null) },
+                startPermanentSignIn = {},
+                startAccountConversion = {},
+                completeGoogleSignIn = { _, _ -> },
+                failSignIn = { failure ->
+                    failures += failure
+                    hostStage = false
+                },
+                setAcquisitionInFlight = {},
+            )
+
+        coordinator.abandonInterruptedAcquisition()
+
+        assertEquals(listOf(NativeSignInFailure.CANCELLED), failures)
+        kotlin.test.assertFalse(hostStage)
+    }
+
+    /**
+     * The contrast case: a delivered credential is not abandonment. The shared provider can still refuse
+     * it, so the stage must survive the completion for the retained deletion to remain reachable.
+     */
+    @Test
+    fun aDeliveredReauthenticationCredentialDoesNotAbandonTheHostStage() =
+        runBlocking {
+            var hostStage = true
+            val failures = mutableListOf<NativeSignInFailure>()
+            val completions = mutableListOf<String>()
+            val starts = mutableListOf<AuthProvider>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Success(idToken = "fresh-id-token", accessToken = null)
+                    },
+                    startPermanentSignIn = {},
+                    startAccountConversion = {},
+                    completeGoogleSignIn = { idToken, _ -> completions += idToken },
+                    failSignIn = { failure ->
+                        failures += failure
+                        hostStage = false
+                    },
+                    setAcquisitionInFlight = {},
+                )
+
+            coordinator.acquireAndComplete { provider -> starts += provider }
+
+            assertEquals(listOf(AuthProvider.GOOGLE), starts)
+            assertEquals(listOf("fresh-id-token"), completions)
+            assertEquals(emptyList<NativeSignInFailure>(), failures)
+            kotlin.test.assertTrue(hostStage)
+        }
+
+    @Test
+    fun aCancelledConversionPickerReportsTheClosedCancellation() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Failure(NativeSignInFailure.CANCELLED)
+                    },
+                    startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
+                    completeGoogleSignIn = { _, _ -> calls += "complete" },
+                    failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+                )
+
+            coordinator.convert()
+
+            assertEquals(
+                listOf(
+                    "convert:${AuthProvider.GOOGLE}",
+                    "inFlight:true",
+                    "inFlight:false",
+                    "fail:${NativeSignInFailure.CANCELLED}",
+                ),
+                calls,
+            )
+        }
 }

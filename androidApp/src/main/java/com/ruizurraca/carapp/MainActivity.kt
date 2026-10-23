@@ -12,7 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,10 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -42,11 +42,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +83,7 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListUiState
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -117,6 +120,7 @@ internal class VehicleAppViewModel(
     val sessionStateHolder: SessionStateHolder = graph.sessionStateHolder(scope = viewModelScope)
     val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
     val syncStateHolder: SyncStateHolder = graph.syncStateHolder(scope = viewModelScope)
+    val settingsStateHolder: SettingsStateHolder = graph.settingsStateHolder(scope = viewModelScope)
     private val formStateHolders = mutableMapOf<String, VehicleFormStateHolder>()
     private val fuelEntryListStateHolders = mutableMapOf<String, FuelEntryListStateHolder>()
     private val fuelEntryFormStateHolders = mutableMapOf<Pair<String, String?>, FuelEntryFormStateHolder>()
@@ -164,6 +168,7 @@ internal class VehicleAppViewModel(
         sessionStateHolder.close()
         vehicleListStateHolder.close()
         syncStateHolder.close()
+        settingsStateHolder.close()
     }
 
     companion object {
@@ -182,7 +187,17 @@ private fun VehicleApp(
 ) {
     val sessionState by viewModel.sessionStateHolder.state.collectAsState()
     val vehicleState by viewModel.vehicleListStateHolder.state.collectAsState()
-    val onGoogle = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
+    val reauthenticationInFlight =
+        rememberReauthenticationInFlight(
+            sessionStateHolder = viewModel.sessionStateHolder,
+            phase = sessionState.phase,
+        )
+    val googleSignIn =
+        rememberGoogleSignIn(
+            sessionStateHolder = viewModel.sessionStateHolder,
+            acquireGoogleCredential = acquireGoogleCredential,
+            onNativeAcquisitionAbandoned = { reauthenticationInFlight.value = false },
+        )
 
     // Launch and foreground return are the only evaluation moments of the D-62 schedule (§11.3).
     // The same edge is the §9.8 AppForeground trigger: the holder applies the background-duration
@@ -192,7 +207,9 @@ private fun VehicleApp(
         viewModel.syncStateHolder.onForegroundReturn(backgroundMillis)
     }
 
-    when (resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)) {
+    // D-214: a departure owns the whole window while it runs, retains a step, hands over to the local
+    // clear or waits for re-authentication, because the authenticated `NavHost` is not its surface.
+    when (resolveRootDestination(sessionState, vehicleState.vehicles.size, reauthenticationInFlight.value)) {
         OnboardingDestination.WAITING -> {
             WaitingIndicator()
         }
@@ -200,8 +217,17 @@ private fun VehicleApp(
         OnboardingDestination.WELCOME -> {
             WelcomeScreen(
                 state = sessionState,
-                onGoogle = onGoogle,
+                onGoogle = googleSignIn.signIn,
                 onContinueWithoutAccount = viewModel.sessionStateHolder::startAnonymousSignIn,
+            )
+        }
+
+        OnboardingDestination.DEPARTURE -> {
+            DepartureRoot(
+                viewModel = viewModel,
+                sessionState = sessionState,
+                googleSignIn = googleSignIn,
+                reauthenticationInFlight = reauthenticationInFlight,
             )
         }
 
@@ -212,9 +238,44 @@ private fun VehicleApp(
                 viewModel = viewModel,
                 vehicleState = vehicleState,
                 anonymousReminderIndex = sessionState.anonymousReminderIndex,
+                googleSignIn = googleSignIn,
+            )
+            // A failed deletion re-mounts the `NavHost` at the vehicle list, so the departure prompts
+            // live here, above it, instead of inside the Settings route.
+            SettingsSessionPrompts(
+                session = sessionState,
+                callbacks =
+                    sessionPromptCallbacks(
+                        session = viewModel.sessionStateHolder,
+                        sync = viewModel.syncStateHolder,
+                        phase = sessionState.phase,
+                    ),
             )
         }
     }
+}
+
+/**
+ * D-214's departure branch: the stage flag and the Google re-authentication entry it guards belong to the
+ * authenticated root, so they are wired here and not in the routing `when`.
+ */
+@Composable
+private fun DepartureRoot(
+    viewModel: VehicleAppViewModel,
+    sessionState: SessionUiState,
+    googleSignIn: GoogleSignInActions,
+    reauthenticationInFlight: MutableState<Boolean>,
+) {
+    DepartureRoute(
+        session = sessionState,
+        isReauthenticating = reauthenticationInFlight.value,
+        sessionStateHolder = viewModel.sessionStateHolder,
+        onReauthenticateWithGoogle = {
+            reauthenticationInFlight.value = true
+            googleSignIn.reauthenticate()
+        },
+        onReauthenticationAbandoned = { reauthenticationInFlight.value = false },
+    )
 }
 
 /**
@@ -228,6 +289,7 @@ private fun AuthenticatedApp(
     viewModel: VehicleAppViewModel,
     vehicleState: VehicleListUiState,
     anonymousReminderIndex: Int?,
+    googleSignIn: GoogleSignInActions,
 ) {
     val navController = rememberNavController()
     var firstVehicleCreationPresented by rememberSaveable { mutableStateOf(false) }
@@ -249,6 +311,7 @@ private fun AuthenticatedApp(
             ) {
                 vehicleRoutes(navController, viewModel)
                 fuelEntryRoutes(navController, viewModel)
+                settingsRoute(navController, viewModel, googleSignIn)
             }
             when (gate) {
                 VehicleListGate.WAITING -> {
@@ -301,7 +364,7 @@ private fun UnreadableVehicleList(onRetry: () -> Unit) {
         ) {
             Text(
                 text = stringResource(R.string.vehicle_list_unreadable),
-                modifier = Modifier.testTag(VehicleTestTags.LIST_UNREADABLE),
+                modifier = Modifier.testTag(VehicleTestTags.LIST_UNREADABLE).announcedError(),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -318,21 +381,32 @@ private fun UnreadableVehicleList(onRetry: () -> Unit) {
  * Native credential acquisition is bound to the host that renders it, so a configuration change can
  * cancel it before any completion intent runs. The in-flight marker survives that recreation and
  * abandons the orphaned attempt, which is what keeps the welcome screen usable.
+ *
+ * [onNativeAcquisitionAbandoned] is the one point where a native attempt ends without a credential:
+ * a cancelled or failed picker, or an acquisition a recreation interrupted. A delivered credential is
+ * not abandonment — it can still be refused by the shared provider, and the host stage has to survive
+ * that refusal so the retained deletion stays reachable.
  */
 @Composable
 private fun rememberGoogleSignIn(
     sessionStateHolder: SessionStateHolder,
     acquireGoogleCredential: suspend () -> GoogleCredentialAcquisition,
-): () -> Unit {
+    onNativeAcquisitionAbandoned: () -> Unit,
+): GoogleSignInActions {
     val scope = rememberCoroutineScope()
+    val currentOnNativeAcquisitionAbandoned by rememberUpdatedState(onNativeAcquisitionAbandoned)
     var acquisitionInFlight by rememberSaveable { mutableStateOf(false) }
     val coordinator =
         remember(sessionStateHolder, acquireGoogleCredential) {
             AndroidGoogleSignInCoordinator(
                 acquireCredential = acquireGoogleCredential,
                 startPermanentSignIn = sessionStateHolder::startPermanentSignIn,
+                startAccountConversion = sessionStateHolder::startAccountConversion,
                 completeGoogleSignIn = sessionStateHolder::completeGoogleSignIn,
-                failSignIn = sessionStateHolder::failSignIn,
+                failSignIn = { failure ->
+                    sessionStateHolder.failSignIn(failure)
+                    currentOnNativeAcquisitionAbandoned()
+                },
                 setAcquisitionInFlight = { inFlight -> acquisitionInFlight = inFlight },
             )
         }
@@ -341,14 +415,30 @@ private fun rememberGoogleSignIn(
         if (acquisitionInFlight) coordinator.abandonInterruptedAcquisition()
     }
 
-    return { scope.launch { coordinator.signIn() } }
+    return GoogleSignInActions(
+        signIn = { scope.launch { coordinator.signIn() } },
+        reauthenticate = {
+            // Undispatched, so `startReauthentication` has made the session busy before this returns:
+            // the host's in-flight flag must never observe its own start as an already idle session.
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                coordinator.acquireAndComplete(sessionStateHolder::startReauthentication)
+            }
+        },
+        // `E4-05`: the same native picker path, entered through the shared account-conversion intent.
+        // Undispatched for the same reason as `reauthenticate`.
+        convert = {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                coordinator.convert()
+            }
+        },
+    )
 }
 
 @Composable
 private fun WaitingIndicator() {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            LabelledProgressIndicator()
         }
     }
 }
@@ -365,6 +455,7 @@ private fun NavGraphBuilder.vehicleRoutes(
             onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
             showDiagnostics = viewModel.isDebugBuild,
             onDiagnostics = { navController.navigate(VehicleRoutes.SYNC_DIAGNOSTICS) },
+            onSettings = { navController.navigate(VehicleRoutes.SETTINGS) },
         )
     }
     composable(VehicleRoutes.SYNC_DIAGNOSTICS) {
@@ -559,14 +650,21 @@ private fun VehicleListScreen(
     onOpen: (String) -> Unit,
     showDiagnostics: Boolean,
     onDiagnostics: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
     val syncState by syncStateHolder.state.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.vehicle_list_title)) },
+                title = { Text(stringResource(R.string.vehicle_list_title), modifier = Modifier.screenHeading()) },
                 actions = {
+                    TextButton(
+                        onClick = onSettings,
+                        modifier = Modifier.testTag(SettingsTestTags.ENTRY),
+                    ) {
+                        Text(stringResource(R.string.settings_title))
+                    }
                     if (showDiagnostics) {
                         TextButton(onClick = onDiagnostics) {
                             Text(stringResource(R.string.sync_diagnostics))
@@ -648,13 +746,14 @@ private fun VehicleListContent(
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val locale = currentDisplayLocale()
     Box(
         modifier = modifier.fillMaxSize().padding(horizontal = 20.dp),
         contentAlignment = Alignment.Center,
     ) {
         when {
             state.isLoading && state.vehicles.isEmpty() -> {
-                CircularProgressIndicator()
+                LabelledProgressIndicator()
             }
 
             state.message != null && state.vehicles.isEmpty() -> {
@@ -677,7 +776,8 @@ private fun VehicleListContent(
                                     .testTag(VehicleTestTags.vehicleRow(vehicle.id)),
                         ) {
                             Text(vehicle.name, style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
+                            val odometer = formatInteger(vehicle.currentOdometerKm, locale)
+                            Text(stringResource(R.string.vehicle_odometer, odometer))
                         }
                         HorizontalDivider()
                     }
@@ -694,7 +794,7 @@ internal fun VehicleFormTopBar(
     onBack: (() -> Unit)?,
 ) {
     TopAppBar(
-        title = { Text(stringResource(titleResource)) },
+        title = { Text(stringResource(titleResource), modifier = Modifier.screenHeading()) },
         navigationIcon = {
             if (onBack != null) {
                 TextButton(
@@ -864,7 +964,8 @@ private fun VehicleForm(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
+        // `E4-02`: every field and the save action stay reachable at a 200% font scale.
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         VehicleTextFields(
@@ -884,7 +985,7 @@ private fun VehicleForm(
             Text(
                 text = stringResource(R.string.error_out_of_range),
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.testTag(VehicleTestTags.ERROR),
+                modifier = Modifier.testTag(VehicleTestTags.ERROR).announcedError(),
             )
         } else {
             state.message?.let { ErrorText(it) }
@@ -895,7 +996,7 @@ private fun VehicleForm(
             modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.SAVE),
         ) {
             if (state.isSaving) {
-                CircularProgressIndicator()
+                LabelledProgressIndicator(labelResource = R.string.saving)
             } else {
                 Text(stringResource(R.string.save_vehicle))
             }
@@ -1003,7 +1104,6 @@ private fun FuelType.labelResource(): Int =
         FuelType.OTHER -> R.string.fuel_type_other
     }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun VehicleDetailScreen(
     navController: NavHostController,
@@ -1026,96 +1126,139 @@ private fun VehicleDetailScreen(
         )
     }
 
+    VehicleDetailLayout(
+        vehicle = vehicle,
+        isLoading = state.isLoading,
+        fuelState = fuelState,
+        onBack = { navController.popBackStack() },
+        onAddFuelEntry = { navController.navigate(VehicleRoutes.fuelCreate(vehicleId)) },
+        onEdit = { navController.navigate(VehicleRoutes.edit(vehicleId)) },
+        onDelete = { stateHolder.requestDelete(vehicleId) },
+        onEditEntry = { entryId -> navController.navigate(VehicleRoutes.fuelEdit(vehicleId, entryId)) },
+    )
+}
+
+/**
+ * The stateless vehicle detail (`E4-02`). The header, the consumption summary and the entries are one
+ * scrolling list, so at a 200% font scale nothing is pushed off the screen, and the two actions are
+ * full-width buttons stacked vertically instead of a row that cannot fit both labels.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun VehicleDetailLayout(
+    vehicle: VehicleListItemUi?,
+    isLoading: Boolean,
+    fuelState: FuelEntryListUiState,
+    onBack: () -> Unit,
+    onAddFuelEntry: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onEditEntry: (String) -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.vehicle_detail_title)) },
+                title = { Text(stringResource(R.string.vehicle_detail_title), modifier = Modifier.screenHeading()) },
                 navigationIcon = {
-                    TextButton(onClick = navController::popBackStack) { Text(stringResource(R.string.back)) }
+                    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
                 },
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { navController.navigate(VehicleRoutes.fuelCreate(vehicleId)) },
+                onClick = onAddFuelEntry,
                 modifier = Modifier.testTag(FuelEntryTestTags.ADD_FUEL_ENTRY),
             ) {
                 Text(stringResource(R.string.add_fuel_entry))
             }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            when {
-                state.isLoading && vehicle == null -> {
-                    CircularProgressIndicator()
+        val contentModifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp)
+        when {
+            isLoading && vehicle == null -> {
+                Box(modifier = contentModifier, contentAlignment = Alignment.Center) {
+                    LabelledProgressIndicator()
                 }
+            }
 
-                vehicle == null -> {
-                    Text(stringResource(R.string.vehicle_not_found))
-                }
+            vehicle == null -> {
+                Text(stringResource(R.string.vehicle_not_found), modifier = contentModifier.padding(top = 20.dp))
+            }
 
-                else -> {
-                    VehicleDetailContent(
-                        vehicle = vehicle,
-                        fuelState = fuelState,
-                        navController = navController,
-                        stateHolder = stateHolder,
-                        fuelListModifier = Modifier.weight(1f),
-                    )
-                }
+            else -> {
+                FuelEntryListContent(
+                    state = fuelState,
+                    onEdit = onEditEntry,
+                    modifier = contentModifier,
+                    header = { VehicleDetailHeader(vehicle = vehicle, onEdit = onEdit, onDelete = onDelete) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun VehicleDeleteConfirmation(
+private fun VehicleDetailHeader(
+    vehicle: VehicleListItemUi,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val locale = currentDisplayLocale()
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = vehicle.name,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.testTag(VehicleTestTags.DETAIL_NAME).screenHeading(),
+        )
+        Text(stringResource(R.string.vehicle_odometer, formatInteger(vehicle.currentOdometerKm, locale)))
+        Button(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.EDIT),
+        ) {
+            Text(stringResource(R.string.edit_vehicle))
+        }
+        OutlinedButton(
+            onClick = onDelete,
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.DELETE),
+        ) {
+            Text(stringResource(R.string.delete_vehicle))
+        }
+    }
+}
+
+/** The vehicle deletion confirmation; its body scrolls at a 200% font scale (`E4-02`). */
+@Composable
+internal fun VehicleDeleteConfirmation(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.delete_vehicle_title)) },
-        text = { Text(stringResource(R.string.delete_vehicle_confirmation)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.delete_vehicle_confirmation))
+            }
+        },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
+            TextButton(
+                onClick = onConfirm,
+                modifier = Modifier.testTag(VehicleTestTags.CONFIRM_DELETE_VEHICLE),
+            ) {
+                Text(stringResource(R.string.delete))
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag(VehicleTestTags.CANCEL_DELETE_VEHICLE),
+            ) {
+                Text(stringResource(R.string.cancel))
+            }
         },
-    )
-}
-
-@Composable
-private fun VehicleDetailContent(
-    vehicle: VehicleListItemUi,
-    fuelState: FuelEntryListUiState,
-    navController: NavHostController,
-    stateHolder: VehicleListStateHolder,
-    fuelListModifier: Modifier,
-) {
-    Text(
-        text = vehicle.name,
-        style = MaterialTheme.typography.headlineMedium,
-        modifier = Modifier.testTag(VehicleTestTags.DETAIL_NAME),
-    )
-    Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
-    Row {
-        Button(onClick = { navController.navigate(VehicleRoutes.edit(vehicle.id)) }) {
-            Text(stringResource(R.string.edit_vehicle))
-        }
-        Spacer(Modifier.width(12.dp))
-        OutlinedButton(onClick = { stateHolder.requestDelete(vehicle.id) }) {
-            Text(stringResource(R.string.delete_vehicle))
-        }
-    }
-    FuelEntryListContent(
-        state = fuelState,
-        onEdit = { entryId -> navController.navigate(VehicleRoutes.fuelEdit(vehicle.id, entryId)) },
-        modifier = fuelListModifier,
     )
 }
 
@@ -1128,79 +1271,9 @@ internal fun ErrorText(
     Text(
         text = stringResource(message.stringResource()),
         color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.testTag(testTag),
+        modifier = Modifier.testTag(testTag).announcedError(),
     )
 }
-
-internal fun UiMessage.stringResource(): Int =
-    if (code.startsWith(AUTH_ERROR_PREFIX)) {
-        authStringResource(code)
-    } else {
-        nonAuthStringResource(code)
-    }
-
-/**
- * The typed destructive confirmations of `docs/CONTRACTS.md §20.2`. They are mapped apart from the
- * error codes because each one states a different consequence the owner is agreeing to.
- */
-private fun confirmationStringResource(code: String): Int? =
-    when (code) {
-        "CONFIRMATION.AdoptExistingAccount" -> R.string.confirm_replace_existing_account
-        "CONFIRMATION.DeleteAccount" -> R.string.confirm_delete_account
-        "CONFIRMATION.DeleteLocalData" -> R.string.confirm_delete_local_data
-        else -> null
-    }
-
-private fun nonAuthStringResource(code: String): Int =
-    confirmationStringResource(code) ?: nonConfirmationStringResource(code)
-
-private fun nonConfirmationStringResource(code: String): Int =
-    when (code) {
-        "VALIDATION.REQUIRED_FIELD" -> R.string.error_required_field
-
-        "VALIDATION.INVALID_LENGTH" -> R.string.error_invalid_length
-
-        "VALIDATION.OUT_OF_RANGE" -> R.string.error_out_of_range
-
-        "VALIDATION.EDIT_NOT_ALLOWED" -> R.string.error_edit_not_allowed
-
-        "VALIDATION.DUPLICATE_NAME" -> R.string.error_duplicate_vehicle_name
-
-        "VALIDATION.NO_OP" -> R.string.error_no_changes
-
-        "VALIDATION.ENTITY_DELETED" -> R.string.error_vehicle_deleted
-
-        "VALIDATION.ENTITY_NOT_FOUND" -> R.string.vehicle_not_found
-
-        "PERSISTENCE.DATABASE_UNAVAILABLE",
-        "PERSISTENCE.TRANSACTION_FAILED",
-        "PERSISTENCE.MIGRATION_FAILED",
-        "PERSISTENCE.SERIALIZATION_FAILED",
-        "PERSISTENCE.CONSTRAINT_VIOLATION",
-        -> R.string.error_persistence
-
-        "REMOTE.UNAVAILABLE",
-        "REMOTE.DEADLINE_EXCEEDED",
-        "REMOTE.PERMISSION_DENIED",
-        "REMOTE.UNAUTHENTICATED",
-        "REMOTE.INVALID_ARGUMENT",
-        "REMOTE.NOT_FOUND",
-        "REMOTE.UNKNOWN",
-        -> R.string.error_restore
-
-        else -> R.string.error_unexpected
-    }
-
-internal fun authStringResource(code: String): Int =
-    when (code) {
-        "AUTH.CANCELLED" -> R.string.error_auth_cancelled
-        "AUTH.NETWORK_UNAVAILABLE" -> R.string.error_auth_network
-        "AUTH.PROVIDER_UNAVAILABLE" -> R.string.error_auth_provider
-        "AUTH.NO_ACCOUNT_AVAILABLE" -> R.string.error_auth_no_account
-        else -> R.string.error_unexpected
-    }
-
-private const val AUTH_ERROR_PREFIX = "AUTH."
 
 private fun String?.cacheKey(): String = this ?: CREATE_FORM_CACHE_KEY
 
@@ -1215,6 +1288,7 @@ internal object VehicleRoutes {
     const val FUEL_CREATE = "vehicles/{$VEHICLE_ID}/fuel/create"
     const val FUEL_EDIT = "vehicles/{$VEHICLE_ID}/fuel/{$ENTRY_ID}/edit"
     const val SYNC_DIAGNOSTICS = "debug/sync"
+    const val SETTINGS = "settings"
 
     fun edit(vehicleId: String): String = "vehicles/edit/$vehicleId"
 
@@ -1241,6 +1315,10 @@ object VehicleTestTags {
     const val ERROR = "vehicle_error"
     const val FUEL_TYPE_INPUT = "fuel_type_input"
     const val FUEL_TYPE_OPTION = "fuel_type_option"
+    const val EDIT = "vehicle_detail_edit"
+    const val DELETE = "vehicle_detail_delete"
+    const val CONFIRM_DELETE_VEHICLE = "confirm_delete_vehicle"
+    const val CANCEL_DELETE_VEHICLE = "cancel_delete_vehicle"
 
     fun vehicleRow(vehicleId: String): String = "vehicle_row_$vehicleId"
 }

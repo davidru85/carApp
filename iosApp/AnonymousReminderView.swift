@@ -27,11 +27,15 @@ struct AnonymousReminderView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(LocalizedStringKey("anonymous_reminder_title"))
                 .font(.subheadline.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
             Text(LocalizedStringKey(anonymousReminderBodyKey(for: index)))
                 .font(.footnote)
             HStack {
                 Spacer()
                 Button(LocalizedStringKey("anonymous_reminder_dismiss"), action: onDismiss)
+                    // The system accent measures about 3.4:1 on this tinted background (`D-223`).
+                    .tint(AccessibleColors.controlAccent)
+                    .frame(minHeight: 44)
                     .accessibilityIdentifier("anonymous_reminder_dismiss")
             }
         }

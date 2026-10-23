@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Combine
 import Shared
 
@@ -8,6 +9,10 @@ final class WalkingSkeletonModel: ObservableObject {
     @Published private(set) var vehicleListState: VehicleListUiState
     @Published private(set) var syncState: SyncUiState
     @Published private(set) var syncDebugLines: [String]
+    /// Whether the owner started a re-authentication on the departure screen that has not ended yet.
+    /// `SessionUiState` publishes no "awaiting re-authentication" value, so the host records the attempt
+    /// it started; the departure itself stays in the shared holder.
+    @Published private(set) var isReauthenticating = false
     let signInCoordinator: NativeSignInCoordinator
 
     private let sessionStateHolder: SessionStateHolder
@@ -32,7 +37,7 @@ final class WalkingSkeletonModel: ObservableObject {
         observationTasks = [
             Task { [weak self, sessionStateHolder] in
                 for await state in sessionStateHolder.state {
-                    self?.sessionState = state
+                    self?.receiveSessionState(state)
                 }
             },
             Task { [weak self, vehicleFormStateHolder] in
@@ -59,6 +64,11 @@ final class WalkingSkeletonModel: ObservableObject {
                 }
             },
         ]
+        // A native picker that ends without a credential abandons the suspended deletion, so the
+        // departure screen leaves its re-authentication stage.
+        signInCoordinator.onReauthenticationAbandoned = { [weak self] in
+            self?.isReauthenticating = false
+        }
     }
 
     var canStartAnonymousSession: Bool {
@@ -125,6 +135,97 @@ final class WalkingSkeletonModel: ObservableObject {
     /// retry failure from `syncState.message` through the existing `UiMessage.localizedText` mapping.
     func retryBackup() {
         syncStateHolder.retryFailed()
+    }
+
+    /// `E4-05`: answers the credential collision of `docs/CONTRACTS.md §11.3` with its one accepted
+    /// confirmation.
+    func confirmAccountConversion() {
+        sessionStateHolder.confirmAccountConversion(confirmation: .adoptExistingAccount)
+    }
+
+    /// `E4-05`: cancels the credential collision. The shared holder implements the cancellation as
+    /// `clearMessage()` while the `AdoptExistingAccount` confirmation is shown.
+    func cancelAccountConversion() {
+        sessionStateHolder.clearMessage()
+    }
+
+    // MARK: - F-5 departure (`E4-01`)
+    //
+    // Each member calls one `SessionStateHolder` intent; the departure rules stay in
+    // `AccountDepartureFlow` (`docs/CONTRACTS.md §11.5`, `§20.10`). The prompts that answer them are
+    // drawn by `DeparturePromptPresenter` and the outcomes by `DepartureView`.
+
+    func requestSignOut() {
+        sessionStateHolder.requestSignOut()
+    }
+
+    /// The account deletion of a permanent owner and the local-data deletion of a local or anonymous
+    /// owner are the same intent (`D-215`); the holder decides which operation it is.
+    func requestDeleteAccount() {
+        sessionStateHolder.requestDeleteAccount()
+    }
+
+    func confirmDeleteAccount() {
+        sessionStateHolder.confirmDeleteAccount(confirmation: .deleteAccount)
+    }
+
+    func confirmDeleteLocalData() {
+        sessionStateHolder.confirmDeleteAccount(confirmation: .deleteLocalData)
+    }
+
+    /// Discards the pending changes for the request the warning answers (`departureDiscardIntent`).
+    func discardPendingChanges(for intent: DepartureDiscardIntent) {
+        switch intent {
+        case .signOut:
+            sessionStateHolder.confirmSignOut(confirmation: .discardPendingChanges)
+        case .deleteLocalData:
+            sessionStateHolder.confirmDeleteAccount(confirmation: .discardPendingChanges)
+        }
+    }
+
+    /// Withdraws the prompt shown. Dismissing a departure confirmation withdraws its request.
+    func dismissSessionMessage() {
+        sessionStateHolder.clearMessage()
+    }
+
+    func retryDeparture() {
+        sessionStateHolder.retryDeparture()
+    }
+
+    func startGoogleReauthentication() {
+        isReauthenticating = true
+        signInCoordinator.startGoogleReauthentication()
+    }
+
+    func prepareAppleReauthentication(_ request: ASAuthorizationAppleIDRequest) {
+        isReauthenticating = true
+        signInCoordinator.prepareAppleReauthenticationRequest(request)
+    }
+
+    func completeAppleAuthorization(_ result: Result<ASAuthorization, Error>) {
+        signInCoordinator.completeAppleAuthorization(result)
+    }
+
+    func cancelReauthentication() {
+        isReauthenticating = false
+        signInCoordinator.cancelReauthentication()
+    }
+
+    /// A re-authentication belongs to a permanent owner's suspended deletion. Once the phase leaves
+    /// `PERMANENT` (the deletion resumed into `DELETING`, or the session ended), the attempt is over.
+    private func receiveSessionState(_ state: SessionUiState) {
+        sessionState = state
+        if state.phase != .permanent {
+            isReauthenticating = false
+        }
+    }
+
+    /// F-5 "wait for sync" (`D-213`): withdraw the prompt and request one user-initiated cycle. The
+    /// owner asks again later, and the prompt reappears while rows remain. Only `PullToRefresh` may be
+    /// requested from Swift (`docs/CONTRACTS.md §20.10`, `D-185`).
+    func waitForPendingSync() {
+        sessionStateHolder.clearMessage()
+        syncStateHolder.requestSync(reason: .pullToRefresh)
     }
 
     deinit {

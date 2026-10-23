@@ -44,6 +44,36 @@ At the very bottom of the screen, a centred rounded home indicator pill. All cop
 | CUENTA | Cerrar sesión · **Eliminar cuenta** (destructive) |
 | Footer | carApp v1.0.0 / Local-First & Safe Tracker |
 
+## Anonymous account conversion (E4-05)
+
+Approved by the owner on 2026-10-16. Shown only while the session is anonymous; local, permanent
+and every other session phase show none of it (`D-224`). The copy below is Spanish sample
+content, like the rest of this screen.
+
+- **Placement:** the first rows of the "CUENTA" card, above the local-data deletion row.
+- **Explanation row:** "Vincular una cuenta" in semi-bold True Black Ink (#000000), exposed as a
+  heading to VoiceOver, with the footnote subtitle "Vincula una cuenta de Apple o de Google para poder
+  recuperar tus vehículos y repostajes en otro dispositivo. Seguirán también en este dispositivo." in
+  Muted Graphite (#3C3C43 at 60%).
+- **Apple row:** the system "Continuar con Apple" button, a solid black full capsule as on the
+  welcome screen. Apple comes first because iOS offers Apple whenever it offers Google (F-1).
+- **Google row:** "Continuar con Google" as a full capsule with a hairline border and a Vivid Deep
+  Teal (#0A7C66) label on the opaque white card. It is not glass: content cards are opaque, and glass
+  on the card would break the system's layering rules.
+- **Busy:** both buttons are disabled and a small activity indicator appears in the explanation row;
+  its accessible label is "Vinculando la cuenta…".
+- **Credential collision:** a system alert titled "Esta cuenta ya tiene datos", with the message
+  "Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los
+  datos de este dispositivo. No se puede deshacer.", a "Cancelar" cancel button and a
+  "Sustituir datos" destructive button in the system destructive red, the role this system gives
+  Alert Vermilion (#D93025).
+- **Success:** the three rows disappear and the permanent-account rows "Cerrar sesión" and
+  "Eliminar cuenta" take their place.
+
+| Section | Rows |
+|---|---|
+| CUENTA (anonymous session only) | Vincular una cuenta · Continuar con Apple · Continuar con Google · local-data deletion row |
+
 ## Refinement prompts
 
 - "The toolbar has only 'Cerrar' on the left and the centred title — no button on the right."

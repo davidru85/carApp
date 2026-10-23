@@ -76,6 +76,8 @@ interface AppGraph {
 
     fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder
 
+    fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder
+
     fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
 
     fun syncController(): SyncController
@@ -414,6 +416,15 @@ internal class DefaultAppGraph(
         )
     }
 
+    override fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder {
+        checkOpen()
+        return SettingsStateHolder(
+            scope = scope,
+            repository = settingsRepository,
+            dispatchers = dependencies.dispatchers,
+        )
+    }
+
     override fun syncStateHolder(scope: CoroutineScope): SyncStateHolder {
         checkOpen()
         return SyncStateHolder(
@@ -491,8 +502,9 @@ internal class DefaultAppGraph(
      * The real repository's notifications cross a dispatcher a virtual test scheduler cannot drain,
      * so a fixture that needs to observe the opt-in has two choices: a wall-clock wait, which would
      * compete with the wall-clock budgets other graph tests already use, or this substitution. The
-     * opt-in from the real settings repository into the gate is therefore not driven end to end by a
-     * graph test; `docs/handoffs/E3-09.md` records that residual risk.
+     * opt-in from the real settings repository into the gate is driven end to end by
+     * `SettingsGraphTest` (`E4-01`) with bounded real-time waits; this substitution remains for the
+     * fixtures that need a fixed opt-in without one.
      */
     @Volatile
     internal var settingsOverrideForTest: Flow<Outcome<UserSettings, AppError>>? = null

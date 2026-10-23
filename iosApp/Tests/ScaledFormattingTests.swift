@@ -63,4 +63,87 @@ final class ScaledFormattingTests: XCTestCase {
         XCTAssertFalse(isValidOdometerText("-10"))
         XCTAssertFalse(isValidOdometerText("12a3"))
     }
+
+    // MARK: - E4-02 locale-aware display (D-222)
+    //
+    // Grouped expectations use five or more integer digits: Spanish CLDR data leaves a four-digit
+    // integer ungrouped on ICU-based runtimes (`1234,56 €`), so a four-digit case would pin a CLDR
+    // detail instead of the behaviour.
+
+    private let spanish = Locale(identifier: "es_ES")
+    private let english = Locale(identifier: "en_US")
+    private let arabicEgypt = Locale(identifier: "ar_EG")
+
+    func testSpanishDecimalUsesTheCommaSeparator() {
+        XCTAssertEqual(formatScaledDecimal(724, scale: ScaledFormat.consumptionScale, locale: spanish), "7,24")
+    }
+
+    func testEnglishDecimalUsesThePointSeparator() {
+        XCTAssertEqual(formatScaledDecimal(724, scale: ScaledFormat.consumptionScale, locale: english), "7.24")
+    }
+
+    func testSpanishDecimalGroupsThousandsWithPoints() {
+        XCTAssertEqual(formatScaledDecimal(12_345_678, scale: ScaledFormat.litersScale, locale: spanish), "12.345,678")
+    }
+
+    func testEnglishDecimalGroupsThousandsWithCommas() {
+        XCTAssertEqual(formatScaledDecimal(12_345_678, scale: ScaledFormat.litersScale, locale: english), "12,345.678")
+    }
+
+    func testDecimalShowsEveryFractionDigitOfTheScale() {
+        XCTAssertEqual(formatScaledDecimal(45_200, scale: ScaledFormat.litersScale, locale: english), "45.200")
+    }
+
+    func testSpanishInputTextUsesTheCommaWithoutGrouping() {
+        XCTAssertEqual(formatScaledInput(1_234_567, scale: ScaledFormat.litersScale, locale: spanish), "1234,567")
+    }
+
+    func testEnglishInputTextUsesThePointWithoutGrouping() {
+        XCTAssertEqual(formatScaledInput(1_234_567, scale: ScaledFormat.litersScale, locale: english), "1234.567")
+    }
+
+    func testInputTextRoundTripsThroughTheParser() {
+        let text = formatScaledInput(1_549, scale: ScaledFormat.pricePerLiterScale, locale: spanish)
+        XCTAssertEqual(parseScaled(text, scale: ScaledFormat.pricePerLiterScale), 1_549)
+    }
+
+    func testInputTextKeepsThePointWhenTheLocaleSeparatorIsNeitherPointNorComma() {
+        XCTAssertEqual(formatScaledInput(1_549, scale: ScaledFormat.pricePerLiterScale, locale: arabicEgypt), "1.549")
+    }
+
+    func testSpanishMoneyPlacesTheEuroAfterTheAmount() {
+        XCTAssertEqual(
+            formatCurrencyAmount(1_234_567, scale: ScaledFormat.minorUnitScale, currencyCode: "EUR", locale: spanish),
+            "12.345,67\u{00A0}\u{20AC}"
+        )
+    }
+
+    func testEnglishMoneyPlacesTheEuroBeforeTheAmount() {
+        XCTAssertEqual(
+            formatCurrencyAmount(1_234_567, scale: ScaledFormat.minorUnitScale, currencyCode: "EUR", locale: english),
+            "\u{20AC}12,345.67"
+        )
+    }
+
+    func testEnglishDollarAmountUsesTheDollarSign() {
+        XCTAssertEqual(
+            formatCurrencyAmount(1_234_567, scale: ScaledFormat.minorUnitScale, currencyCode: "USD", locale: english),
+            "$12,345.67"
+        )
+    }
+
+    func testPricePerLitreKeepsThreeFractionDigits() {
+        XCTAssertEqual(
+            formatCurrencyAmount(1_549, scale: ScaledFormat.pricePerLiterScale, currencyCode: "EUR", locale: spanish),
+            "1,549\u{00A0}\u{20AC}"
+        )
+    }
+
+    func testSpanishIntegerGroupsThousandsWithPoints() {
+        XCTAssertEqual(formatInteger(142_500, locale: spanish), "142.500")
+    }
+
+    func testEnglishIntegerGroupsThousandsWithCommas() {
+        XCTAssertEqual(formatInteger(142_500, locale: english), "142,500")
+    }
 }

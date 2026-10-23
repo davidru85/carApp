@@ -109,7 +109,9 @@ publishes directly.
 - `graphScope` MUST run on a scheduler-confined dispatcher, because the sync engine's timers depend on
   virtual time.
 - The `D-176` job ceiling and every job-level `timeout-minutes` are unchanged; the reverted step
-  limits stay strictly below `MAX_JOB_MINUTES`.
+  limits stay strictly below the default job ceiling (`D-229` renamed `MAX_JOB_MINUTES` to
+  `DEFAULT_JOB_CEILING_MINUTES` and added the `JOB_CEILING_MINUTES` exceptions, leaving both limits
+  unchanged).
 
 ## Verification
 
