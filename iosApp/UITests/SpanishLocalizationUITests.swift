@@ -139,9 +139,9 @@ final class SpanishLocalizationUITests: XCTestCase {
         let alert = app.alerts.firstMatch
         XCTAssertTrue(
             alert.descendants(matching: .any)
-                .matching(NSPredicate(format: "label CONTAINS %@", "3"))
+                .matching(NSPredicate(format: "label CONTAINS %@", "aún sin copia de seguridad: 3"))
                 .firstMatch.exists,
-            "the pending-sync count must be visible"
+            "the Spanish pending-sync body with its count must be present"
         )
         XCTAssertTrue(alert.buttons["Esperar a la copia"].exists)
         XCTAssertTrue(alert.buttons["Cancelar"].exists)
@@ -158,7 +158,13 @@ final class SpanishLocalizationUITests: XCTestCase {
                 || app.descendants(matching: .any)
                     .matching(NSPredicate(format: "label CONTAINS %@", "Vincular"))
                     .firstMatch.exists,
-            "the Spanish link-account title and body must be present"
+            "the Spanish link-account title must be present"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "Vincula una cuenta de Apple o de Google"))
+                .firstMatch.exists,
+            "the Spanish link-account body must be present"
         )
         XCTAssertFalse(
             app.buttons["settings_link_account_apple"].label.isEmpty,

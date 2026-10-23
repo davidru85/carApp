@@ -10,8 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -182,11 +180,6 @@ internal fun stringConstantsOf(holder: Class<*>): List<String> =
             field.isAccessible = true
             field.get(null) as String
         }
-
-internal fun hasTestTagPrefix(prefix: String): SemanticsMatcher =
-    SemanticsMatcher("test tag starts with $prefix") { node ->
-        node.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(prefix) == true
-    }
 
 internal fun hasTextContaining(text: String): SemanticsMatcher = hasText(text, substring = true)
 

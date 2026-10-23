@@ -117,6 +117,10 @@ class SpanishLocaleSmokeTest {
         }
         val idleLabel = localizedString(SPANISH_TAG, syncStatusLabelResource(SyncStatusVisual.IDLE))
         composeRule.scrollToAndAssertDisplayed(hasTextContaining(idleLabel))
+        // The `E4-01` row labels themselves, not only the `E3-05` backup label.
+        listOf(R.string.settings_currency, R.string.settings_distance_unit, R.string.settings_version)
+            .map { resource -> localizedString(SPANISH_TAG, resource) }
+            .forEach { label -> composeRule.scrollToAndAssertDisplayed(hasTextContaining(label)) }
     }
 
     @Test
