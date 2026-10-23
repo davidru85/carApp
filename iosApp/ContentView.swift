@@ -17,7 +17,8 @@ struct ContentView: View {
                 phase: session.phase,
                 messageCode: session.message?.code,
                 hasPendingDepartureRetry: session.pendingDepartureRetry != nil,
-                isReauthenticating: model.isReauthenticating
+                isReauthenticating: model.isReauthenticating,
+                isBusy: session.isBusy
             )
         )
     }
