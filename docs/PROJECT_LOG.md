@@ -38,6 +38,38 @@
 
 ## Entries
 
+### 2026-10-24 — CI corrections on the E4-B1 record closure
+
+- **Type:** correction
+- **Story / Decision:** `E4-07` (partly) / — (no decision changed)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E4-B1-record-closeout`)
+- **What changed:** two failures blocked pull request #93. First, `ios-ui-tests-audit-2` failed with
+  `add_vehicle is unreachable` after that control had been present but unhittable for 43 seconds. The
+  onboarding waiter completed on `exists`, while the unresolved-list indicator leaves the toolbar in the
+  accessibility hierarchy under a full-screen cover, so `scrollUntilHittable` then swept sixteen times
+  against a bar button no scroll can reach. `VehicleListArrival.isReached` now requires an existing and
+  hittable control and refuses to complete while the mandatory first-vehicle form is up;
+  `createVehicleAndOpenDetail` and `reachTheVehicleListForAccessibility` use it. Second, the Cloud
+  Functions production audit failed on one high finding, `body-parser`
+  GHSA-27r3-jxmh-p828, fixed by pinning the transitive `body-parser` 2.4.0 and `qs` 6.16.1 inside
+  `express`'s existing range; the accompanying `gaxios` downgrade was rejected again, as the register
+  records.
+- **Why:** `main` requires all fifteen checks, so a red shard blocks the closure that unblocks `E4-B2`.
+  Both failures reproduce on `main` (`40017446753`), not on the closeout's documentation changes.
+- **Documents touched:** `iosApp/UITests/OnboardingWait.swift`,
+  `iosApp/UITests/OnboardingWaitPolicyTests.swift`, `iosApp/UITests/AccessibilityUITestSupport.swift`,
+  `functions/package-lock.json`, `docs/SECURITY_ADVISORY_REGISTER.md`, this log.
+- **Verification:** RED first: `testVehicleListArrivalRequiresAHittableControl` failed on the
+  presence-only stub with "A covered add_vehicle is not arrival". GREEN on an erased iPhone Air
+  simulator (iOS 26.4, Xcode 27.1): 21 `OnboardingWaitPolicyTests` pass, and the three affected
+  accessibility audits, the two AX3 vehicle-list and fuel-form audits and all 13
+  `SpanishLocalizationUITests` pass, 18 tests with 0 failures. `npm audit --omit=dev --audit-level=high`
+  exits 0 with six moderate entries, all on the accepted `uuid` path, and `npm --prefix functions test`
+  passes 81 of 83 with 2 emulator skips.
+- **Follow-ups / risks:** the ten-consecutive-run criterion of `E4-07` still owns the proof that the
+  flake is gone; this change removes its established mechanism. The owner-run acceptances of the three
+  stories are unchanged. Bundle `E4-B2` is next once this pull request merges.
+
 ### 2026-10-23 — E4-B1 record closure
 
 - **Type:** milestone
