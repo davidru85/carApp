@@ -121,7 +121,8 @@ func requiresDepartureScreen(
     phase: SessionPhase,
     messageCode: String?,
     hasPendingDepartureRetry: Bool,
-    isReauthenticating: Bool
+    isReauthenticating: Bool,
+    isBusy: Bool = false
 ) -> Bool {
     if hasPendingDepartureRetry || phase == .deleting {
         return true
