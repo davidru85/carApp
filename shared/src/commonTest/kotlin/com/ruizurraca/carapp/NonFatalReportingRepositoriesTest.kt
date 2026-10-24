@@ -85,7 +85,10 @@ class NonFatalReportingRepositoriesTest {
     fun aTypedRepositoryErrorIsReturnedUnchangedAndNotRecorded() =
         runTest {
             val repository =
-                NonFatalReportingVehicleRepository(FailingVehicleRepository(PersistenceError.TransactionFailed), nonFatals)
+                NonFatalReportingVehicleRepository(
+                    FailingVehicleRepository(PersistenceError.TransactionFailed),
+                    nonFatals,
+                )
 
             val result = repository.deleteVehicle(VEHICLE_ID)
 
@@ -154,8 +157,7 @@ class NonFatalReportingRepositoriesTest {
         override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =
             Outcome.Err(error)
 
-        override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> =
-            Outcome.Err(error)
+        override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> = Outcome.Err(error)
 
         override suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError> = Outcome.Err(error)
     }

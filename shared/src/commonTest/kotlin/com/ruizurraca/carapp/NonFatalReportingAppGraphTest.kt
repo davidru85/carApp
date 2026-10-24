@@ -52,7 +52,9 @@ class NonFatalReportingAppGraphTest {
         runTest {
             withGraph { graph, crashReporter ->
                 val repository =
-                    assertIs<NonFatalReportingSettingsRepository>((graph as DefaultAppGraph).settingsHolderRepositoryForTest)
+                    assertIs<NonFatalReportingSettingsRepository>(
+                        (graph as DefaultAppGraph).settingsHolderRepositoryForTest,
+                    )
                 assertSame<CrashReporter>(crashReporter, repository.nonFatals.crashReporter)
             }
         }

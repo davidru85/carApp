@@ -27,9 +27,9 @@ internal class NonFatalReporting(
     internal val crashReporter: CrashReporter,
 ) {
     fun report(error: AppError) {
-        // RED: the policy inverted, so every positive and every negative call-site test fails on its
-        // assertion. GREEN records UnexpectedError alone.
-        if (error !is UnexpectedError) crashReporter.recordNonFatal(error, emptyMap())
+        if (error is UnexpectedError) {
+            crashReporter.recordNonFatal(error, mapOf(CrashFieldAllowlist.CODE to error.code))
+        }
     }
 }
 

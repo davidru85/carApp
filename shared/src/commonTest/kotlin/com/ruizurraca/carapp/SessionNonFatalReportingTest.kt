@@ -110,7 +110,10 @@ class SessionNonFatalReportingTest {
             holder.confirmDeleteAccount(Confirmation.DeleteAccount)
             advanceUntilIdle()
 
-            check(holder.state.value.message?.code == AuthError.RequiresRecentLogin.code) {
+            check(
+                holder.state.value.message
+                    ?.code == AuthError.RequiresRecentLogin.code,
+            ) {
                 "the fixture must publish the stale-login failure"
             }
             assertEquals(emptyList(), crashReporter.nonFatals)
@@ -177,7 +180,10 @@ class SessionNonFatalReportingTest {
         holder.startPermanentSignIn(AuthProvider.GOOGLE)
         holder.completeGoogleSignIn("id-token", null)
         advanceUntilIdle()
-        check(holder.state.value.message?.code == error.code) { "the fixture must publish the sign-in failure" }
+        check(
+            holder.state.value.message
+                ?.code == error.code,
+        ) { "the fixture must publish the sign-in failure" }
         holder.close()
     }
 
@@ -204,7 +210,10 @@ class SessionNonFatalReportingTest {
         holder.startAccountConversion(AuthProvider.GOOGLE)
         holder.completeGoogleSignIn("colliding-id-token", null)
         advanceUntilIdle()
-        check(holder.state.value.message?.confirmation == Confirmation.AdoptExistingAccount) {
+        check(
+            holder.state.value.message
+                ?.confirmation == Confirmation.AdoptExistingAccount,
+        ) {
             "the fixture must reach the collision confirmation"
         }
         return holder

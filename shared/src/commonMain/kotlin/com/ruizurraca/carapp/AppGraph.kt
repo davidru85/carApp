@@ -19,7 +19,6 @@ import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
-import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
@@ -123,8 +122,8 @@ internal class DefaultAppGraph(
     private val ownerAwareDependencies = dependencies.copy(ownerContext = ownerRecoveryGate)
 
     // `E4-04` (`D-243`): the one `§20.3.1` policy every `:shared` AppError-to-UiMessage chokepoint
-    // applies. RED placeholder: bound to the no-op until the GREEN step binds the graph's reporter.
-    private val nonFatals = NonFatalReporting(NoOpCrashReporter)
+    // applies, bound to the graph's reporter. The `:core:sync` sites keep their own bindings below.
+    private val nonFatals = NonFatalReporting(dependencies.crashReporter)
 
     private val accountConversion =
         AccountConversionCoordinator(
@@ -234,6 +233,7 @@ internal class DefaultAppGraph(
             analyticsEmissions,
             nonFatals,
         )
+
     // `E4-04` (`D-243`): the policy decorator is outermost, so every error the fuel-entry holders
     // can show passes it exactly once.
     private val fuelRepository: FuelEntryRepository =
