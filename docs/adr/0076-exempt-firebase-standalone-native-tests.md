@@ -43,8 +43,8 @@ through K4 and MUST NOT be relitigated without a material change in the underlyi
 The rule is:
 
 > A KMP module whose Kotlin/Native test binary transitively links
-> `:integration:firebase-auth`, `:integration:firebase-firestore` or `:integration:firebase-analytics`
-> cannot execute its standalone
+> `:integration:firebase-auth`, `:integration:firebase-firestore`, `:integration:firebase-analytics`
+> or `:integration:firebase-crashlytics` cannot execute its standalone
 > Native tests while GitLive does not provide the required Apple dependencies transitively.
 
 CI derives the expected exemption set from the Native-test project dependency graph and compares
@@ -60,7 +60,8 @@ The current resolution is:
 | `:integration:firebase-auth` | Root Firebase integration module. | Its common unit tests run on Android host but not as a standalone Native binary. |
 | `:integration:firebase-firestore` | Root Firebase integration module. | Its common unit tests run on Android host but not as a standalone Native binary; Firestore read and write paths have no Native-side automated iOS coverage. |
 | `:integration:firebase-analytics` | Root Firebase integration module, added by `E3-09`. | Its common unit tests run on Android host but not as a standalone Native binary; enabled event logging and user-property writes have no Native-side automated iOS coverage; app construction reaches the disabled collection setter. |
-| `:wiring:firebase` | Transitively depends on all three roots. | Its provider-assembly unit tests run on Android host but not as a standalone Native binary. |
+| `:integration:firebase-crashlytics` | Root Firebase integration module, added by `E4-04`. | Its common unit tests run on Android host but not as a standalone Native binary; non-fatal recording has no Native-side automated iOS coverage; app start reaches the disabled collection setter and the unsent-report deletion. |
+| `:wiring:firebase` | Transitively depends on all four roots. | Its provider-assembly unit tests run on Android host but not as a standalone Native binary. |
 | `:composition:ios` | Transitively depends on `:wiring:firebase`. | No coverage is lost today because it has no test sources; only Gradle's empty test binary is suppressed. If the module gains tests, that is a larger loss and triggers an explicit coverage review. |
 
 Every KMP module outside the derived set continues to execute `iosSimulatorArm64Test`.
@@ -68,6 +69,10 @@ Every KMP module outside the derived set continues to execute `iosSimulatorArm64
 The E3-09 app target links `FirebaseAnalyticsWithoutAdIdSupport` under `D-203`; it supplies the
 `FirebaseAnalytics` framework that GitLive cinterop requires without IDFA support. This product
 selection does not change the transitive exception or restore standalone Native provider coverage.
+
+The E4-04 app target links the `FirebaseCrashlytics` product of the same `D-65` pin; it supplies the
+framework that the GitLive Crashlytics cinterop requires. It does not change the transitive
+exception either.
 
 ## Compensating Coverage and Its Gap
 
@@ -78,6 +83,8 @@ acceptance exercises:
 - concrete provider construction in `:wiring:firebase`;
 - Firebase Core, App Check, Auth and Firestore initialization in the signed application;
 - Firebase Analytics tracker construction, which commands the Native SDK collection setter off;
+- the Firebase Crashlytics collection setter and unsent-report deletion, which the graph's opt-in
+  gate commands off at app start (`D-241`);
 - anonymous Firebase Auth sign-in and propagation to visible SwiftUI state;
 - Firebase Auth session restoration from the application's Keychain after real process
   termination and relaunch.
@@ -86,7 +93,9 @@ It performs **no Firestore operations**. Firestore read and write paths have no 
 automated coverage on iOS at present. It also does not cover Auth failure or collision paths, or
 any Firebase path not reached by that UI flow. Analytics collection is off until Settings opt-in,
 so these tests reach the disabled collection setter at construction but do not enable collection,
-log product events or set count-bucket properties. A Native-compiler-specific failure in the four modules
+log product events or set count-bucket properties. Crash collection follows the same opt-in
+(`D-241`), so they reach the Crashlytics disable and unsent-report deletion but never record a
+non-fatal report. A Native-compiler-specific failure in the five modules
 that currently contain tests remains undetected by the standalone route. This coverage
 list MUST be reviewed whenever the Firebase surface grows.
 
@@ -101,7 +110,7 @@ list MUST be reviewed whenever the Firebase surface grows.
 
 ### Negative
 
-- Auth, Firestore, Analytics and provider-wiring unit tests do not run as standalone Kotlin/Native
+- Auth, Firestore, Analytics, Crashlytics and provider-wiring unit tests do not run as standalone Kotlin/Native
   binaries.
 - Firestore read and write paths have no Native-side automated iOS coverage today.
 - XCUITest executes real Native code only along the explicitly listed paths.

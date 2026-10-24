@@ -300,6 +300,7 @@ build-logic/       convention plugins, an included build
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
 :integration:firebase-analytics  GitLive Firebase Analytics tracker bound by :wiring:firebase (E3-09)
+:integration:firebase-crashlytics GitLive Firebase Crashlytics reporter bound by :wiring:firebase (E4-04)
 :feature:vehicle   Vehicle domain, local repository and shared presentation state holders
 :feature:fuel      Fuel Entry domain, SQLDelight local repository, projections, R-3 consumption and presentation
 :feature:session   device-local settings and anonymous reminder domain plus SQLDelight repositories and the staged session surface
@@ -310,7 +311,6 @@ build-logic/       convention plugins, an included build
 :androidApp        the Android host app and Compose Vehicle and Fuel Entry flows
 ```
 
-`:integration:firebase-crashlytics` does **not** exist yet.
 `:androidApp` additionally depends on `androidx.work:work-runtime` (`D-184`), which reaches neither
 the shared graph nor the iOS composition.
 D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
@@ -355,7 +355,7 @@ and `carapp.sqldelight`.
 Every non-instrumented CI job runs the tasks in this command:
 
 ```bash
-./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :integration:firebase-analytics:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :integration:firebase-analytics:iosSimulatorArm64Test -x :integration:firebase-crashlytics:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
 ```
 
 Individually:
@@ -367,7 +367,7 @@ Individually:
 | `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
-| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the five current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths. D-109 also compiles the composition-owned `IosLocaleProvider` source into `:shared` `iosTest`, so this route executes its reachable Foundation locale/currency behavior and pins the fraction-digit premise without a second Firebase Apple dependency path. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the six current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths. D-109 also compiles the composition-owned `IosLocaleProvider` source into `:shared` `iosTest`, so this route executes its reachable Foundation locale/currency behavior and pins the fraction-digit premise without a second Firebase Apple dependency path. |
 | `./gradlew :androidApp:testDebugUnitTest` | Android host-specific unit behavior, including the native `Currency` minor-unit path used by `AndroidLocaleProvider` (`D-109`). |
 | `./gradlew :androidApp:connectedDebugAndroidTest` on the D-84 API 36 emulator | The protected `android-instrumented-tests` job exercises the Compose Vehicle and Fuel Entry flows. |
 

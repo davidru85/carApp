@@ -19,6 +19,7 @@ The MVP is intentionally limited to **fuel expenses**: users can create vehicles
           -x :integration:firebase-auth:iosSimulatorArm64Test \
           -x :integration:firebase-firestore:iosSimulatorArm64Test \
           -x :integration:firebase-analytics:iosSimulatorArm64Test \
+          -x :integration:firebase-crashlytics:iosSimulatorArm64Test \
           -x :wiring:firebase:iosSimulatorArm64Test \
           -x :composition:ios:iosSimulatorArm64Test
 ```
@@ -121,7 +122,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Logging | Kermit behind `Logger` |
 
-Current module structure, with the remaining integration module shown explicitly as planned:
+Current module structure:
 
 ```text
 build-logic/
@@ -139,7 +140,7 @@ gradle/libs.versions.toml
 :integration:firebase-auth
 :integration:firebase-firestore
 :integration:firebase-analytics
-:integration:firebase-crashlytics   # planned: E4-04
+:integration:firebase-crashlytics
 
 :feature:vehicle
 :feature:fuel

@@ -2161,10 +2161,11 @@ concurrency limit queues jobs.
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
 module whose Native test binary transitively links `:integration:firebase-auth`,
-`:integration:firebase-firestore` or `:integration:firebase-analytics` qualifies. CI compares that
-derived set with the explicit task exclusions and MUST fail in both directions. The current
-resolution is `:integration:firebase-auth`, `:integration:firebase-firestore`,
-`:integration:firebase-analytics`, `:wiring:firebase` and `:composition:ios`; this is observed
+`:integration:firebase-firestore`, `:integration:firebase-analytics` or
+`:integration:firebase-crashlytics` qualifies. CI compares that derived set with the explicit task
+exclusions and MUST fail in both directions. The current resolution is
+`:integration:firebase-auth`, `:integration:firebase-firestore`, `:integration:firebase-analytics`,
+`:integration:firebase-crashlytics`, `:wiring:firebase` and `:composition:ios`; this is observed
 output, not a permanent allowlist, and changes when the graph changes.
 
 Optional checks:
@@ -2197,7 +2198,8 @@ Optional checks:
     `docs/versions-matrix.md`, not floating tags.
 21. The `shared-tests` workflow executes both aggregate test tasks. Its declared standalone
     Kotlin/Native exclusions equal the set derived by taking the transitive reverse dependency
-    closure from `:integration:firebase-auth` and `:integration:firebase-firestore` across the
+    closure from the `D-75` roots — `:integration:firebase-auth`, `:integration:firebase-firestore`,
+    `:integration:firebase-analytics` and `:integration:firebase-crashlytics` — across the
     Native-test project graph; equality fails on either addition or removal.
 25. The foundational GitHub Actions (`actions/checkout`, `actions/setup-java`, `actions/setup-node`
     and `gradle/actions/setup-gradle`) use the immutable SHAs recorded in `docs/versions-matrix.md`;
