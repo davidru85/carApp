@@ -232,6 +232,14 @@ Requirements:
   Sign in with Apple in their Apple Account settings until they remove it there. `E4-09`
   closes all of them and MUST land before any App Store or Google Play submission.
 
+- **An opt-out reaches the provider's fatal-crash handler at the next launch** (`D-241`, `E4-04`).
+  Both Crashlytics SDKs persist the collection command and apply a disable from the next app launch.
+  When the owner of a device turns the Settings opt-in off, the crash reporter drops every later
+  non-fatal report at once and deletes the reports the provider stored while collection was off,
+  but the provider's fatal-crash handler stays active until the app restarts, so a fatal crash in
+  that same session may still be uploaded on Android. Such a report carries only the `§20.3.1`
+  allowlisted keys, the stable error code and a stack trace. The window is one app session.
+
 ## Privacy
 
 - Analytics collection is disabled by default and requires an explicit opt-in.
@@ -240,7 +248,11 @@ Requirements:
   pseudonymous session measurement (`D-203`). AAID, IDFA, IDFV, personalized ad signals and automatic
   screen reporting are disabled; Android advertising permissions are removed and iOS links the
   no-ad-ID product. The app never sets an analytics user ID or links analytics to the Firebase UID.
-- Release logs never contain the Firebase UID, notes, exact odometer values or costs.
+- Crash collection is disabled by default and follows the same Settings opt-in as analytics
+  (`D-241`). Crash reports carry only the `docs/CONTRACTS.md §20.3.1` allowlisted keys, the
+  recorded error's stable code and stack traces; the app never sets a Crashlytics user identifier.
+- Release logs never contain the Firebase UID, notes, exact odometer values or costs. Every build
+  binds a logger that emits nothing until `E4-08` (`D-242`).
 - In-app account deletion is available and uses the `D-23` Firebase Admin server operation to delete remote data before the auth account. Mobile clients never receive a Firestore hard-delete permission.
 - App Check debug tokens are secrets. They MUST NOT be committed, printed by CI or embedded in a
   distributed build. Debug-provider dependencies and factories are forbidden in release variants.

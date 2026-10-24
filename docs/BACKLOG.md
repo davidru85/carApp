@@ -2248,6 +2248,40 @@ Depends on: E4-04, E4-06.
 
 Human review required.
 
+### Release observability
+
+### E4-08 - Redacting Release Logger (Kermit) - M
+
+Status: Not Ready. Created by `E4-04` on 2026-10-24 under `D-242` (ADR-0243), which kept the silent
+logger in every build for the MVP release. Not scheduled; it does not block Phase 4 or MVP
+completion. The owner schedules it.
+
+Today `firebaseAppProviders` binds a `Logger` whose `log` body is empty, in debug and release builds
+alike, and Kermit (`D-15`) is pinned but used by no module.
+`FirebaseAppProvidersTest.theProvidersLoggerReadsNothingItIsGiven` proves the silent logger reads
+none of its inputs.
+
+Acceptance criteria:
+
+- A `Logger` implementation backed by Kermit 2.1.0 (`D-15`) replaces the silent logger that
+  `:wiring:firebase` binds. Kermit types never leave the sink implementation. Where the
+  implementation lives is decided at intake; a new module is a decision with its own `D-n`.
+- Redaction follows `docs/CONTRACTS.md §17`, decided from the injected `isDebugBuild` flag, with one
+  test per rule:
+  - in release builds an entity ID is logged as its first 8 characters followed by an ellipsis;
+  - the Firebase UID is never logged in release builds, at any length;
+  - `Throwable.message` and `Throwable.stackTrace` are never logged as text, only stable codes;
+  - at `INFO`, `WARN` and `ERROR` only the last segment of a throwable's class name is logged;
+  - a field whose value is outside the `§17` allowlist is dropped.
+- Debug builds may log entity IDs in full.
+- Whether an optional Crashlytics breadcrumb sink limited to the `§17` allowlist is added
+  (ADR-0023) is put to the owner at intake.
+- `theProvidersLoggerReadsNothingItIsGiven` is replaced by the redaction tests above, and
+  `docs/CONTRACTS.md §17` drops the interim sentence that `D-242` added.
+
+Dependencies: `E4-04`. Human review gates: logging and privacy rules (gated topic) and
+`docs/CONTRACTS.md`.
+
 ## Outstanding Owner Decisions
 
 No decision is open. The owner accepted `D-173` as option B on 2026-10-14, delivered by `E3-18` in
@@ -2442,6 +2476,7 @@ proof after E3-04.
 | E1-20 Settings observation survives a read failure | follow-up | S | — |
 | E2-11 Departure marker write failure leaves a dead-end departure screen | follow-up | S | Yes |
 | E4-07 iOS UI test and contract-check hardening | follow-up | S | — |
+| E4-08 Redacting release logger (Kermit) (follow-up, not scheduled) | follow-up | M | Yes |
 | E5-01 Electric and hybrid vehicle energy model | 5 (Post-MVP) | L | Yes |
 | E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
 | E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |
