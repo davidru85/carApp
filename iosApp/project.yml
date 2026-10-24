@@ -77,6 +77,10 @@ targets:
       # D-203 selects the pinned no-ad-ID product; FIRAnalytics remains the same framework.
       - package: Firebase
         product: FirebaseAnalyticsWithoutAdIdSupport
+      # E4-04: the GitLive firebase-crashlytics cinterop binds FIRCrashlytics, so the static Shared
+      # framework's FirebaseCrashlytics references must be linked by the app target (D-65, ADR-0076).
+      - package: Firebase
+        product: FirebaseCrashlytics
       - package: GoogleSignIn
         product: GoogleSignIn
     preBuildScripts:

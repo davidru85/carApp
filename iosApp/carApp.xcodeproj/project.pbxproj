@@ -10,7 +10,7 @@
 		0114D2546E157F273C216787 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33485CD8468B0FE42AC9A0DE /* Onboarding.swift */; };
 		03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */; };
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
-		0EF433FA8D4B3A25B59529C5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
+		0EF433FA8D4B3A25B59529C5 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 2C051F04E1443C61E2A5DE8B /* FirebaseCrashlytics */; };
 		108BBE054E138D58DB52BCDC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF7A56E87D9090EED34A1AB /* SettingsView.swift */; };
 		15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
@@ -44,6 +44,7 @@
 		93C089A2C96E7E5816107AC5 /* NativeSignInFailureMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */; };
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
 		A596AB5ED1CA24A8BC2151B2 /* SettingsPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87243F51351B46DEF5827671 /* SettingsPresentation.swift */; };
+		A5B340CA653A309B43B3FE44 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
 		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
 		A898937A8851B68BDE558D93 /* AccessibilitySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC316E44376B17230A771C6A /* AccessibilitySupport.swift */; };
 		B53B9A59E618F9137CE858C9 /* AccountConversionSurfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */; };
@@ -153,7 +154,7 @@
 		C5E4C62537076BFF979E5662 /* DepartureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartureView.swift; sourceTree = "<group>"; };
 		EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePresentationTests.swift; sourceTree = "<group>"; };
 		F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderView.swift; sourceTree = "<group>"; };
-		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTracking.swift; sourceTree = "<group>"; };
 		FC316E44376B17230A771C6A /* AccessibilitySupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilitySupport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -177,7 +178,8 @@
 				9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */,
 				50E658A3BCF6B028487ABB8C /* FirebaseFunctions in Frameworks */,
 				3EC77D959C5B1B210F562663 /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
-				0EF433FA8D4B3A25B59529C5 /* GoogleSignIn in Frameworks */,
+				0EF433FA8D4B3A25B59529C5 /* FirebaseCrashlytics in Frameworks */,
+				A5B340CA653A309B43B3FE44 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -356,6 +358,7 @@
 				63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */,
 				FFE99D9E34273E411857F7D2 /* FirebaseFunctions */,
 				F961555C743156DBA19FAAE1 /* FirebaseAnalyticsWithoutAdIdSupport */,
+				2C051F04E1443C61E2A5DE8B /* FirebaseCrashlytics */,
 				D5592966EFE660C6BBBA6814 /* GoogleSignIn */,
 			);
 			productName = carApp;
@@ -694,10 +697,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)",
-				);
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -758,10 +758,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)",
-				);
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -860,6 +857,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		2C051F04E1443C61E2A5DE8B /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
 		63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
