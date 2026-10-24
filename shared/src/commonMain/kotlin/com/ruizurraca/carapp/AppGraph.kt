@@ -214,6 +214,7 @@ internal class DefaultAppGraph(
     private val analyticsEmissions =
         AnalyticsEmissions(
             tracker = dependencies.analyticsTracker,
+            crashReporter = dependencies.crashReporter,
             ownerContext = ownerAwareDependencies.ownerContext,
             activeRowCounts = { ownerId -> activeRowCountsForTest?.invoke(ownerId) ?: activeRowCounts(ownerId) },
         )

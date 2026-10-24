@@ -57,7 +57,6 @@ internal class AnalyticsEmissions(
      * default is the `:core:crash` no-op so the analytics fixtures keep their shape; the graph passes
      * its own reporter.
      */
-    @Suppress("UnusedPrivateProperty") // RED: wired into the gate by the GREEN step.
     private val crashReporter: CrashReporter = NoOpCrashReporter,
     private val ownerContext: OwnerContext,
     /**
@@ -130,6 +129,9 @@ internal class AnalyticsEmissions(
     private suspend fun applyOptIn(enabled: Boolean) {
         this.enabled = enabled
         tracker.setEnabled(enabled)
+        // `D-241`: one opt-in governs usage and crash data alike, so the crash reporter receives the
+        // same command at the same moment, at startup and on every change.
+        crashReporter.setEnabled(enabled)
         // The cadence's opt-in half: the one `setUserProperties` call that belongs to the transition
         // itself. The disabled half deliberately does not call it.
         if (!enabled) return
