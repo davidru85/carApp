@@ -18,6 +18,7 @@ import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.EntityType
+import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.crash.CrashReporter
@@ -215,6 +216,35 @@ class FirebaseAppProvidersTest {
         assertIs<AppGraph>(graph)
         graph.close()
     }
+
+    @Test
+    fun theProvidersLoggerReadsNothingItIsGiven() {
+        // `E4-04` (`D-242`): until `E4-08` delivers a redacting logger, the providers bind a logger that
+        // emits nothing. Emitting a line means reading its inputs; this logger reads none.
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+            )
+        val fields =
+            ReadTrackingFields(mapOf("uid" to "firebase-uid", "notes" to "home", "odometerKm" to "123456"))
+        val throwable = ReadTrackingThrowable()
+
+        LogLevel.entries.forEach { level ->
+            providers.logger.log(
+                level = level,
+                tag = "Sync",
+                message = "uid firebase-uid",
+                fields = fields,
+                throwable = throwable,
+            )
+        }
+
+        assertEquals(0, fields.reads, "the logger must not read a field it could emit")
+        assertEquals(0, throwable.reads, "the logger must not read a throwable message it could emit")
+    }
 }
 
 /**
@@ -251,6 +281,51 @@ private class RecordingCrashReporterForWiring : CrashReporter {
     }
 
     override fun setEnabled(enabled: Boolean) = Unit
+}
+
+/** A field map that counts every read, so a logger that formats it is observable. */
+private class ReadTrackingFields(
+    private val delegate: Map<String, String>,
+) : Map<String, String> {
+    var reads = 0
+        private set
+
+    override val entries: Set<Map.Entry<String, String>>
+        get() = delegate.entries.also { reads += 1 }
+    override val keys: Set<String>
+        get() = delegate.keys.also { reads += 1 }
+    override val size: Int
+        get() = delegate.size.also { reads += 1 }
+    override val values: Collection<String>
+        get() = delegate.values.also { reads += 1 }
+
+    override fun containsKey(key: String): Boolean = delegate.containsKey(key).also { reads += 1 }
+
+    override fun containsValue(value: String): Boolean = delegate.containsValue(value).also { reads += 1 }
+
+    override fun get(key: String): String? = delegate[key].also { reads += 1 }
+
+    override fun isEmpty(): Boolean = delegate.isEmpty().also { reads += 1 }
+
+    override fun toString(): String = delegate.toString().also { reads += 1 }
+}
+
+/** A throwable whose message and cause count every read; `toString()` reads the message. */
+private class ReadTrackingThrowable : Throwable() {
+    var reads = 0
+        private set
+
+    override val message: String?
+        get() {
+            reads += 1
+            return "note text that must never be logged"
+        }
+
+    override val cause: Throwable?
+        get() {
+            reads += 1
+            return null
+        }
 }
 
 private class MutableAuthClient :
