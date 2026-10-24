@@ -10,6 +10,8 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.model.UserSettings
 import kotlinx.coroutines.CancellationException
@@ -50,6 +52,13 @@ import kotlin.concurrent.Volatile
  */
 internal class AnalyticsEmissions(
     private val tracker: AnalyticsTracker,
+    /**
+     * `D-241`: crash collection follows the same opt-in, so the gate below commands both. The
+     * default is the `:core:crash` no-op so the analytics fixtures keep their shape; the graph passes
+     * its own reporter.
+     */
+    @Suppress("UnusedPrivateProperty") // RED: wired into the gate by the GREEN step.
+    private val crashReporter: CrashReporter = NoOpCrashReporter,
     private val ownerContext: OwnerContext,
     /**
      * A port rather than the accessor itself, so the two rules this class owns are testable without a
