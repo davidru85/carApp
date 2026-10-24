@@ -42,7 +42,7 @@ The selected option is **B**:
   `setEnabled(false)` commands the provider off and deletes the reports the provider stored while
   collection was off.
 - `docs/SPECIFICATION.md §3.1`, `§8.1` and `§11` Privacy, `docs/CONTRACTS.md §16.1` and `§20.3.1`,
-  `§18` assertion {N3}, `docs/SECURITY.md` and the Settings copy in English and Spanish on both hosts
+  `§18` assertion 48, `docs/SECURITY.md` and the Settings copy in English and Spanish on both hosts
   say so.
 
 ## Consequences
@@ -65,7 +65,7 @@ The selected option is **B**:
 ### Constraints Introduced
 
 - `CrashReporter.setEnabled` is called only by the `§16.1` opt-in gate.
-- The two host keys MUST stay `false`; `§18` assertion {N3} enforces it.
+- The two host keys MUST stay `false`; `§18` assertion 48 enforces it.
 - A separate crash-reporting toggle needs a superseding decision and a `§3.1` amendment.
 
 ## Verification
@@ -73,7 +73,7 @@ The selected option is **B**:
 - `SharedCrashConsentTest` (fresh install off, opt-in on, opt-out off) and `CrashConsentAppGraphTest`.
 - `FirebaseCrashReporterTest`: disabled by default, enable and disable commands, stored-report
   deletion, no replay.
-- `§18` assertion {N3} and its failing fixtures in `CrashlyticsIntegrationContractTest`.
+- `§18` assertion 48 and its failing fixtures in `CrashlyticsIntegrationContractTest`.
 
 ## References
 
