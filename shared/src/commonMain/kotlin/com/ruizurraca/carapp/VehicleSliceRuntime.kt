@@ -25,25 +25,31 @@ internal class VehicleSliceRuntime(
     // is not a product event, and inside the sync requester, so the `§9.8` post-write trigger still
     // fires for every committed write.
     emissions: AnalyticsEmissions,
+    // `E4-04` (`D-243`): outermost, so every error the vehicle holders can show passes the policy once.
+    nonFatals: NonFatalReporting,
 ) {
     val repository: VehicleRepository =
-        SyncRequestingVehicleRepository(
+        NonFatalReportingVehicleRepository(
             delegate =
-                AdoptionGatedVehicleRepository(
+                SyncRequestingVehicleRepository(
                     delegate =
-                        AnalyticsNotifyingVehicleRepository(
+                        AdoptionGatedVehicleRepository(
                             delegate =
-                                SqlDelightVehicleRepository(
-                                    databaseAccess = VehicleDatabaseAccess(database),
-                                    ownerContext = dependencies.ownerContext,
-                                    clock = dependencies.clock,
-                                    uuidGenerator = dependencies.uuidGenerator,
+                                AnalyticsNotifyingVehicleRepository(
+                                    delegate =
+                                        SqlDelightVehicleRepository(
+                                            databaseAccess = VehicleDatabaseAccess(database),
+                                            ownerContext = dependencies.ownerContext,
+                                            clock = dependencies.clock,
+                                            uuidGenerator = dependencies.uuidGenerator,
+                                        ),
+                                    emissions = emissions,
                                 ),
-                            emissions = emissions,
+                            adoption = adoption,
                         ),
-                    adoption = adoption,
+                    syncController = syncController,
                 ),
-            syncController = syncController,
+            nonFatals = nonFatals,
         )
 
     // The `§9.8` post-write trigger now lives in the decorator, so it covers the delete path the

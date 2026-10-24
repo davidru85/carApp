@@ -22,6 +22,7 @@ import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.DepartureOperationKind
 import com.ruizurraca.carapp.core.database.DepartureOperationStep
 import com.ruizurraca.carapp.core.model.FuelType
@@ -49,6 +50,9 @@ class SessionStateHolder internal constructor(
     private val accountConversion: AccountConversionHandler? = null,
     private val analyticsTracker: AnalyticsTracker? = null,
     private val accountDeparture: AccountDepartureHandler? = null,
+    // `E4-04` (`D-243`): the `§20.3.1` policy applied where this holder turns an `AppError` into a
+    // `UiMessage`. Internal and defaulted to the no-op, so the Swift-facing surface is unchanged.
+    private val nonFatals: NonFatalReporting = NonFatalReporting(NoOpCrashReporter),
 ) {
     private var closed = false
     private var operationJob: Job? = null
@@ -72,6 +76,9 @@ class SessionStateHolder internal constructor(
         MutableStateFlow(authClient?.authState?.value.toSessionUiState())
     val state: StateFlow<SessionUiState> = mutableState
 
+    /** `E4-04` graph-wiring seam: the policy this holder applies. Internal, so never exported. */
+    internal val nonFatalsForTest: NonFatalReporting get() = nonFatals
+
     // The F-5 sign-out and account-deletion state machine (`docs/CONTRACTS.md §11.5`).
     private val departureFlow =
         AccountDepartureFlow(
@@ -81,6 +88,7 @@ class SessionStateHolder internal constructor(
             analyticsTracker = analyticsTracker,
             state = mutableState,
             cancelOtherWork = { operationJob?.cancel() },
+            nonFatals = nonFatals,
         )
     private val authStateJob =
         if (scope != null && authClient != null) {
@@ -246,7 +254,7 @@ class SessionStateHolder internal constructor(
         mutableState.value =
             mutableState.value.copy(
                 isBusy = false,
-                message = reason.toReportableAuthError()?.toUiMessage(),
+                message = reason.toReportableAuthError()?.toSessionUiMessage(nonFatals),
             )
         if (cancelledConversion) {
             analyticsTracker?.track(
@@ -322,7 +330,7 @@ class SessionStateHolder internal constructor(
                             ?: ConversionFailureReason.UNKNOWN,
                     ),
                 )
-                mutableState.value.copy(isBusy = false, message = result.error.toSessionUiMessage())
+                mutableState.value.copy(isBusy = false, message = result.error.toSessionUiMessage(nonFatals))
             }
         }
 
@@ -465,7 +473,7 @@ class SessionStateHolder internal constructor(
 
             is Outcome.Err -> {
                 mutableState.value =
-                    mutableState.value.copy(isBusy = false, message = result.error.toUiMessage())
+                    mutableState.value.copy(isBusy = false, message = result.error.toSessionUiMessage(nonFatals))
             }
         }
     }
@@ -494,7 +502,7 @@ class SessionStateHolder internal constructor(
                             AnalyticsEvent.AccountConversionFailed(result.error.toConversionFailureReason()),
                         )
                     }
-                    mutableState.value.copy(isBusy = false, message = result.error.toUiMessage())
+                    mutableState.value.copy(isBusy = false, message = result.error.toSessionUiMessage(nonFatals))
                 }
             }
         }
@@ -571,7 +579,7 @@ class SessionStateHolder internal constructor(
         mutableState.value =
             mutableState.value.copy(
                 isBusy = false,
-                message = error.toUiMessage(),
+                message = error.toSessionUiMessage(nonFatals),
             )
     }
 }
@@ -632,21 +640,20 @@ private fun NativeSignInFailure.toReportableAuthError(): AuthError? =
         NativeSignInFailure.UNKNOWN -> AuthError.Unknown
     }
 
-private fun AuthError.toUiMessage(): UiMessage =
-    UiMessage(
+/**
+ * The session holder's single `AppError` -> `UiMessage` conversion, and therefore its `§20.3.1`
+ * chokepoint (`D-243`): the policy sees every error before it becomes a message. The former
+ * `AuthError`-only conversion produced the identical message, so both share this one.
+ */
+internal fun AppError.toSessionUiMessage(nonFatals: NonFatalReporting): UiMessage {
+    nonFatals.report(this)
+    return UiMessage(
         id = AUTH_ERROR_MESSAGE_ID,
         kind = UiMessageKind.ERROR,
         code = code,
         confirmation = null,
     )
-
-internal fun AppError.toSessionUiMessage(): UiMessage =
-    UiMessage(
-        id = AUTH_ERROR_MESSAGE_ID,
-        kind = UiMessageKind.ERROR,
-        code = code,
-        confirmation = null,
-    )
+}
 
 private fun destructiveConversionConfirmation(): UiMessage =
     UiMessage(
