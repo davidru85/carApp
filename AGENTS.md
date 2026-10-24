@@ -635,7 +635,8 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only
-  dependencies live in exact root or `functions/` `package.json` entries plus adjacent lockfiles.
+  dependencies live in exact root, `functions/` or `functions-dev-billing/` `package.json` entries
+  plus adjacent lockfiles.
   Every pin is explained by `docs/versions-matrix.md` and MUST NOT be repeated as a literal in CI.
 - npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
   verification MUST NOT override that policy. A required install script needs a superseding owner
@@ -648,8 +649,10 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - The development project uses the D-66 EUR 10 alerts-only budget and project-local 2nd gen billing
   cutoff. Budgets are notification-only, reporting is delayed, and production MUST NOT use the
   automatic cutoff.
-- The single `functions/` package pins Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime
-  and trigger debt are one TD-01 item with a 2027-10-31 hard deadline.
+- The product `functions/` package and the development-only `functions-dev-billing/` package pin
+  Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime and trigger debt are one TD-01 item
+  with a 2027-10-31 hard deadline. Only `davidruiz-carapp-dev` deploys the `dev-billing` codebase;
+  production deploys `functions:default` alone (`D-247`).
 - Use GitLive 2.6.x, not 3.0 alpha.
 - Use Koin KMP for wiring and constructor injection for implementation classes.
 - Do not call Koin from domain, use cases, repositories or state holder business logic.

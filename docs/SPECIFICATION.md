@@ -732,6 +732,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-241 | Crash collection consent | Crash collection follows the Settings analytics opt-in and is off by default. | Accepted |
 | D-242 | Release logging | Keep the silent logger in every build, proven by a test; a redacting Kermit logger is follow-up `E4-08`. | Accepted |
 | D-243 | `recordNonFatal` call sites | Record non-fatals once, where `:shared` turns an error into a message, plus the `:core:sync` bindings. | Accepted |
+| D-247 | Billing cutoff deployment boundary | The billing cutoff ships only from the development-only `dev-billing` Functions codebase; production deploys `functions:default`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

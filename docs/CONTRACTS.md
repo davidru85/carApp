@@ -1916,7 +1916,10 @@ uses actual-cost email thresholds at 50%, 90% and 100% and publishes to the proj
 topic. The `stopBilling` 2nd gen function removes the development project's billing association
 when reported actual cost is greater than or equal to the budget. Budget alerts are notifications,
 not a spending cap; reporting delay can produce overshoot. Production MUST NOT deploy or inherit
-`stopBilling`: its budget response is aggressive notification plus manual intervention.
+`stopBilling`: its budget response is aggressive notification plus manual intervention. `stopBilling`
+lives in the development-only `dev-billing` Functions codebase (`functions-dev-billing/`); the product
+codebase `default` (`functions/`) MUST NOT export it, and production deploys `functions:default` only
+(`D-247`).
 
 `stopBilling` MUST use the dedicated keyless identity governed by D-69, check that billing remains
 enabled before attempting an update and return without writing when it is already disabled. Its
@@ -2192,8 +2195,10 @@ Optional checks:
 16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
 18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
-19. The Cloud Functions runtime, Functions manifest and cloud-runtime CI assertion equal the
-    normative runtime row in `docs/versions-matrix.md`; a hardcoded second runtime fails.
+19. The Cloud Functions runtime, both Functions manifests (`functions/package.json`,
+    `functions-dev-billing/package.json`), every `firebase.json` codebase runtime and the
+    cloud-runtime CI assertion equal the normative runtime row in `docs/versions-matrix.md`; a
+    hardcoded second runtime fails.
 20. The Google authentication and Cloud SDK GitHub Actions use the immutable SHAs recorded in
     `docs/versions-matrix.md`, not floating tags.
 21. The `shared-tests` workflow executes both aggregate test tasks. Its declared standalone
@@ -2201,6 +2206,13 @@ Optional checks:
     closure from the `D-75` roots — `:integration:firebase-auth`, `:integration:firebase-firestore`,
     `:integration:firebase-analytics` and `:integration:firebase-crashlytics` — across the
     Native-test project graph; equality fails on either addition or removal.
+22. Only `functions/src/auth/onAnonymousUserDeleted.ts` uses Cloud Functions 1st gen. The product
+    codebase `default` (`functions/`) exports exactly `deleteAccount`,
+    `deleteOrphanedAnonymousAccount`, `issueOrphanCleanupTicket` and `onAnonymousUserDeleted`; the
+    development-only codebase `dev-billing` (`functions-dev-billing/`) exports exactly `stopBilling`
+    and uses no 1st gen API; `firebase.json` declares exactly those two codebases on the matrix
+    runtime (`D-136`, `D-247`).
+
 25. The foundational GitHub Actions (`actions/checkout`, `actions/setup-java`, `actions/setup-node`
     and `gradle/actions/setup-gradle`) use the immutable SHAs recorded in `docs/versions-matrix.md`;
     floating refs, missing rows or unrecorded SHAs fail the check.

@@ -254,6 +254,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-241 | Crash collection consent | The analytics opt-in gate also commands `CrashReporter.setEnabled`; host keys off | Accepted | Lowest consent exposure with no new Settings row. See ADR-0242. |
 | D-242 | Release logging | Silent logger kept and proven; Kermit logger deferred to `E4-08` | Accepted | Keeps `E4-04` bounded; `§17` does not require logging to exist. See ADR-0243. |
 | D-243 | `recordNonFatal` call sites | `NonFatalReporting` at the `:shared` message chokepoints; `CrashFieldAllowlist` in `:core:crash` | Accepted | Few sites and one fixture, within `§4`. See ADR-0244. |
+| D-247 | Billing cutoff deployment boundary | `stopBilling` only in `functions-dev-billing/` (`dev-billing`); production deploys `functions:default` | Accepted | Keeps the `D-66` cutoff out of production; assertion 22 guards both export sets. See ADR-0248. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -730,8 +731,10 @@ Manual at phase gates:
 callable collision path and every other function use 2nd gen. No new 1st gen function may be added
 to this project; `onAnonymousUserDeleted` is the only permitted exception.
 
-The single `functions/` package is pinned to Node.js 22 only because it must host this temporary
-1st gen exception and the project's 2nd gen functions without a second runtime or deployment path.
+The product `functions/` package is pinned to Node.js 22 only because it must host this temporary
+1st gen exception and the project's 2nd gen functions without a second runtime. The development-only
+`functions-dev-billing/` package (`D-247`) carries `stopBilling` on the same runtime so that a
+production deploy can exclude it; it is a deployment boundary, not a second runtime.
 This is not separate technical debt: the runtime and Auth trigger move together in the same TD-01
 migration and recurring review. Node.js 22 deprecates on **2027-04-30** and is decommissioned on
 **2027-10-31**. Decommission is a hard deadline. If generally available 2nd gen Authentication
@@ -747,9 +750,9 @@ Exact migration surface once E3-10 and E3-11 create it:
 | `functions/src/index.ts` | `onAnonymousUserDeleted` export | Retain the public deployed function name while switching its implementation export. |
 | `functions/test/contract/functionGenerationPolicy.test.ts` | sole-1st-gen allowlist | Remove the D-63 exception and require every exported function to use 2nd gen. |
 | `functions/test/integration/anonymousCleanup.test.ts` | automatic-cleanup trigger coverage | Run the same deletion, idempotency and overlap assertions against the 2nd gen trigger. |
-| `firebase.json` | Functions source/codebase deployment entry | Verify the existing deployment target deploys the migrated function; there is no permitted second codebase or hidden 1st gen deployment entry. |
+| `firebase.json` | Functions source/codebase deployment entries | Verify the `default` codebase deploys the migrated function; the only other permitted codebase is the development-only `dev-billing` (`D-247`), and neither has a hidden 1st gen deployment entry. |
 | `functions/package.json` | `firebase-functions` dependency and Functions test scripts | Raise the pinned SDK only if the first GA 2nd gen Auth trigger requires it, then update `docs/versions-matrix.md` under the normal library-review gate. |
-| `functions/package.json`, `firebase.json` | Node.js 22 runtime | Move the complete Functions package to a current supported runtime after the Auth trigger is 2nd gen; do not create a separate runtime migration story. |
+| `functions/package.json`, `functions-dev-billing/package.json`, `firebase.json` | Node.js 22 runtime | Move both Functions packages and both codebase runtimes to a current supported runtime after the Auth trigger is 2nd gen; do not create a separate runtime migration story. |
 
 `functions/src/deletion/dataLocationRegistry.ts`,
 `functions/src/deletion/userDeletionService.ts` (`deleteUserData`) and
@@ -791,7 +794,7 @@ native SDK pin and the test exception MUST NOT be reviewed as unrelated migratio
 Once 2nd gen Authentication user-deletion triggers are generally available, migration is scheduled
 as its own backlog story. It MUST NOT be folded into an unrelated story. Closing TD-01 requires the
 new story to migrate the trigger, remove the allowlist exception, pass the automatic-cleanup and
-overlap tests, move the complete Functions package to a current supported runtime, deploy under the
+overlap tests, move both Functions packages to a current supported runtime, deploy under the
 retained function name, and append the final review outcome here. The deliberately temporary
 Node.js 24 -> 22 -> current-runtime sequence is rejected; Node.js 22 is selected once and leaves
 only when TD-01 closes.

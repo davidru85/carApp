@@ -246,5 +246,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-241 | [ADR-0242](0242-tie-crash-collection-to-the-analytics-opt-in.md) | Tie crash collection to the Settings analytics opt-in, off by default. | Accepted |
 | D-242 | [ADR-0243](0243-keep-the-silent-release-logger.md) | Keep the silent release logger, prove it, and defer the redacting logger. | Accepted |
 | D-243 | [ADR-0244](0244-record-non-fatals-at-the-shared-message-chokepoints.md) | Record non-fatals once at the shared message chokepoints. | Accepted |
+| D-247 | [ADR-0248](0248-deploy-the-billing-cutoff-from-a-development-only-codebase.md) | Deploy the billing cutoff from a development-only codebase. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
