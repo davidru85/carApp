@@ -27,6 +27,5 @@ object CrashFieldAllowlist {
             "confirmation",
         )
 
-    // RED: inverted, so each rule of CrashFieldAllowlistTest fails on its assertion.
-    fun filter(fields: Map<String, String>): Map<String, String> = fields.filterKeys { key -> key !in KEYS }
+    fun filter(fields: Map<String, String>): Map<String, String> = fields.filterKeys { key -> key in KEYS }
 }
