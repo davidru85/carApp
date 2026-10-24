@@ -38,7 +38,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Offline-first remote backup to Cloud Firestore for recovery on a new device.
 - Single active device per account. A backup can be restored on a new device, but simultaneous use on multiple devices is not supported in the MVP.
 - Discreet backup status indicator with manual retry.
-- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, account linking offered only to an anonymous identity (Google on Android; Apple and Google on iOS, per F-1 and F-4; `D-210`), sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
+- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in (which also governs crash reporting, `D-241`), account linking offered only to an anonymous identity (Google on Android; Apple and Google on iOS, per F-1 and F-4; `D-210`), sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
 - Spanish and English localization.
 - Firebase App Check enforcement for Authentication and Firestore, using App Attest on iOS, Play
   Integrity on Android and debug providers only in local or CI-specific builds (`D-67`).
@@ -301,13 +301,13 @@ deferred to `E5-02`, `E5-03`, and `E5-04` and do not block MVP completion. The e
 | Remote backend | Cloud Firestore |
 | Auth | Firebase Authentication through GitLive 2.6.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
-| Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter` (`E4-04`), off until the Settings opt-in (`D-241`) |
 | Async | Coroutines and Flow |
 | DI | Koin KMP for wiring, constructor injection for implementation classes |
 | iOS interop | SKIE only in `:composition:ios`, which exports `:shared` through the single `Shared` framework |
 | Serialization | `kotlinx.serialization` |
 | Dates | `kotlinx-datetime` |
-| Logging | Kermit behind `Logger` |
+| Logging | Kermit behind `Logger`; every build binds a silent logger until `E4-08` (`D-242`) |
 
 Exact versions are pinned in `docs/versions-matrix.md` and declared only in `gradle/libs.versions.toml`.
 
@@ -453,7 +453,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, backup and recovery tests, Firestore emulator tests. |
 | Development | Test-driven development (TDD) is compulsory for product code, per the rule below. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
-| Privacy | Analytics off by default; after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); in-app account deletion, crash reporting redaction; a privacy policy and store privacy labels before any App Store or Google Play submission (`D-236`). |
+| Privacy | Analytics and crash reporting off by default, enabled together by one Settings opt-in (`D-241`); after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); in-app account deletion, crash reporting redaction; a privacy policy and store privacy labels before any App Store or Google Play submission (`D-236`). |
 
 ### TDD rule
 
