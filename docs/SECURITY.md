@@ -223,7 +223,24 @@ Requirements:
   100%. Cost reporting can arrive late, so charges can exceed the budget. The intended development
   response is a complete project outage followed by owner-led manual recovery. Production MUST NOT
   inherit this automatic cutoff.
-
+- **The release Firebase configuration is not yet supplied, so release builds fail closed**
+  (`D-238`, `D-54`). `./gradlew :androidApp:assembleRelease` stops at
+  `processReleaseGoogleServices` until the owner provides the restricted production
+  `google-services.json`; no release artifact can be built without it.
+- **Production Firebase client configuration will be public** (`D-238`). The release
+  `google-services.json` and `GoogleService-Info.plist` are to be committed to the public repository.
+  Their API keys must be restricted to the release package and signing certificates and to the release
+  bundle identifier; App Check (`D-67`, `D-249`) and the Firestore rules remain the abuse and
+  authorization controls. Widening a key restriction requires the owner.
+- **Production has no automatic billing shutdown** (`D-66`, `D-237`, `D-247`). The production budget
+  only notifies, and reporting is delayed, so a cost spike continues until the owner acts on an alert.
+- **Release Android builds are neither shrunk nor obfuscated** (`D-245`). The APK is larger and its code
+  is readable; it contains no secret.
+- **Release builds are verified locally, not in CI** (`D-248`). A release-only build regression is found
+  by the next local or owner build, not by a required check.
+- **The client could be steered only in Debug through the launch environment** (`E4-04`). Every UI-test
+  hook now compiles only under `#if DEBUG`, and `SwiftDebugOnlyHookRule` keeps it that way, so a Release
+  build cannot be steered by whoever launches it.
 - **Store-only privacy obligations are deferred while the app is not published** (`D-236`, accepted
   on 2026-10-24). Release builds run against the production project, but deleting an Apple-linked
   account does not revoke its Sign in with Apple token, production App Check on Android accepts
