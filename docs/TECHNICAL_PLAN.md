@@ -249,6 +249,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-233 | Account replacement write window | Residual risk in `docs/SECURITY.md`; closing criterion in `E2-10` | Accepted | Amends `D-228`. See ADR-0234. |
 | D-234 | Departure hand-over routing | `UNKNOWN` with `isBusy` routes to `DepartureScreen` (Android) and `DepartureView` (iOS) | Accepted | Extends `D-214`. See ADR-0235. |
 | D-235 | No-account sign-in copy | `error_auth_no_account` copy on both hosts and in `docs/CONTRACTS.md §14.1` | Accepted | Amends `D-219`. See ADR-0236. |
+| D-236 | `E4-04` scope | Engineering release readiness in `E4-04`; store-only work in `E4-09` | Accepted | Portfolio objective: Phase 4 keeps a real release candidate without store accounts. See ADR-0237. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -667,9 +668,9 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 ### Phase 4 - MVP Hardening
 
-Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is next.
+Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is in flight, with `E4-04` limited to engineering release readiness by `D-236`.
 
-Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
+Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration. Store-submission requirements are outside the phase: `E4-06`, `E2-10` and `E4-09` (`D-236`).
 
 ## 11. Risks and Mitigations
 

@@ -241,5 +241,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-233 | [ADR-0234](0234-accept-the-account-replacement-write-window-as-a-residual-risk.md) | Accept the account replacement write window as a residual risk. | Accepted |
 | D-234 | [ADR-0235](0235-route-the-departure-hand-over-to-the-departure-screen.md) | Route the departure hand-over to the departure screen. | Accepted |
 | D-235 | [ADR-0236](0236-make-the-no-account-copy-valid-in-every-sign-in-context.md) | Make the no-account copy valid in every sign-in context. | Accepted |
+| D-236 | [ADR-0237](0237-limit-e4-04-to-engineering-release-readiness.md) | Limit `E4-04` to engineering release readiness; store-only work moves to `E4-09`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

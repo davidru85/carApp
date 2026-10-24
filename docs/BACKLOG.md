@@ -1447,21 +1447,21 @@ Acceptance criteria:
 
 ### E4-04 - Release Preparation - M
 
-Status: next, first story of bundle `E4-B2` (`D-209`, ADR-0210), which starts now that bundle
-`E4-B1` has merged (2026-10-23).
+Status: in flight, first story of bundle `E4-B2` (`D-209`, ADR-0210), on
+`story/E4-B2-release-readiness`. Limited to engineering release readiness by `D-236` (ADR-0237) on
+2026-10-24: its store-only work moved to `E4-09`.
 
-Prepare release assets and store requirements.
+Prepare the engineering release: production configuration, crash reporting, release assets and installable release builds. Store submission is `E4-09` (`D-236`).
 
 Acceptance criteria:
 
 - Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
 
 - App icons and splash are present.
-- Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
 - A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
 - `:integration:firebase-crashlytics` implements `CrashReporter` with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
-- Release builds are installable on both platforms.
-- Account deletion and Apple sign-in requirements are satisfied.
+- Release builds are installable and run on both platforms against the production Firebase project. Distribution through Google Play or the App Store is `E4-09`.
+- Account deletion completes end to end on both platforms through the `D-23` server operation. Revoking the Sign in with Apple token on deletion is `E4-09`.
 - Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
 - Release logging redaction is verified: no UID, notes, odometer or cost values in release logs.
 
@@ -1590,6 +1590,11 @@ submission.
 "Defects found after Phase 2 closed" by `D-228` during `E4-05`. It is a correctness follow-up
 that closes two `E2-04` hazards the `E4-05` surface made reachable; it is not Ready until its
 intake decision, it is not part of the `D-209` bundles and it does not block Phase 4.
+
+`E4-09`, store submission readiness, was added on 2026-10-24 under "Store-submission
+prerequisites" by `D-236`, which moved the store-only work of `E4-04` into it. It is low priority and
+not Ready, it is not part of the `D-209` bundles, it does not block Phase 4, and it MUST be done before
+any App Store or Google Play submission.
 
 ### Defects found after Phase 1 closed
 
@@ -2087,7 +2092,7 @@ Acceptance criteria:
 
 Readiness: the story needs two inputs from the owner at its intake: the URL, and where the policy is
 hosted. A hosting service that is not already `Accepted` in `docs/DECISION_BOARD.md` needs its own
-`D-n`. The policy content itself stays with `E4-04`. No decision ID is allocated, and no pending
+`D-n`. The policy content itself is `E4-09` (`D-236`). No decision ID is allocated, and no pending
 decision row is added, before that intake.
 
 Depends on: E4-01, E4-02.
@@ -2202,6 +2207,47 @@ Acceptance criteria:
 
 Depends on: E4-02.
 
+### E4-09 - Store Submission Readiness - M
+
+Status: Not Ready. Created on 2026-10-24 by `D-236` (ADR-0237), which limited `E4-04` to
+engineering release readiness because carApp is a portfolio project and store publication is not the
+current objective. Low priority. It is not part of the `D-209` bundles and does not block Phase 4. It
+MUST be done before any App Store or Google Play submission, together with `E4-06` and `E2-10`.
+
+Deliver the store-only work that `E4-04` carried before `D-236`.
+
+Acceptance criteria:
+
+- A privacy policy is published at a stable public URL and covers analytics and crash reporting, both
+  off by default and enabled only by the Settings opt-in; `E4-06` links it from the app.
+- A public web page lets a user request account deletion without the app, as the Google Play
+  account-deletion policy requires, and its URL is entered in the Data safety form.
+- The Google Play Data safety form and the App Store privacy nutrition labels are submitted from
+  answers derived from code facts.
+- `iosApp/PrivacyInfo.xcprivacy` is bundled and declares the required-reason APIs the app binary uses
+  and the data types it collects.
+- Deleting an Apple-linked permanent account revokes its Sign in with Apple token before the `D-23`
+  operation, with tested failure semantics.
+- The supported iOS device family is decided and the build passes App Store validation for it (today
+  `TARGETED_DEVICE_FAMILY` is `1,2` while the app is portrait-only without `UIRequiresFullScreen`).
+- Google Play app signing is enrolled, its certificate is registered with the production Firebase
+  Android app and in the Android API key restriction, and production App Check on Android accepts only
+  Play-recognized versions.
+- The Play Console and App Store Connect records exist, with the store display name and the Play
+  512 x 512 listing icon.
+- `targetSdk` is re-checked against the Google Play target-API requirement in force at submission.
+- A signed build is accepted on a Google Play testing track and on TestFlight.
+
+Readiness: its intake needs the owner inputs that `D-236` deferred: the privacy-policy content and
+hosting, the deletion-request page, the store records, Google Play app signing, the Apple Distribution
+certificate, the device-family choice, the Sign in with Apple revocation option and its failure
+semantics, and the production App Check change. Each choice gets its own `D-n` at that intake. No
+decision ID is allocated, and no pending decision row is added, before it.
+
+Depends on: E4-04, E4-06.
+
+Human review required.
+
 ## Outstanding Owner Decisions
 
 No decision is open. The owner accepted `D-173` as option B on 2026-10-14, delivered by `E3-18` in
@@ -2311,6 +2357,12 @@ changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outsid
 are the follow-ups `E2-10`, `E1-19`, `E1-20`, `E2-11` and `E4-07`.
 Inside a bundle every story keeps its own ready check, handoff, TDD cycle and project-log entry.
 
+`D-236` (ADR-0237) limits `E4-04` to engineering release readiness: the production project and
+release configuration, Crashlytics, the release-logging proof, icons and launch screens, the Functions
+split, the account-deletion invoker and installable release builds. Its store-only work is
+`E4-09`, which, like `E4-06` and `E2-10`, is outside both bundles and MUST be done before any
+App Store or Google Play submission. `E4-04` still precedes `E4-03`.
+
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
 metadata; E2-07 owns notices; E3-10 owns the reusable deletion service; E3-11 owns cleanup entry
@@ -2383,8 +2435,9 @@ proof after E3-04.
 | E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
 | E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
 | E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
-| E4-04 Release preparation (bundle `E4-B2`) | 4 | M | — |
+| E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`) | 4 | M | — |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
+| E4-09 Store submission readiness (postponed, low priority) | follow-up | M | Yes |
 | E1-19 iOS fuel-entry swipe delete deletes nothing | follow-up | S | — |
 | E1-20 Settings observation survives a read failure | follow-up | S | — |
 | E2-11 Departure marker write failure leaves a dead-end departure screen | follow-up | S | Yes |

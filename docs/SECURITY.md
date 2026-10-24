@@ -224,6 +224,14 @@ Requirements:
   response is a complete project outage followed by owner-led manual recovery. Production MUST NOT
   inherit this automatic cutoff.
 
+- **Store-only privacy obligations are deferred while the app is not published** (`D-236`, accepted
+  on 2026-10-24). Release builds run against the production project, but deleting an Apple-linked
+  account does not revoke its Sign in with Apple token, production App Check on Android accepts
+  versions that Google Play does not recognise, and no iOS privacy manifest, store privacy label or
+  public privacy policy exists. A user who deletes an Apple-linked account keeps the app listed under
+  Sign in with Apple in their Apple Account settings until they remove it there. `E4-09`
+  closes all of them and MUST land before any App Store or Google Play submission.
+
 ## Privacy
 
 - Analytics collection is disabled by default and requires an explicit opt-in.

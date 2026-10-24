@@ -453,7 +453,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, backup and recovery tests, Firestore emulator tests. |
 | Development | Test-driven development (TDD) is compulsory for product code, per the rule below. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
-| Privacy | Analytics off by default; after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
+| Privacy | Analytics off by default; after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); in-app account deletion, crash reporting redaction; a privacy policy and store privacy labels before any App Store or Google Play submission (`D-236`). |
 
 ### TDD rule
 
@@ -727,6 +727,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-233 | Account replacement write window | A write made while a confirmed account replacement runs can be lost; accepted as a residual risk until `E2-10`. | Accepted |
 | D-234 | Departure hand-over routing | The departure screen also shows the hand-over between a successful remote departure step and the local clear, on both hosts. | Accepted |
 | D-235 | No-account sign-in copy | The no-account sign-in error tells the owner to add an account in the device settings and try again, in every sign-in context. | Accepted |
+| D-236 | `E4-04` scope | Release preparation delivers engineering release readiness; store-submission work is the separate story `E4-09`, required before any store submission. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

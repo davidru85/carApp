@@ -6,6 +6,10 @@ Accepted
 
 The owner selected option A on 2026-10-15.
 
+Amended by `D-236` (ADR-0237): at the `E4-B2` intake on 2026-10-24 the owner limited `E4-04` to
+engineering release readiness and moved its store-only work to `E4-09`, outside both
+bundles. The composition and order of `E4-B2` are unchanged: `E4-04`, then `E4-03`.
+
 ## Context
 
 Phase 3 closed on 2026-10-15 when bundle `E3-B2` merged through pull request #89, and its record
