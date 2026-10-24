@@ -42,6 +42,7 @@ val guardedRepositoryInputs =
             "**/*.xcuserstate",
             "**/*.log",
             "functions/lib/**",
+            "functions-dev-billing/lib/**",
             "iosApp/Local.xcconfig",
             "local.properties",
         )

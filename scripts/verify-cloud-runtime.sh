@@ -7,7 +7,9 @@ EXPECTED_RUNTIME="$({
     docs/versions-matrix.md
 })"
 PACKAGE_RUNTIME="$(node -p "require('./functions/package.json').engines.node")"
-FIREBASE_RUNTIME="$(node -p "require('./firebase.json').functions.runtime.replace('nodejs', '')")"
+DEV_BILLING_PACKAGE_RUNTIME="$(node -p "require('./functions-dev-billing/package.json').engines.node")"
+# D-247: every Functions codebase of firebase.json MUST run on the normative runtime.
+FIREBASE_RUNTIMES="$(node -p "[...new Set(require('./firebase.json').functions.map((entry) => entry.runtime.replace('nodejs', '')))].join(' ')")"
 
 if [[ -z "$EXPECTED_RUNTIME" ]]; then
   echo "::error::Cloud Functions runtime is absent from docs/versions-matrix.md."
@@ -19,8 +21,13 @@ if [[ "$PACKAGE_RUNTIME" != "$EXPECTED_RUNTIME" ]]; then
   exit 1
 fi
 
-if [[ "$FIREBASE_RUNTIME" != "$EXPECTED_RUNTIME" ]]; then
-  echo "::error::firebase.json runtime $FIREBASE_RUNTIME differs from normative $EXPECTED_RUNTIME."
+if [[ "$DEV_BILLING_PACKAGE_RUNTIME" != "$EXPECTED_RUNTIME" ]]; then
+  echo "::error::functions-dev-billing/package.json runtime $DEV_BILLING_PACKAGE_RUNTIME differs from normative $EXPECTED_RUNTIME."
+  exit 1
+fi
+
+if [[ "$FIREBASE_RUNTIMES" != "$EXPECTED_RUNTIME" ]]; then
+  echo "::error::firebase.json runtimes $FIREBASE_RUNTIMES differ from normative $EXPECTED_RUNTIME."
   exit 1
 fi
 

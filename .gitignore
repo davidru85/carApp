@@ -50,6 +50,7 @@ ui-debug.log
 *.log
 node_modules/
 functions/lib/
+functions-dev-billing/lib/
 gha-creds-*.json
 
 # VS Code MCP config (contains per-developer API keys)

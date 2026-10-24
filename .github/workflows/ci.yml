@@ -120,6 +120,15 @@ jobs:
       - name: Cloud Functions Firestore emulator integration tests
         working-directory: functions
         run: npm run test:emulator
+      - name: Install development billing Functions dependencies
+        working-directory: functions-dev-billing
+        run: npm ci
+      - name: Development billing Functions production dependency audit
+        working-directory: functions-dev-billing
+        run: npm run audit
+      - name: Development billing Functions tests
+        working-directory: functions-dev-billing
+        run: npm test
       - name: Authenticate for deployed runtime verification
         if: >-
           github.event_name == 'push' ||
