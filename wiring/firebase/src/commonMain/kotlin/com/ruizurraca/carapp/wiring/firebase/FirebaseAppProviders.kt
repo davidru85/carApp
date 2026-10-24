@@ -42,6 +42,7 @@ import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.integration.firebase.analytics.FirebaseAnalyticsTracker
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseOrphanCleanupClient
+import com.ruizurraca.carapp.integration.firebase.crashlytics.FirebaseCrashReporter
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -84,6 +85,10 @@ fun firebaseAppProviders(
     // Injected rather than built inline so a host can supply its own tracker — a test, or a build
     // that must not collect — without this module gaining a second construction site.
     analyticsTracker: AnalyticsTracker = FirebaseAnalyticsTracker(),
+    // `E4-04` (`D-21`, `D-199` pattern): the one place the Firebase Crashlytics implementation is
+    // constructed. Injected rather than built inline so a host can supply its own reporter without
+    // this module gaining a second construction site.
+    crashReporter: CrashReporter = FirebaseCrashReporter(),
 ): AppProviders {
     val dispatchers = stagedDispatcherProvider()
     val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
@@ -95,6 +100,7 @@ fun firebaseAppProviders(
         tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
         analyticsTracker = analyticsTracker,
+        crashReporter = crashReporter,
         localeProvider = localeProvider,
         dispatchers = dispatchers,
         connectivityObserver = connectivityObserver,
@@ -115,8 +121,6 @@ fun firebaseAppProviders(
  */
 private val noSyncScheduling: SyncTriggerAdapter = SyncTriggerAdapter { }
 
-// RED: the crash reporter parameter is declared but not yet bound.
-@Suppress("UnusedParameter")
 internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
     authClient: AuthClient,
@@ -145,7 +149,7 @@ internal fun firebaseAppProviders(
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = analyticsTracker
-        override val crashReporter = NoOpCrashReporter
+        override val crashReporter = crashReporter
         override val clock = AppClock { Clock.System.now() }
         override val dispatchers = dispatchers
         override val uuidGenerator = stagedUuidGenerator()

@@ -13,9 +13,9 @@ import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.AuthToken
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.auth.TokenProvider
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
-import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
@@ -192,7 +192,10 @@ class FirebaseAppProvidersTest {
                 remoteSyncSource = RecordingRemoteSyncSource(),
             )
 
-        assertFalse(providers.crashReporter is FirebaseCrashReporter, "the internal default is not the Firebase reporter")
+        assertFalse(
+            providers.crashReporter is FirebaseCrashReporter,
+            "the internal default is not the Firebase reporter",
+        )
         assertSame<Any>(NoOpCrashReporter, providers.crashReporter)
     }
 
