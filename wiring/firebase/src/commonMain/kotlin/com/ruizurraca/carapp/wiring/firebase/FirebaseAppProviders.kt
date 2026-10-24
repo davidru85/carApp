@@ -27,6 +27,7 @@ import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.SyncTriggerAdapter
 import com.ruizurraca.carapp.core.common.UuidGenerator
+import com.ruizurraca.carapp.core.crash.CrashReporter
 import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.createPersistentDatabaseFactory
@@ -114,6 +115,8 @@ fun firebaseAppProviders(
  */
 private val noSyncScheduling: SyncTriggerAdapter = SyncTriggerAdapter { }
 
+// RED: the crash reporter parameter is declared but not yet bound.
+@Suppress("UnusedParameter")
 internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
     authClient: AuthClient,
@@ -123,6 +126,9 @@ internal fun firebaseAppProviders(
     // `E3-09`. The staged default is the no-op: a graph built without a host therefore collects
     // nothing, which is the correct posture for a build that has no provider wired.
     analyticsTracker: AnalyticsTracker = noAnalyticsTracking,
+    // `E4-04` (`D-199` pattern). The default is the `:core:crash` no-op: a graph built without a host
+    // reports nothing, which is the correct posture for a build that has no provider wired.
+    crashReporter: CrashReporter = NoOpCrashReporter,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
     dispatchers: DispatcherProvider = stagedDispatcherProvider(),
     // Real platform reachability is injected by each host composition boundary, the same shape

@@ -15,10 +15,13 @@ import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -28,6 +31,7 @@ import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.integration.firebase.analytics.FirebaseAnalyticsTracker
+import com.ruizurraca.carapp.integration.firebase.crashlytics.FirebaseCrashReporter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -157,6 +161,57 @@ class FirebaseAppProvidersTest {
             AnalyticsUserProperties(CountBucket.ONE, CountBucket.ZERO),
         )
     }
+
+    @Test
+    fun providerFactoryBindsTheGivenCrashReporterWithoutDecoratingIt() {
+        // `E4-04` (`D-199` pattern): `:wiring:firebase` binds whatever reporter it was handed. Identity,
+        // not behaviour, is the point: a decorator here would be a second construction site.
+        val crashReporter = RecordingCrashReporterForWiring()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+                crashReporter = crashReporter,
+            )
+
+        assertSame<Any>(crashReporter, providers.crashReporter)
+    }
+
+    @Test
+    fun theInternalFactoryDefaultIsTheNoOpCrashReporter() {
+        // A graph built without a host — a test, or a build with no provider wired — must never reach
+        // the provider SDK. The public overload is the only construction site (`D-199` pattern).
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+            )
+
+        assertFalse(providers.crashReporter is FirebaseCrashReporter, "the internal default is not the Firebase reporter")
+        assertSame<Any>(NoOpCrashReporter, providers.crashReporter)
+    }
+
+    @Test
+    fun providerFactoryBuildsTheReleaseGraphWithTheGivenCrashReporter() {
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+                crashReporter = RecordingCrashReporterForWiring(),
+            )
+
+        val graph = buildAppGraph(isDebugBuild = false, providers = providers)
+
+        assertIs<AppGraph>(graph)
+        graph.close()
+    }
 }
 
 /**
@@ -179,6 +234,20 @@ private class RecordingAnalyticsTrackerForWiring : AnalyticsTracker {
     override fun setEnabled(enabled: Boolean) {
         collectionEnabled = enabled
     }
+}
+
+/** A local crash recorder, defined here for the same reason as the analytics recorder above. */
+private class RecordingCrashReporterForWiring : CrashReporter {
+    val errors = mutableListOf<AppError>()
+
+    override fun recordNonFatal(
+        error: AppError,
+        fields: Map<String, String>,
+    ) {
+        errors += error
+    }
+
+    override fun setEnabled(enabled: Boolean) = Unit
 }
 
 private class MutableAuthClient :
