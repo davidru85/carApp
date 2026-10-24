@@ -329,6 +329,51 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         XCTAssertEqual(state.nextAction(positions: [.guest: OnboardingTapPosition(dx: 0.5, dy: 0.5)]), .tap(.guest, at: OnboardingTapPosition(dx: 0.5, dy: 0.5)))
     }
 
+    /// A control that exists while a cover blocks it is not arrival. The unresolved-list indicator
+    /// leaves the toolbar in the hierarchy, so an `exists`-based test ends the wait early and the next
+    /// assertion finds an element that no scroll can reach (run `40018436901`).
+    func testVehicleListArrivalRequiresAHittableControl() {
+        XCTAssertFalse(
+            VehicleListArrival.isReached(
+                addVehicleExists: true,
+                addVehicleHittable: false,
+                addFuelEntryExists: false,
+                addFuelEntryHittable: false,
+                vehicleFormVisible: false
+            ),
+            "A covered add_vehicle is not arrival"
+        )
+        XCTAssertTrue(
+            VehicleListArrival.isReached(
+                addVehicleExists: true,
+                addVehicleHittable: true,
+                addFuelEntryExists: false,
+                addFuelEntryHittable: false,
+                vehicleFormVisible: false
+            )
+        )
+        XCTAssertTrue(
+            VehicleListArrival.isReached(
+                addVehicleExists: false,
+                addVehicleHittable: false,
+                addFuelEntryExists: true,
+                addFuelEntryHittable: true,
+                vehicleFormVisible: false
+            ),
+            "The first vehicle's detail is the same destination as the list"
+        )
+        XCTAssertFalse(
+            VehicleListArrival.isReached(
+                addVehicleExists: true,
+                addVehicleHittable: true,
+                addFuelEntryExists: true,
+                addFuelEntryHittable: true,
+                vehicleFormVisible: true
+            ),
+            "The mandatory first-vehicle form outranks the controls it covers"
+        )
+    }
+
     /// `enteredStep` is the single source of the step each target advances into, so the assertion
     /// in `testOnboardingTapTargetsMapToTheirAccessibilityIdentifiers` protects the driver.
     func testOnboardingEnteredStepIsWiredIntoNextAction() {

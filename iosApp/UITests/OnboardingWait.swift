@@ -166,6 +166,34 @@ enum OnboardingWaitBudget {
     }
 }
 
+/// Arrival at the vehicle list, kept free of `XCUIElement` so the decision is testable without the app.
+///
+/// Presence is not arrival: while the list is unresolved the host covers it with a full-screen
+/// indicator that blocks hit-testing while leaving the toolbar and the list in the accessibility
+/// hierarchy, so a control that `exists` can stay unreachable for tens of seconds. A wait that treats
+/// presence as arrival hands the next assertion an element that nothing can tap, and no scroll can
+/// reach a bar button (run `40018436901`, `add_vehicle is unreachable`).
+enum VehicleListArrival {
+    static func isReached(
+        addVehicleExists: Bool,
+        addVehicleHittable: Bool,
+        addFuelEntryExists: Bool,
+        addFuelEntryHittable: Bool,
+        vehicleFormVisible: Bool
+    ) -> Bool {
+        // F-1's mandatory first-vehicle form covers the list, and the toolbar behind it stays in the
+        // hierarchy, so neither control means anything until the form is gone.
+        guard !vehicleFormVisible else {
+            return false
+        }
+        let listIsReachable = addVehicleExists && addVehicleHittable
+        // F-1 routes the first vehicle to its detail, which is the destination of every caller that
+        // needs a vehicle to exist; each then opens the fuel form from it.
+        let detailIsReachable = addFuelEntryExists && addFuelEntryHittable
+        return listIsReachable || detailIsReachable
+    }
+}
+
 /// Pure retry policy for the onboarding wait. It is deliberately free of `XCUIElement` so its
 /// branches are exercised without driving the UI.
 struct OnboardingWaitState {

@@ -667,7 +667,7 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 ### Phase 4 - MVP Hardening
 
-Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) is implemented and awaits the owner's gated review through pull request #91; bundle `E4-B2` (`E4-04`, `E4-03`) follows its merge.
+Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is next.
 
 Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
 

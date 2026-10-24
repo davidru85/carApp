@@ -443,7 +443,15 @@ extension XCTestCase {
         waitForOnboarding(
             in: app,
             destination: "the vehicle list",
-            isComplete: { addVehicle.exists && !vehicleNameField.exists },
+            isComplete: {
+                VehicleListArrival.isReached(
+                    addVehicleExists: addVehicle.exists,
+                    addVehicleHittable: addVehicle.isHittable,
+                    addFuelEntryExists: false,
+                    addFuelEntryHittable: false,
+                    vehicleFormVisible: vehicleNameField.exists
+                )
+            },
             handleVehicleForm: {
                 guard !createdTheFirstVehicle, vehicleNameField.exists else { return false }
                 createdTheFirstVehicle = true
@@ -453,7 +461,7 @@ extension XCTestCase {
                 return true
             }
         )
-        XCTAssertTrue(addVehicle.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        XCTAssertTrue(scrollUntilHittable(addVehicle, in: app), "the vehicle list is unreachable")
     }
 
     func openSettings(in app: XCUIApplication) {
@@ -503,11 +511,21 @@ extension XCTestCase {
         var createdTheFirstVehicle = false
 
         // A first vehicle lands on its detail and a later one on the list, so the waiter waits for the
-        // form to be gone; the destination is resolved afterwards.
+        // form to be gone; the destination is resolved afterwards. Arrival requires a reachable
+        // control, not merely a present one: the unresolved-list indicator covers the toolbar for as
+        // long as the local read takes.
         waitForOnboarding(
             in: app,
             destination: "the vehicle list",
-            isComplete: { !vehicleNameField.exists && (app.buttons["add_fuel_entry"].exists || app.buttons["add_vehicle"].exists) },
+            isComplete: {
+                VehicleListArrival.isReached(
+                    addVehicleExists: app.buttons["add_vehicle"].exists,
+                    addVehicleHittable: app.buttons["add_vehicle"].isHittable,
+                    addFuelEntryExists: app.buttons["add_fuel_entry"].exists,
+                    addFuelEntryHittable: app.buttons["add_fuel_entry"].isHittable,
+                    vehicleFormVisible: vehicleNameField.exists
+                )
+            },
             handleVehicleForm: {
                 guard !createdTheFirstVehicle, vehicleNameField.exists else { return false }
                 createdTheFirstVehicle = true
