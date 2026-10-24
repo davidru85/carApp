@@ -154,8 +154,8 @@
 "unit_volume_gallon" = "Gallons (gal)";
 "settings_section_backup" = "Backup";
 "settings_section_privacy" = "Privacy";
-"settings_analytics" = "Share usage analytics";
-"settings_analytics_description" = "Sends pseudonymous usage events to help improve carApp. They are linked to a random app installation ID, never to your account, and never include odometer readings, fuel amounts, costs or notes. Off until you turn it on.";
+"settings_analytics" = "Share usage and crash data";
+"settings_analytics_description" = "Pseudonymous usage measurement and crash reports that help improve carApp. Off by default.";
 "settings_section_account" = "Account";
 "settings_sign_out" = "Sign out";
 "settings_delete_account" = "Delete account";

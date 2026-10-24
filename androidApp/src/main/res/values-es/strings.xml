@@ -139,8 +139,8 @@
     <string name="unit_distance_miles">Millas (mi)</string>
     <string name="unit_volume_liter">Litros (L)</string>
     <string name="unit_volume_gallon">Galones (gal)</string>
-    <string name="settings_analytics_title">Compartir analíticas de uso</string>
-    <string name="settings_analytics_description">Si lo activas, carApp comparte mediciones de uso seudónimas mediante Firebase Analytics para ayudar a mejorar la aplicación. Se asocian a un identificador aleatorio de esta instalación, nunca a tu cuenta, y nunca incluyen notas ni lecturas exactas del odómetro, volúmenes o importes. Desactivado por defecto.</string>
+    <string name="settings_analytics_title">Compartir datos de uso y de fallos</string>
+    <string name="settings_analytics_description">Medición de uso seudónima e informes de fallos que ayudan a mejorar carApp. Se asocian a un identificador aleatorio de esta instalación, nunca a tu cuenta, y nunca incluyen notas ni kilometraje, litros o importes exactos. Desactivado por defecto.</string>
     <string name="settings_sign_out">Cerrar sesión</string>
     <string name="settings_delete_account">Eliminar cuenta</string>
     <string name="settings_delete_local_data">Eliminar datos locales</string>

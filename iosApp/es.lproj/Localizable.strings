@@ -154,8 +154,8 @@
 "unit_volume_gallon" = "Galones (gal)";
 "settings_section_backup" = "Copia de seguridad";
 "settings_section_privacy" = "Privacidad";
-"settings_analytics" = "Compartir analíticas de uso";
-"settings_analytics_description" = "Envía eventos de uso seudonimizados para ayudar a mejorar carApp. Se asocian a un identificador aleatorio de la instalación, nunca a tu cuenta, y nunca incluyen kilometraje, litros, importes ni notas. Desactivado hasta que lo actives.";
+"settings_analytics" = "Compartir datos de uso y de fallos";
+"settings_analytics_description" = "Medición de uso seudónima e informes de fallos que ayudan a mejorar carApp. Desactivado por defecto.";
 "settings_section_account" = "Cuenta";
 "settings_sign_out" = "Cerrar sesión";
 "settings_delete_account" = "Eliminar cuenta";
