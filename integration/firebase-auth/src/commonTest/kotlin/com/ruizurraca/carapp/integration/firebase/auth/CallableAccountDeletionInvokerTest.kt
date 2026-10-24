@@ -51,13 +51,17 @@ class CallableAccountDeletionInvokerTest {
     @Test
     fun aPermissionDeniedCallableFailureIsPermissionDenied() =
         runTest {
-            assertIs<FirebaseAuthGatewayException.PermissionDenied>(failureFor(FirebaseFunctionsFailure.PERMISSION_DENIED))
+            assertIs<FirebaseAuthGatewayException.PermissionDenied>(
+                failureFor(FirebaseFunctionsFailure.PERMISSION_DENIED),
+            )
         }
 
     @Test
     fun anUnauthenticatedCallableFailureIsPermissionDenied() =
         runTest {
-            assertIs<FirebaseAuthGatewayException.PermissionDenied>(failureFor(FirebaseFunctionsFailure.UNAUTHENTICATED))
+            assertIs<FirebaseAuthGatewayException.PermissionDenied>(
+                failureFor(FirebaseFunctionsFailure.UNAUTHENTICATED),
+            )
         }
 
     @Test
@@ -75,7 +79,9 @@ class CallableAccountDeletionInvokerTest {
     @Test
     fun anyOtherCallableFailureIsARemoteDeletionFailure() =
         runTest {
-            assertIs<FirebaseAuthGatewayException.AccountDeletionRemoteFailed>(failureFor(FirebaseFunctionsFailure.UNKNOWN))
+            assertIs<FirebaseAuthGatewayException.AccountDeletionRemoteFailed>(
+                failureFor(FirebaseFunctionsFailure.UNKNOWN),
+            )
         }
 
     private suspend fun failureFor(failure: FirebaseFunctionsFailure): Throwable? {

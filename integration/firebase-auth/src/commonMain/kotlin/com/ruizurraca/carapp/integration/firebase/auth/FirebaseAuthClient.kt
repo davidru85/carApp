@@ -272,11 +272,10 @@ internal fun interface AccountDeletionInvoker {
 
 internal class GitLiveFirebaseAuthGateway(
     private val deletionInvoker: AccountDeletionInvoker =
-        AccountDeletionInvoker {
-            throw FirebaseAuthGatewayException.AccountDeletionRemoteFailed(
-                IllegalStateException("D-23 server account deletion operation is not yet configured on this client"),
-            )
-        },
+        CallableAccountDeletionInvoker(
+            callable = GitLiveAccountDeletionCallable(),
+            currentUid = { Firebase.auth.currentUser?.uid },
+        ),
 ) : FirebaseAuthGateway {
     override val authStateChanged: Flow<FirebaseAuthUser?>
         get() = Firebase.auth.authStateChanged.map { it?.toIntegrationUser() }
