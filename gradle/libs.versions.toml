@@ -84,6 +84,7 @@ gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", versio
 gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
 gitlive-firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitlive" }
 gitlive-firebase-analytics = { module = "dev.gitlive:firebase-analytics", version.ref = "gitlive" }
+gitlive-firebase-crashlytics = { module = "dev.gitlive:firebase-crashlytics", version.ref = "gitlive" }
 
 # Android native authentication (D-112)
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }

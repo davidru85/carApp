@@ -11,11 +11,13 @@ class NativeTestExemptionContractTest {
         ":integration:firebase-auth" to emptySet(),
         ":integration:firebase-firestore" to emptySet(),
         ":integration:firebase-analytics" to emptySet(),
+        ":integration:firebase-crashlytics" to emptySet(),
         ":wiring:firebase" to
             setOf(
                 ":integration:firebase-auth",
                 ":integration:firebase-firestore",
                 ":integration:firebase-analytics",
+                ":integration:firebase-crashlytics",
             ),
         ":composition:ios" to setOf(":wiring:firebase"),
         ":shared" to emptySet(),
@@ -29,6 +31,7 @@ class NativeTestExemptionContractTest {
                 ":composition:ios",
                 ":integration:firebase-analytics",
                 ":integration:firebase-auth",
+                ":integration:firebase-crashlytics",
                 ":integration:firebase-firestore",
                 ":wiring:firebase",
             ),
