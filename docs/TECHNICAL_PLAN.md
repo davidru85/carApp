@@ -250,6 +250,10 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-234 | Departure hand-over routing | `UNKNOWN` with `isBusy` routes to `DepartureScreen` (Android) and `DepartureView` (iOS) | Accepted | Extends `D-214`. See ADR-0235. |
 | D-235 | No-account sign-in copy | `error_auth_no_account` copy on both hosts and in `docs/CONTRACTS.md §14.1` | Accepted | Amends `D-219`. See ADR-0236. |
 | D-236 | `E4-04` scope | Engineering release readiness in `E4-04`; store-only work in `E4-09` | Accepted | Portfolio objective: Phase 4 keeps a real release candidate without store accounts. See ADR-0237. |
+| D-239 | Android Crashlytics Gradle plugin | `com.google.firebase.crashlytics` 3.0.8, `:androidApp` only | Accepted | The Crashlytics Android SDK needs the injected build ID; the version stays in the catalog like `D-57`. See ADR-0240. |
+| D-241 | Crash collection consent | The analytics opt-in gate also commands `CrashReporter.setEnabled`; host keys off | Accepted | Lowest consent exposure with no new Settings row. See ADR-0242. |
+| D-242 | Release logging | Silent logger kept and proven; Kermit logger deferred to `E4-08` | Accepted | Keeps `E4-04` bounded; `§17` does not require logging to exist. See ADR-0243. |
+| D-243 | `recordNonFatal` call sites | `NonFatalReporting` at the `:shared` message chokepoints; `CrashFieldAllowlist` in `:core:crash` | Accepted | Few sites and one fixture, within `§4`. See ADR-0244. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

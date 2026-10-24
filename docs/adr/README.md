@@ -242,5 +242,9 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-234 | [ADR-0235](0235-route-the-departure-hand-over-to-the-departure-screen.md) | Route the departure hand-over to the departure screen. | Accepted |
 | D-235 | [ADR-0236](0236-make-the-no-account-copy-valid-in-every-sign-in-context.md) | Make the no-account copy valid in every sign-in context. | Accepted |
 | D-236 | [ADR-0237](0237-limit-e4-04-to-engineering-release-readiness.md) | Limit `E4-04` to engineering release readiness; store-only work moves to `E4-09`. | Accepted |
+| D-239 | [ADR-0240](0240-pin-the-crashlytics-gradle-plugin.md) | Pin the Crashlytics Gradle plugin 3.0.8 on `:androidApp`. | Accepted |
+| D-241 | [ADR-0242](0242-tie-crash-collection-to-the-analytics-opt-in.md) | Tie crash collection to the Settings analytics opt-in, off by default. | Accepted |
+| D-242 | [ADR-0243](0243-keep-the-silent-release-logger.md) | Keep the silent release logger, prove it, and defer the redacting logger. | Accepted |
+| D-243 | [ADR-0244](0244-record-non-fatals-at-the-shared-message-chokepoints.md) | Record non-fatals once at the shared message chokepoints. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

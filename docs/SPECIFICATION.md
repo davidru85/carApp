@@ -728,6 +728,10 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-234 | Departure hand-over routing | The departure screen also shows the hand-over between a successful remote departure step and the local clear, on both hosts. | Accepted |
 | D-235 | No-account sign-in copy | The no-account sign-in error tells the owner to add an account in the device settings and try again, in every sign-in context. | Accepted |
 | D-236 | `E4-04` scope | Release preparation delivers engineering release readiness; store-submission work is the separate story `E4-09`, required before any store submission. | Accepted |
+| D-239 | Android Crashlytics Gradle plugin | Pin the Crashlytics Gradle plugin 3.0.8 and apply it only to `:androidApp`. | Accepted |
+| D-241 | Crash collection consent | Crash collection follows the Settings analytics opt-in and is off by default. | Accepted |
+| D-242 | Release logging | Keep the silent logger in every build, proven by a test; a redacting Kermit logger is follow-up `E4-08`. | Accepted |
+| D-243 | `recordNonFatal` call sites | Record non-fatals once, where `:shared` turns an error into a message, plus the `:core:sync` bindings. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
