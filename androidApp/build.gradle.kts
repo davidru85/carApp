@@ -2,6 +2,9 @@ plugins {
     id("carapp.android.application")
     id("carapp.compose")
     id("com.google.gms.google-services")
+    // D-239: injects the build ID the Crashlytics Android SDK reads at app start; applied after the
+    // Google Services plugin, as Firebase documents.
+    id("com.google.firebase.crashlytics")
 }
 
 android {

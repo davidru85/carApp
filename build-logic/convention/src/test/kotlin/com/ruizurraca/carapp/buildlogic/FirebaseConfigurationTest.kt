@@ -42,6 +42,40 @@ class FirebaseConfigurationTest {
     }
 
     @Test
+    fun crashlyticsPluginIsPinnedAndAppliedOnlyToAndroidApp() {
+        val catalog = repositoryRoot.resolve("gradle/libs.versions.toml").readText()
+        val rootBuild = repositoryRoot.resolve("build.gradle.kts").readText()
+        val androidBuild = repositoryRoot.resolve("androidApp/build.gradle.kts").readText()
+        val buildScripts =
+            repositoryRoot
+                .walkTopDown()
+                .filter { file ->
+                    file.isFile &&
+                        file.name == "build.gradle.kts" &&
+                        "${File.separator}build${File.separator}" !in file.path
+                }.toList()
+        val googleServices = androidBuild.indexOf("id(\"com.google.gms.google-services\")")
+        val crashlytics = androidBuild.indexOf("id(\"com.google.firebase.crashlytics\")")
+
+        assertTrue(catalog.contains("crashlyticsGradle = \"3.0.8\""))
+        assertTrue(
+            catalog.contains(
+                "firebase-crashlytics = { id = \"com.google.firebase.crashlytics\", " +
+                    "version.ref = \"crashlyticsGradle\" }",
+            ),
+        )
+        assertTrue(rootBuild.contains("alias(libs.plugins.firebase.crashlytics) apply false"))
+        assertTrue(crashlytics > googleServices && googleServices >= 0, "applied after Google Services")
+        assertEquals(
+            listOf(repositoryRoot.resolve("androidApp/build.gradle.kts").canonicalFile),
+            buildScripts
+                .filter { it.readText().contains("id(\"com.google.firebase.crashlytics\")") }
+                .map(File::getCanonicalFile)
+                .sortedBy(File::getPath),
+        )
+    }
+
+    @Test
     fun firebaseAppleSdkPinIsConsumedByTheDirectIosIntegration() {
         val catalog = repositoryRoot.resolve("gradle/libs.versions.toml").readText()
         val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
