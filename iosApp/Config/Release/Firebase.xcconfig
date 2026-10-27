@@ -1,0 +1,8 @@
+// `D-238`: the Release configuration's Google Sign-In URL scheme. It is deliberately empty until `E4-10`
+// supplies the production plist and its REVERSED_CLIENT_ID, which together are the pair the build
+// verifies. An empty value makes the release build fail before packaging, which is the fail-closed
+// state `D-54`/`D-238` require; never fill it with a development value.
+GOOGLE_REVERSED_CLIENT_ID =
+
+// The target keeps its signing configuration, which includes the untracked Local.xcconfig (`D-118`).
+#include "../../Signing.xcconfig"
