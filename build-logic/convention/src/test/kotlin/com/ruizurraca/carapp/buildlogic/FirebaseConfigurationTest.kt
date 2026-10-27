@@ -9,6 +9,35 @@ import kotlin.test.assertTrue
 class FirebaseConfigurationTest {
     private val repositoryRoot = File(checkNotNull(System.getProperty("carapp.repoRoot")))
 
+    private companion object {
+        const val DEVELOPMENT_PROJECT_ID = "davidruiz-carapp-dev"
+        const val ANDROID_DEBUG_CONFIG = "androidApp/src/debug/google-services.json"
+        const val ANDROID_STAGING_CONFIG = "androidApp/src/staging/google-services.json"
+        const val IOS_DEBUG_CONFIG = "iosApp/Config/Debug/GoogleService-Info-Debug.plist"
+        const val IOS_STAGING_CONFIG = "iosApp/Config/Staging/GoogleService-Info.plist"
+        val ALLOWED_DEVELOPMENT_CONFIG_PATHS =
+            listOf(ANDROID_DEBUG_CONFIG, ANDROID_STAGING_CONFIG, IOS_DEBUG_CONFIG, IOS_STAGING_CONFIG)
+        val RELEASE_CONFIG_PATHS =
+            listOf(
+                "androidApp/src/release/google-services.json",
+                "iosApp/Config/Release/GoogleService-Info.plist",
+            )
+        val SECRET_FILE_PATTERNS =
+            listOf(
+                "*.keystore",
+                "*.jks",
+                "*.p12",
+                "*.p8",
+                "*.mobileprovision",
+                "*.provisionprofile",
+                "keystore.properties",
+                "*service-account*.json",
+                "*service_account*.json",
+                "application_default_credentials.json",
+                "local.properties",
+            )
+    }
+
     @Test
     fun googleServicesPluginIsPinnedAndAppliedOnlyToAndroidApp() {
         val catalog = repositoryRoot.resolve("gradle/libs.versions.toml").readText()
@@ -151,6 +180,53 @@ class FirebaseConfigurationTest {
         assertTrue(iosProvider.contains("AppAttestProvider"))
         assertTrue(iosEntitlements.contains("com.apple.developer.devicecheck.appattest-environment"))
         assertTrue(iosEntitlements.contains("<string>production</string>"))
+    }
+
+    @Test
+    fun releaseFirebaseConfigurationIsAbsentOrStrictlyProduction() {
+        // `D-238`: `E4-04` ships the mechanism and the fail-closed state; `E4-10` adds the files. An
+        // absent release configuration is therefore correct today, and a present one must never name
+        // the development project.
+        val releaseConfigs = RELEASE_CONFIG_PATHS.map { repositoryRoot.resolve(it) }
+
+        releaseConfigs.filter(File::exists).forEach { file ->
+            val text = file.readText()
+            assertFalse(
+                text.contains(DEVELOPMENT_PROJECT_ID),
+                "${file.name} must not name $DEVELOPMENT_PROJECT_ID",
+            )
+        }
+        assertEquals(
+            emptyList(),
+            releaseConfigs.map(File::getPath).filter { path -> repositoryRoot.resolve(path).isDirectory },
+            "a release configuration path must be a file, not a directory",
+        )
+    }
+
+    @Test
+    fun developmentConfigurationIsAllowedOnlyInTheReviewedLocations() {
+        // `D-259`: development configuration is allowed in Debug and in Staging, never in Release.
+        val files =
+            repositoryRoot.walkTopDown()
+                .filter { file ->
+                    file.isFile &&
+                        (file.name == "google-services.json" || file.name.startsWith("GoogleService-Info")) &&
+                        "${File.separator}build${File.separator}" !in file.path
+                }.map { file ->
+                    repositoryRoot.toPath().relativize(file.toPath()).toString().replace(File.separatorChar, '/')
+                }.sorted()
+                .toList()
+
+        assertEquals(ALLOWED_DEVELOPMENT_CONFIG_PATHS.sorted(), files)
+    }
+
+    @Test
+    fun gitignoreCoversEverySecretFileKindTheSecurityPolicyNames() {
+        val ignored = repositoryRoot.resolve(".gitignore").readLines().map(String::trim)
+
+        SECRET_FILE_PATTERNS.forEach { pattern ->
+            assertTrue(ignored.contains(pattern), ".gitignore must ignore $pattern (docs/SECURITY.md)")
+        }
     }
 
     @Test
