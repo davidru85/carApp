@@ -183,6 +183,30 @@ class FirebaseConfigurationTest {
     }
 
     @Test
+    fun theStagingVariantRunsReleaseCodeAgainstTheDevelopmentProject() {
+        // `D-259`: staging is the only build that exercises release code against a backend today, so it
+        // must inherit release settings, keep the debug identity and never see the debug App Check
+        // provider, which lives in the `debug` source set.
+        val androidBuild = repositoryRoot.resolve("androidApp/build.gradle.kts").readText()
+        val stagingBlock =
+            androidBuild
+                .substringAfter("staging {", missingDelimiterValue = "")
+                .substringBefore("}", missingDelimiterValue = "")
+        val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val stagingIos =
+            projectSpec.substringAfter("    Staging:", missingDelimiterValue = "")
+                .substringBefore("  carAppTests:", missingDelimiterValue = "")
+
+        assertTrue(stagingBlock.isNotEmpty(), "the staging build type must exist")
+        assertTrue(androidBuild.contains("initWith(release)") || stagingBlock.contains("release"))
+        assertTrue(stagingBlock.contains("applicationIdSuffix = \".debug\""))
+        assertTrue(stagingBlock.contains("signingConfig"))
+        assertTrue(projectSpec.contains("  Staging: release"), "Staging must declare release settings")
+        assertTrue(stagingIos.contains("PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug"))
+        assertTrue(stagingIos.contains("KOTLIN_FRAMEWORK_BUILD_TYPE: release"))
+    }
+
+    @Test
     fun androidReleaseSigningIsReadFromAnOutOfRepositoryPropertiesFile() {
         // `D-257`: the release is signed only where an out-of-repository properties file exists; a fresh
         // clone and CI stay unsigned and silent, and a path inside the repository is refused.
