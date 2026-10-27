@@ -413,7 +413,9 @@ the host. It is the one iOS-named command here that owes no cleanup.
 ### What is enforced, and what is not
 
 `main` is protected: fifteen required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`, `D-84`). `D-230`, which replaces the single `ios-ui-tests` check of `D-229`, adds the
+(`D-31`, `D-34`, `D-84`), with no required approving review and no administrator enforcement because the
+sole author cannot self-approve (`D-260`). Secret scanning and push protection are enabled since
+2026-10-27. `D-230`, which replaces the single `ios-ui-tests` check of `D-229`, adds the
 five `ios-ui-tests-*` shard checks that `docs/CONTRACTS.md §18` requires; the owner added them to
 branch protection, which lists all fifteen (read through the GitHub API on 2026-10-23).
 Administrator enforcement is off, so the owner can bypass; nobody else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
@@ -760,7 +762,16 @@ A change is gated when it matches at least one of the following. Gated changes M
 
 ### Gated paths
 
-Enforced by `CODEOWNERS` plus required review, not by prose:
+Requested by `CODEOWNERS`, reviewed by the owner, and **not** enforced by required review (`D-260`):
+
+`davidru85` is the only collaborator and the only merger, and every pull request is authored by that
+account because agents act with the owner's GitHub session, so GitHub forbids self-approval. Required
+approving review is therefore deliberately **off** (`required_approving_review_count = 0`,
+`require_code_owner_reviews = false`, administrator enforcement `false`), while the fifteen required
+checks below still gate every merge. `CODEOWNERS` requests the owner's review automatically; honouring
+it is the process rule, not a platform rule. The residual risk is recorded in `docs/SECURITY.md`.
+
+The paths whose changes are gated:
 
 - `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `AGENTS.md`
 - `docs/adr/**`, `docs/identifiers.md`, `docs/versions-matrix.md`

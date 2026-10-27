@@ -67,7 +67,8 @@ Never committed:
 Requirements:
 
 - `.gitignore` MUST cover the entries above from the first commit.
-- Secret scanning MUST be enabled on the repository.
+- Secret scanning MUST be enabled on the repository. It is enabled, together with push protection,
+  since 2026-10-27 (`D-260`).
 - Product tests in CI run against the Firestore emulator and MUST NOT hold Firebase client or
   administrator credentials or write to a real Firebase project. D-66 permits one short-lived
   GitHub OIDC identity whose custom role contains only `cloudfunctions.functions.get`; it can read
@@ -260,6 +261,20 @@ Requirements:
   but the provider's fatal-crash handler stays active until the app restarts, so a fatal crash in
   that same session may still be uploaded on Android. Such a report carries only the `§20.3.1`
   allowlisted keys, the stable error code and a stack trace. The window is one app session.
+
+- **Nothing technical stops an agent merge** (`D-260`, accepted 2026-10-27). Branch protection on
+  `main` requires the fifteen checks but no approving or code-owner review, and administrator
+  enforcement is off, because the sole collaborator is also the sole author and GitHub forbids
+  self-approval. Agents act with the owner's GitHub credentials, so only the process rule that agents
+  never merge stands between an agent and `main`. A machine account that could author agent pull
+  requests for the owner to approve was considered and declined for now.
+- **Two acknowledged development API keys remain in the commit history** (`D-260`, 2026-10-27).
+  Secret scanning is enabled and raised exactly two `google_api_key` alerts from commit `0ddef323`, for
+  `androidApp/src/debug/google-services.json` and
+  `iosApp/Config/Debug/GoogleService-Info-Debug.plist`. Both are resolved `wont_fix`: Firebase client
+  configuration is not a secret under this policy, and both keys were verified restricted by
+  application and by API target on 2026-10-27. GitHub does not apply push protection to that pattern, so
+  committing restricted Firebase client configuration is unaffected.
 
 ## Privacy
 
