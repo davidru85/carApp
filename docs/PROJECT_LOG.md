@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-10-27 — E4-04 closes its engineering scope; the production cutover becomes E4-10
+
+- **Type:** story
+- **Story / Decision:** `E4-04` / `D-238`, `D-240`, `D-244`, `D-245`, `D-246`, `D-248`, `D-249`, `D-250`,
+  `D-257`, `D-258`, `D-259`, `D-260` (the story's earlier decision records are `D-239`, `D-241`, `D-242`
+  and `D-243`)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B2-release-readiness`)
+- **What changed:** `E4-04` delivers the engineering release: the crash reporter with its consent,
+  redaction and call sites; the closed crash-field allowlist; the silent logger proven inert; the
+  per-build-type Firebase selection with a build-time fail-closed check; the `staging` variant that runs
+  release code against the development project; Android release signing from an out-of-repository
+  properties file; the owner's real launcher icon and light launch screen; `1.0.0`/`1`; the `D-23`
+  account-deletion invoker; and the Functions split that keeps `stopBilling` out of production. The
+  production project itself moved to the new story `E4-10`, the last before MVP closure, by `D-258`.
+- **Why:** the owner keeps every test against `davidruiz-carapp-dev` until the end of the MVP, so a
+  production project in `E4-04` would hold the story open indefinitely; the fail-closed mechanism plus a
+  `staging` variant let `E4-04` and `E4-03` complete against a real backend without it. The review
+  enforcement claim in `AGENTS.md` was false and is now stated as it is, because the sole author cannot
+  self-approve.
+- **Documents touched:** `docs/CONTRACTS.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/DECISION_BOARD.md`, `docs/adr/**`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/SECURITY.md`,
+  `docs/versions-matrix.md`, `AGENTS.md`, the handoffs of `E4-04` and `E4-B2`.
+- **Verification:** the complete non-instrumented command with the six `-x` paths is `BUILD SUCCESSFUL`
+  with 44 `[PASS]` assertions and no `[FAIL]` or `[PENDING]`; both `provider-decoupling` runs pass; the
+  Objective-C golden header is unchanged; `assembleRelease` and the iOS Release build fail closed;
+  `assembleStaging` and `-configuration Staging` succeed with the `.debug` identity, no debug App Check
+  provider and `1.0.0`/`1`; the two Functions suites and both production audits pass.
+- **Follow-ups / risks:** `E4-10` owns the production project, its files and the installs; `E4-09` keeps
+  the store work; `E4-03` measures `staging`; two development `google_api_key` alerts stay `wont_fix`;
+  local iOS evidence used Xcode 27.1 against the 26.6 pin.
+
 ### 2026-10-24 — CI corrections on the E4-B1 record closure
 
 - **Type:** correction

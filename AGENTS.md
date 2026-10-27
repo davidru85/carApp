@@ -267,10 +267,12 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-04` and `E4-03`, bundle `E4-B2` (release readiness) under `D-209`
-  (ADR-0210), in flight on `story/E4-B2-release-readiness`; its live checkpoint is
-  `docs/handoffs/E4-B2.md`. `E4-04` runs first, limited to engineering release readiness by
-  `D-236` (ADR-0237); then `E4-03` measures the release candidate. Bundle `E4-B1`, the product
+- **Remaining Phase 4:** `E4-03`, then `E4-10`. Bundle `E4-B2` (release readiness) is in flight on
+  `story/E4-B2-release-readiness`; its live checkpoint is `docs/handoffs/E4-B2.md`. `E4-04` closed its
+  engineering scope on 2026-10-27, limited by `D-236` (ADR-0237) and split by `D-258` (ADR-0259): it
+  delivers the per-build-type Firebase selection that fails release builds closed (`D-238`) and the
+  `staging` variant (`D-259`). `E4-03` measures `staging` next. `E4-10`, Production Firebase Cutover,
+  is the last story before MVP closure. Bundle `E4-B1`, the product
   surface (`E4-01` Settings UI, `E4-05` account conversion host surface, `E4-02` accessibility and
   localization), merged on 2026-10-23 through pull requests #91 and #92 (merge commits `28354df8` and
   `ec5b54bc`); it introduced `D-209` through `D-235`, and its record is `docs/handoffs/E4-B1.md`.
