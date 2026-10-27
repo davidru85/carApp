@@ -84,6 +84,35 @@ class ReleaseAssetsContractTest {
     }
 
     @Test
+    fun crashlyticsSymbolsUploadOnlyFromReleaseBuilds() {
+        // `D-240`: the phase exists, runs only for Release, and the Release configuration must produce
+        // dSYMs for it to upload. Staging and Debug must not reach any project.
+        val projectSpec = read("iosApp/project.yml")
+        val phase = projectSpec.substringAfter("name: Upload Crashlytics symbols").substringBefore("- name:")
+
+        assertTrue(phase.contains("Crashlytics/run"))
+        assertTrue(phase.contains("!= \"Release\""), "the phase must skip every non-Release configuration")
+        assertTrue(phase.contains("inputFiles"))
+    }
+
+    @Test
+    fun theReleaseVersionComesFromOnePlacePerHost() {
+        // `D-250`: 1.0.0 / 1 for the first release, read from build settings rather than literals, so a
+        // later build number changes in one place.
+        val androidBuild = read("androidApp/build.gradle.kts")
+        val projectSpec = read("iosApp/project.yml")
+        val infoPlist = read("iosApp/Info.plist")
+
+        assertTrue(androidBuild.contains("versionName = \"1.0.0\""))
+        assertTrue(androidBuild.contains("versionCode = 1"))
+        assertTrue(projectSpec.contains("MARKETING_VERSION: \"1.0.0\""))
+        assertTrue(projectSpec.contains("CURRENT_PROJECT_VERSION: \"1\""))
+        assertTrue(infoPlist.contains("<string>$(MARKETING_VERSION)</string>"))
+        assertTrue(infoPlist.contains("<string>$(CURRENT_PROJECT_VERSION)</string>"))
+        assertFalse(infoPlist.contains("<string>0.0.1</string>"))
+    }
+
+    @Test
     fun noSplashLibraryIsAdded() {
         val catalog = read("gradle/libs.versions.toml")
         val androidBuild = read("androidApp/build.gradle.kts")

@@ -47,8 +47,9 @@ val releaseSigningProperties: Properties? =
 
 android {
     defaultConfig {
+        // `D-250`: the first release. The build number rises by one per upload to either store.
         versionCode = 1
-        versionName = "0.0.1"
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

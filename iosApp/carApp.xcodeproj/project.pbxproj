@@ -370,6 +370,7 @@
 			buildConfigurationList = A341E26390F9E8DF3E134391 /* Build configuration list for PBXNativeTarget "carApp" */;
 			buildPhases = (
 				43E46D303569082042874712 /* Build Shared framework */,
+				8B2B4B39614F592E5E509FDE /* Upload Crashlytics symbols */,
 				4FD7518A55A0F21798044887 /* Verify Firebase configuration for this configuration */,
 				BD446437D5E90F9764FF8B6E /* Sources */,
 				B3B0B1D2B074820A8E592E92 /* Resources */,
@@ -492,6 +493,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n  Debug|Staging)\n    expected_plist=\"GoogleService-Info-Debug.plist\"\n    ;;\n  Release)\n    expected_plist=\"GoogleService-Info.plist\"\n    ;;\n  *)\n    echo \"error: unknown configuration $CONFIGURATION\" >&2\n    exit 1\n    ;;\nesac\nif [ -z \"${GOOGLE_REVERSED_CLIENT_ID:-}\" ]; then\n  echo \"error: GOOGLE_REVERSED_CLIENT_ID is empty for $CONFIGURATION; its Firebase.xcconfig must supply the reversed client ID of $expected_plist\" >&2\n  exit 1\nfi\nplist=\"$SRCROOT/Config/$CONFIGURATION/$( [ \"$CONFIGURATION\" = \"Debug\" ] && echo GoogleService-Info-Debug.plist || ( [ \"$CONFIGURATION\" = \"Staging\" ] && echo GoogleService-Info.plist || echo GoogleService-Info.plist ) )\"\nif [ ! -f \"$plist\" ]; then\n  echo \"error: $CONFIGURATION needs $plist, which does not exist yet (E4-10 supplies the Release one)\" >&2\n  exit 1\nfi\nconfigured=\"$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' \"$plist\")\"\nif [ \"$configured\" != \"$GOOGLE_REVERSED_CLIENT_ID\" ]; then\n  echo \"error: $CONFIGURATION Google URL scheme $GOOGLE_REVERSED_CLIENT_ID does not match $plist ($configured)\" >&2\n  exit 1\nfi\n";
+		};
+		8B2B4B39614F592E5E509FDE /* Upload Crashlytics symbols */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Upload Crashlytics symbols";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CONFIGURATION}\" != \"Release\" ]; then\n  echo \"Skipping Crashlytics symbol upload for ${CONFIGURATION}.\"\n  exit 0\nfi\nif [ -n \"${DWARF_DSYM_FOLDER_PATH:-}\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -635,6 +659,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -648,6 +673,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -692,6 +718,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -711,6 +738,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -860,6 +888,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -873,6 +902,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
