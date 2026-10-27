@@ -4,6 +4,10 @@
 
 Accepted
 
+Amended by `D-238` (ADR-0239): each build type carries only its own restricted configuration, the iOS
+Google URL scheme comes from a per-configuration xcconfig variable, and a release build fails before
+packaging when its configuration is absent. Amended again by `D-259` (ADR-0260): development
+configuration is allowed in a `Debug` build **and** in the `staging` variant, never in Release.
 ## Context
 
 E0-07 commits restricted configuration for the development Firebase project. Production uses a

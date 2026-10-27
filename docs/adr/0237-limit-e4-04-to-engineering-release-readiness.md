@@ -41,7 +41,9 @@ labels among the MVP requirements.
 
 ## Decision
 
-The selected option is **B**.
+The selected option is **B**. Amended by `D-258` (ADR-0259) on 2026-10-27: the production-dependent
+criteria and owner-run items named below move to the new story `E4-10`, so `E4-04` closes with the
+fail-closed mechanism of `D-238` and the `staging` variant of `D-259`. Everything else stands.
 
 - `E4-04` keeps: the production Firebase project and the release configuration of both hosts; the
   Crashlytics integration with its consent, redaction and non-fatal call sites; the release-logging

@@ -255,6 +255,18 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-242 | Release logging | Silent logger kept and proven; Kermit logger deferred to `E4-08` | Accepted | Keeps `E4-04` bounded; `§17` does not require logging to exist. See ADR-0243. |
 | D-243 | `recordNonFatal` call sites | `NonFatalReporting` at the `:shared` message chokepoints; `CrashFieldAllowlist` in `:core:crash` | Accepted | Few sites and one fixture, within `§4`. See ADR-0244. |
 | D-247 | Billing cutoff deployment boundary | `stopBilling` only in `functions-dev-billing/` (`dev-billing`); production deploys `functions:default` | Accepted | Keeps the `D-66` cutoff out of production; assertion 22 guards both export sets. See ADR-0248. |
+| D-238 | Firebase configuration selection | Per build type; absent release configuration fails the build | Accepted | `E4-04` owns the mechanism, `E4-10` the files (`D-258`). See ADR-0239. |
+| D-240 | iOS Crashlytics symbol upload | Release-only `Crashlytics/run` phase | Accepted | Symbols upload only from an archive. See ADR-0241. |
+| D-244 | Launch screens | Platform mechanisms; `#FEF7FF` light-only, three icon appearances | Accepted | No splash dependency. See ADR-0245. |
+| D-245 | R8 | Off for the MVP | Accepted | Also off in `staging`. See ADR-0246. |
+| D-246 | `targetSdk` | 36 | Accepted | Discharges ADR-0026. See ADR-0247. |
+| D-248 | Release build evidence | Local only | Accepted | No new required check. See ADR-0249. |
+| D-249 | Production App Check profile | Off-Play Play Integrity until `E4-09` | Accepted | Applied by `E4-10`. See ADR-0250. |
+| D-250 | Release version scheme | `1.0.0` / `1`, integer build number per upload | Accepted | Gradle and iOS build settings. See ADR-0251. |
+| D-257 | Android release signing | Out-of-repository properties file via a Gradle property | Accepted | Unsigned and silent when absent; rejects in-repository paths. See ADR-0258. |
+| D-258 | Production Firebase cutover | Story `E4-10`, last before MVP closure | Accepted | `E4-04` keeps the mechanism and `staging`. See ADR-0259. |
+| D-259 | `staging` variant | Release code and settings, `.debug` identity, development configuration | Accepted | `E4-03` measures it. See ADR-0260. |
+| D-260 | Review enforcement | Off; documentation corrected; secret scanning on | Accepted | Sole author cannot self-approve. See ADR-0261. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

@@ -733,6 +733,18 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-242 | Release logging | Keep the silent logger in every build, proven by a test; a redacting Kermit logger is follow-up `E4-08`. | Accepted |
 | D-243 | `recordNonFatal` call sites | Record non-fatals once, where `:shared` turns an error into a message, plus the `:core:sync` bindings. | Accepted |
 | D-247 | Billing cutoff deployment boundary | The billing cutoff ships only from the development-only `dev-billing` Functions codebase; production deploys `functions:default`. | Accepted |
+| D-238 | Firebase configuration selection | Each build type selects its own restricted configuration; a release build fails before packaging when it is absent. | Accepted |
+| D-240 | iOS Crashlytics symbol upload | Upload dSYMs from a Release-only run-script phase. | Accepted |
+| D-244 | Launch screens | Platform launch mechanisms, light-only `#FEF7FF`, the circle logo and three icon appearances. | Accepted |
+| D-245 | R8 | Minification stays off for the MVP release. | Accepted |
+| D-246 | `targetSdk` | `targetSdk` stays 36. | Accepted |
+| D-248 | Release build evidence | Release-build evidence is local; the required checks are unchanged. | Accepted |
+| D-249 | Production App Check profile | Production keeps the off-Play Play Integrity profile until Play app signing exists. | Accepted |
+| D-250 | Release version scheme | `MAJOR.MINOR.PATCH` plus one integer build number, first release `1.0.0` / `1`. | Accepted |
+| D-257 | Android release signing | Read signing from an out-of-repository properties file; unsigned and silent when absent. | Accepted |
+| D-258 | Production Firebase cutover | Production work is story `E4-10`, the last before MVP closure. | Accepted |
+| D-259 | `staging` variant | Release code and settings against the development project, with the `.debug` identity. | Accepted |
+| D-260 | Review enforcement | Required review stays off; the documentation states the real gate. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

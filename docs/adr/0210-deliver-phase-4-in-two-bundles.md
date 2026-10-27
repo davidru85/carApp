@@ -10,6 +10,10 @@ Amended by `D-236` (ADR-0237): at the `E4-B2` intake on 2026-10-24 the owner lim
 engineering release readiness and moved its store-only work to `E4-09`, outside both
 bundles. The composition and order of `E4-B2` are unchanged: `E4-04`, then `E4-03`.
 
+Amended by `D-258` (ADR-0259) on 2026-10-27: the production Firebase cutover moves to the new story
+`E4-10`, the last story before MVP closure. The composition and order of `E4-B2` are still unchanged,
+but `E4-B2` no longer closes the MVP: `E4-10` does, after this bundle merges.
+
 ## Context
 
 Phase 3 closed on 2026-10-15 when bundle `E3-B2` merged through pull request #89, and its record
