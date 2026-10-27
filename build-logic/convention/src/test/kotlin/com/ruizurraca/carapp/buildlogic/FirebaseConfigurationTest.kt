@@ -190,8 +190,8 @@ class FirebaseConfigurationTest {
         val androidBuild = repositoryRoot.resolve("androidApp/build.gradle.kts").readText()
         val stagingBlock =
             androidBuild
-                .substringAfter("staging {", missingDelimiterValue = "")
-                .substringBefore("}", missingDelimiterValue = "")
+                .substringAfter("create(\"staging\")", missingDelimiterValue = "")
+                .substringBefore("matchingFallbacks", missingDelimiterValue = "")
         val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
         val stagingIos =
             projectSpec.substringAfter("    Staging:", missingDelimiterValue = "")

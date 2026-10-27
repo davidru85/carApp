@@ -73,6 +73,15 @@ android {
             // `D-257`: signed only where the owner supplied the out-of-repository properties file.
             signingConfig = signingConfigs.findByName("release")
         }
+        // `D-259`: release code and release settings against the development project, so a backend can
+        // be exercised before `E4-10` creates production. It keeps the `.debug` identity because it is
+        // never distributed, so it cannot coexist with a debug build on one device.
+        create("staging") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.findByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 }
 
