@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        `D-244`: Android 12 and later build the system splash from these attributes. The background is the
+        app's own first-screen surface (`#FEF7FF`) and the icon is the adaptive launcher icon; there is no
+        splash library.
+    -->
+    <style name="Theme.CarApp.Launch" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#FEF7FF</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+    </style>
+
+    <style name="Theme.CarApp" parent="@android:style/Theme.Material.Light.NoActionBar" />
+</resources>

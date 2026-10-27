@@ -49,9 +49,12 @@ class ReleaseAssetsContractTest {
         assertTrue(launchTheme.contains("launch_background"))
         assertTrue(launchThemeV31.contains("#FEF7FF"))
         assertTrue(launchThemeV31.contains("@mipmap/ic_launcher"))
-        assertTrue(launchBackground.contains("#FEF7FF"))
+        // The layer list names the colour resource, whose value is the light surface the app draws.
+        assertTrue(launchBackground.contains("@color/launch_background"))
+        assertTrue(read("androidApp/src/main/res/values/colors.xml").contains("#FEF7FF"))
         assertTrue(launchBackground.contains("launch_logo"))
-        assertTrue(mainActivity.contains("Theme.CarApp"))
+        // The generated resource id is the Kotlin spelling of `Theme.CarApp`.
+        assertTrue(mainActivity.contains("R.style.Theme_CarApp"), mainActivity.lines().first())
         // `D-244`: iOS keeps the system default background, so no colour set is named.
         assertTrue(infoPlist.contains("UIImageName"))
         assertTrue(infoPlist.contains("LaunchLogo"))
@@ -69,9 +72,14 @@ class ReleaseAssetsContractTest {
             assertTrue(file.isFile, "$name must exist")
         }
         assertEquals(
-            3,
+            2,
             Regex("\"appearances\"").findAll(catalogue).count(),
-            "each of the three appearances must be declared",
+            "the dark and tinted appearances must be declared beside the universal one",
+        )
+        assertTrue(catalogue.contains("\"universal\""))
+        assertTrue(
+            File(repositoryRoot, "iosApp/Assets.xcassets/LaunchLogo.imageset/LaunchLogo.svg").isFile,
+            "the launch logo must be present as a vector",
         )
     }
 

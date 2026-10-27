@@ -68,6 +68,7 @@ targets:
       # `D-238`/`D-259`: each configuration bundles only its own Firebase plist. The development one
       # serves Debug and Staging; Release bundles the production plist that `E4-10` adds, and until it
       # exists the build fails before packaging instead of falling back.
+      - path: Assets.xcassets
       - path: Config/Debug/GoogleService-Info-Debug.plist
         buildPhase: resources
       - path: Config/Staging/GoogleService-Info.plist

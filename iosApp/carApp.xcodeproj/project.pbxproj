@@ -13,6 +13,7 @@
 		0EF433FA8D4B3A25B59529C5 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 2C051F04E1443C61E2A5DE8B /* FirebaseCrashlytics */; };
 		108BBE054E138D58DB52BCDC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF7A56E87D9090EED34A1AB /* SettingsView.swift */; };
 		15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */; };
+		179631DB8D4F9DD784FE79F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E05A71AB193F5A40C420087 /* Assets.xcassets */; };
 		1C941FBC92DF42DDB1B699FF /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A90527A7E36344B9C17D31B2 /* GoogleService-Info.plist */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
@@ -100,6 +101,7 @@
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionSurfaceTests.swift; sourceTree = "<group>"; };
+		1E05A71AB193F5A40C420087 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
 		2990EC393011D730A1640108 /* SettingsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentationTests.swift; sourceTree = "<group>"; };
 		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
@@ -287,6 +289,7 @@
 				F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */,
 				15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */,
 				BA444957D2C856A4395A3F80 /* AppVersion.swift */,
+				1E05A71AB193F5A40C420087 /* Assets.xcassets */,
 				2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */,
 				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
 				5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */,
@@ -442,6 +445,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				179631DB8D4F9DD784FE79F1 /* Assets.xcassets in Resources */,
 				8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */,
 				1C941FBC92DF42DDB1B699FF /* GoogleService-Info.plist in Resources */,
 				CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */,
