@@ -326,8 +326,10 @@ complete the remaining integration behavior in place.
 - D-73 automatically removed the first eligible Functions artifacts while the deployed function
   remained active. The exact evidence is in
   `docs/runbooks/development-firebase-cost-controls.md`.
-- No production Firebase project exists. E4-04 owns production identifiers, billing, alerts and
-  release configuration; production MUST NOT inherit the development cutoff.
+- No production Firebase project exists. `E4-10`, the last story before MVP closure (`D-258`),
+  owns production identifiers, billing, alerts and release configuration; production MUST NOT
+  inherit the development cutoff. Until it lands, release builds fail closed (`D-238`) and the only
+  build that talks to a real backend is a `staging` one, against the development project (`D-259`).
 
 ### Creating a module
 

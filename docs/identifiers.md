@@ -1,6 +1,6 @@
 # Application Identifiers
 
-> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. A separate production Firebase project is required before release, but its project identifier is deferred by `D-14` and MUST be decided before `E4-04`.
+> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. A separate production Firebase project is required before release; its identifier is deferred by `D-14`, decided as `D-237` and recorded by `E4-10` (`D-258`) once creation proves it available (`D-32`).
 >
 > Related decisions: `D-13` Firestore location, `D-14` Firebase project topology, `D-22` application identifiers.
 
@@ -11,14 +11,14 @@
 | Application and bundle identifiers | Accepted |
 | iOS UI-test bundle identifier | Accepted — test-only and non-distributed |
 | Development Firebase project ID | Accepted |
-| Production Firebase project ID | Deferred — decide before `E4-04` release preparation |
+| Production Firebase project ID | Decided as `D-237` (`davidruiz-carapp`); recorded by `E4-10` after creation proves it available |
 | Firestore location | Accepted |
 
 ## Application
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Product name | `carApp` | Internal and development display name. The final store display name may still be reviewed in `E4-04`. |
+| Product name | `carApp` | Internal display name. The store display name is `CarApp` (`D-237`, 2026-10-24), applied by `E4-10`. |
 | Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
@@ -67,13 +67,13 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Item | Value | Notes |
 |------|-------|-------|
 | Development project ID | `davidruiz-carapp-dev` | Fixed by `D-32`. `carapp-dev`, originally chosen by `D-22`, is held by another Google Cloud customer and is unavailable; Google Cloud project IDs are globally unique. Used by debug builds and by manual testing during development. |
-| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. Its availability MUST be checked before it is recorded as decided (`D-32`). It will use aggressive budget alerts and manual intervention; the development automatic cutoff MUST NOT be copied. |
+| Production project ID | `davidruiz-carapp` (`D-237`, owner-decided 2026-10-24), not yet created | Recorded here only after `E4-10` creates the project, which proves the ID available (`D-32`). It uses an alert-only budget with manual intervention; the development automatic cutoff MUST NOT be copied. |
 | CI | Firestore emulator plus read-only runtime metadata | Product tests MUST NOT hold Firebase client/admin credentials or write to a real project. D-66 adds one GitHub OIDC identity restricted to `cloudfunctions.functions.get` for the deployed-runtime assertion. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
 | Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until the production project is created. |
 | Development billing | Billing account `01F6AF-2A3D04-00546B`; EUR 10 monthly budget | D-66 actual-cost alerts at 50%, 90% and 100%; the project-local 2nd gen function disables billing at 100%. D-69 isolates the required Billing Admin role and alerts on administrative changes. D-70 forbids automatic retry and alerts on execution errors. Budget notifications are not a hard cap and can be delayed. |
-| Production billing | No production project exists | E4-04 must configure a separate billing account association and aggressive alerts. Automatic billing shutdown is forbidden in production. |
+| Production billing | No production project exists | `E4-10` must configure a separate billing account association and alert-only budget. Automatic billing shutdown is forbidden in production. |
 | Development App Check | Authentication and Firestore enforced | D-67: App Attest on iOS, Play Integrity on Android, debug providers only for local/CI-specific builds. |
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
