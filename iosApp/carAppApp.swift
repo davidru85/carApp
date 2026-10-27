@@ -58,17 +58,36 @@ struct carAppApp: App {
 }
 
 private func configureFirebase() {
-    #if DEBUG
+    // `D-259`: the plist is selected by configuration, not by `#if DEBUG`, because Staging is release
+    // code with the development project and `DEBUG` cannot tell the two apart. Debug and Staging bundle
+    // the development plist; Release bundles the production one that `E4-10` adds, and the build script
+    // of `D-238` refuses to package a configuration without its plist.
+    let resourceName = firebaseConfigurationResourceName(configuration: currentConfiguration)
+
     guard
-        let configPath = Bundle.main.path(forResource: "GoogleService-Info-Debug", ofType: "plist"),
+        let configPath = Bundle.main.path(forResource: resourceName, ofType: "plist"),
         let options = FirebaseOptions(contentsOfFile: configPath)
     else {
-        fatalError("The Debug Firebase configuration is missing from the application bundle.")
+        fatalError("The \(currentConfiguration) Firebase configuration is missing from the application bundle.")
     }
     FirebaseApp.configure(options: options)
-    #else
-    FirebaseApp.configure()
-    #endif
+}
+
+/// The configuration name Xcode compiled, so the plist choice follows the build settings.
+///
+/// `project.yml` injects `CARAPP_CONFIGURATION = $(CONFIGURATION)` into `Info.plist`, because Xcode does
+/// not copy `CONFIGURATION` there by itself. The fallback keeps a unit-test bundle usable.
+private let currentConfiguration: String =
+    (Bundle.main.infoDictionary?["CARAPP_CONFIGURATION"] as? String) ?? "Debug"
+
+/// The plist each configuration bundles. Kept as a free function so it is testable without a bundle.
+func firebaseConfigurationResourceName(configuration: String) -> String {
+    switch configuration {
+    case "Debug", "Staging":
+        "GoogleService-Info-Debug"
+    default:
+        "GoogleService-Info"
+    }
 }
 
 private let isDebugBuild: Bool = {
