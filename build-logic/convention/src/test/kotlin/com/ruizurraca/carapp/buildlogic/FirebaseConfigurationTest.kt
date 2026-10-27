@@ -171,10 +171,24 @@ class FirebaseConfigurationTest {
         assertTrue(iosProject.contains("product: FirebaseAppCheck"))
         assertTrue(iosProject.contains("CODE_SIGN_ENTITLEMENTS: carApp.entitlements"))
         assertTrue(iosApplication.contains("import FirebaseAppCheck"))
-        assertTrue(iosApplication.indexOf("configureAppCheck()") < iosApplication.indexOf("FirebaseApp.configure()"))
-        assertTrue(iosApplication.contains("GoogleService-Info-Debug"))
+        // The App Check provider must be installed before Firebase Core is configured, whatever call
+        // shape the configuration takes (`configure(options:)` since `D-259`).
+        assertTrue(
+            iosApplication.indexOf("configureAppCheck()") <
+                iosApplication.indexOf("configureFirebase()", startIndex = iosApplication.indexOf("configureAppCheck()")),
+        )
+        // `D-259`: the plist follows the configuration name, not `#if DEBUG`, and the debug provider stays
+        // `#if DEBUG` so Staging can never use a debug token.
+        assertTrue(iosApplication.contains("firebaseConfigurationResourceName(configuration: currentConfiguration)"))
+        assertTrue(iosApplication.contains("\"GoogleService-Info-Debug\""))
         assertTrue(iosApplication.contains("FirebaseOptions(contentsOfFile:"))
         assertTrue(iosProject.contains("EXCLUDED_SOURCE_FILE_NAMES: GoogleService-Info-Debug.plist"))
+        val plistChoiceBody =
+            iosApplication.substringAfter("private func configureFirebase()").substringBefore("/// The configuration name")
+        assertFalse(
+            plistChoiceBody.lines().any { line -> line.trimStart().startsWith("#if") },
+            "the plist choice must not depend on a compilation condition",
+        )
         assertTrue(iosProvider.contains("#if DEBUG && targetEnvironment(simulator)"))
         assertTrue(iosProvider.contains("AppCheckDebugProviderFactory"))
         assertTrue(iosProvider.contains("AppAttestProvider"))
