@@ -183,6 +183,27 @@ class FirebaseConfigurationTest {
     }
 
     @Test
+    fun androidReleaseSigningIsReadFromAnOutOfRepositoryPropertiesFile() {
+        // `D-257`: the release is signed only where an out-of-repository properties file exists; a fresh
+        // clone and CI stay unsigned and silent, and a path inside the repository is refused.
+        val androidBuild = repositoryRoot.resolve("androidApp/build.gradle.kts").readText()
+        val ignoredPaths = repositoryRoot.resolve(".gitignore").readLines().map(String::trim)
+
+        assertTrue(androidBuild.contains("carapp.releaseSigningProperties"))
+        assertTrue(androidBuild.contains("keystore.properties"), "the guard names the file it refuses")
+        assertTrue(
+            androidBuild.contains("rootProject.projectDir") || androidBuild.contains("rootDir"),
+            "the repository root must be known so an in-repository path can be refused",
+        )
+        assertTrue(androidBuild.contains("signingConfig"), "the release build type must consume the config")
+        assertTrue(ignoredPaths.contains("keystore.properties"))
+        assertFalse(
+            androidBuild.contains("storePassword = \""),
+            "no password may be a literal in the build script",
+        )
+    }
+
+    @Test
     fun releaseFirebaseConfigurationIsAbsentOrStrictlyProduction() {
         // `D-238`: `E4-04` ships the mechanism and the fail-closed state; `E4-10` adds the files. An
         // absent release configuration is therefore correct today, and a present one must never name
@@ -251,8 +272,24 @@ class FirebaseConfigurationTest {
         val signingConfiguration = repositoryRoot.resolve("iosApp/Signing.xcconfig").readText()
         val ignoredPaths = repositoryRoot.resolve(".gitignore").readLines().map(String::trim)
 
-        assertTrue(projectSpec.contains("Signing.xcconfig"))
-        assertTrue(xcodeProject.contains("Signing.xcconfig"))
+        // `D-238` inserted a per-configuration base into the chain, because the Google URL scheme differs
+        // per configuration. Signing keeps its own file: each Firebase.xcconfig includes
+        // Signing.xcconfig, and that includes the untracked Local.xcconfig.
+        assertTrue(projectSpec.contains("Config/Debug/Firebase.xcconfig"))
+        assertTrue(projectSpec.contains("Config/Release/Firebase.xcconfig"))
+        assertTrue(projectSpec.contains("Config/Staging/Firebase.xcconfig"))
+        assertEquals(
+            3,
+            xcodeProject.lines().count { it.contains("baseConfigurationReference") && it.contains("Firebase.xcconfig") },
+            "each of the three app configurations must carry its own base configuration",
+        )
+        (listOf("Debug", "Release", "Staging")).forEach { configuration ->
+            val base = repositoryRoot.resolve("iosApp/Config/$configuration/Firebase.xcconfig").readText()
+            assertTrue(
+                base.contains("#include \"../../Signing.xcconfig\""),
+                "$configuration must reach the signing configuration",
+            )
+        }
         assertTrue(signingConfiguration.contains("#include? \"Local.xcconfig\""))
         assertTrue(ignoredPaths.contains("iosApp/Local.xcconfig"))
         assertFalse(signingConfiguration.contains("QGPVH5G7ST"))
