@@ -272,7 +272,7 @@ enum AccessibilityAuditAllowlist {
             screen: "settings",
             auditType: .dynamicType,
             elementIdentifier: "",
-            elementLabelPrefix: "Pseudonymous usage measurement",
+            elementLabelPrefix: "Sends pseudonymous usage measurements",
             reason: "`settings_analytics_description` is the footer of the same conditional row; the system renders it and the app cannot change a `Form` row footer's type style."
         ),
     ]
