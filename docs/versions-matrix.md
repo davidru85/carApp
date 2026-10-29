@@ -78,7 +78,7 @@ decision exists, otherwise the story or normative section that fixes it.
 | Kotlin/Native iOS targets | — | `iosArm64`, `iosSimulatorArm64` | [ADR-0038](adr/0038-supported-ios-targets-are-arm64.md) (`D-37`) | `iosX64` is excluded because the accepted bundled-SQLite stack has no Intel-simulator artifacts and the application and CI already build ARM64 only. |
 | iOS Keychain acceptance target | XCUITest bundle identifier | `com.ruizurraca.carapp.uitests` | [ADR-0075](adr/0075-use-xcuitest-for-keychain-persistence-acceptance.md) (`D-74`) | Test-only and non-distributed; drives the signed Debug app as a separate process and is absent from Release archives. |
 | Android `compileSdk` | — | 37 | `E0-06` | Floor imposed by the pinned Compose BOM. |
-| Android `targetSdk` | — | 36 | `E0-06` | Deliberately one below `compileSdk`. `compileSdk` is forced by the Compose BOM and only decides which APIs compile; `targetSdk` is the Android runtime contract the app opts into, which is a behavioural decision and not a version pin. It matches the Android reference device below, and `E4-04` owns the move to a newer level before release. `minSdk` is fixed at 26 by `docs/SPECIFICATION.md §11`. |
+| Android `targetSdk` | — | 36 | `E0-06` | Deliberately one below `compileSdk`. `compileSdk` is forced by the Compose BOM and only decides which APIs compile; `targetSdk` is the Android runtime contract the app opts into, which is a behavioural decision and not a version pin. It matches the Android reference device below; `D-246` keeps 36 for the MVP release, and `E4-09` re-checks it against the Google Play requirement in force at submission. `minSdk` is fixed at 26 by `docs/SPECIFICATION.md §11`. |
 | Firebase | Firebase BOM | 34.18.0 | [ADR-0001](adr/0001-backend-cloud-firestore.md) (`D-0`) | Governs the native Firebase artifact versions, including Crashlytics. |
 | Firebase Android configuration | `com.google.gms.google-services` | 4.5.0 | [ADR-0058](adr/0058-pin-google-services-gradle-plugin.md) (`D-57`) | Processes the build-type-specific `google-services.json`; applied only to `:androidApp`. |
 | Crashlytics Android Gradle plugin | `com.google.firebase.crashlytics` | 3.0.8 | [ADR-0240](adr/0240-pin-the-crashlytics-gradle-plugin.md) (`D-239`) | Injects the build ID the Crashlytics Android SDK requires at app start; applied only to `:androidApp`, after `com.google.gms.google-services`. Released with Firebase BOM 34.18.0 on 2026-08-19. Minification is off, so no mapping file is uploaded. |
@@ -134,8 +134,8 @@ Enforced in CI by Kover (`D-18`). A module below its threshold fails the build.
 | Target | Reference environment | Method | Threshold |
 |--------|----------------------|--------|-----------|
 | Consumption for 1,000 entries | Shared test on the CI Linux runner (JVM), plus one manual run on the reference iPhone | 1,000 synthetic entries, release-mode build, discard 5 warm-up runs, take the median of 20 runs | < 100 ms |
-| Cold start to first content | Reference devices below, release build, app force-stopped, device idle | Median of 10 runs, measured to the first frame that shows real content, not the splash | < 2 s |
-| List smoothness | Reference devices below, release build, 1,000 fuel entries | Scripted fling across the full list; count frames over 32 ms | 0 frames over 32 ms |
+| Cold start to first content | Reference devices below, `staging` build (`D-259`: release code and settings against the development project), app force-stopped, device idle | Median of 10 runs, measured to the first frame that shows real content, not the splash | < 2 s |
+| List smoothness | Reference devices below, `staging` build (`D-259`), 1,000 fuel entries | Scripted fling across the full list; count frames over 32 ms | 0 frames over 32 ms |
 
 Reference devices:
 

@@ -63,7 +63,7 @@ final EUR 10 amount.
 `D-247` deploys `stopBilling` from the development-only `dev-billing` codebase
 (`functions-dev-billing/`), never from the product `default` codebase (`functions/`). Only this project
 deploys `dev-billing`; production deploys `functions:default` alone
-(`docs/runbooks/production-firebase-release.md`).
+(`docs/runbooks/production-firebase-release.md`, created by `E4-10`).
 
 Firebase records a function's codebase in its `firebase-functions-codebase` label at deployment, and a
 deploy of one codebase deletes the functions labelled with that codebase that its source no longer

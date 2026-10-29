@@ -46,14 +46,14 @@ Allowed in the repository:
   debug bundle identifier. Moving Android development to another machine requires an explicit
   additional fingerprint; restrictions MUST NOT be widened automatically.
 
-  Under `D-238` (superseding `D-54`), each build type carries only its own restricted
+  Under `D-238` (amending `D-54`), each build type carries only its own restricted
   configuration. Debug uses `androidApp/src/debug/google-services.json` and
   `iosApp/Config/Debug/GoogleService-Info-Debug.plist` for `davidruiz-carapp-dev`; Release uses
   `androidApp/src/release/google-services.json` and `iosApp/Config/Release/GoogleService-Info.plist`
   for the production project of `docs/identifiers.md`. A configuration MUST NOT reach an artifact of
   the other build type, and `FirebaseConfigurationTest` enforces it. The production keys must be
   restricted to the release package, signing certificates and bundle identifier before either file is
-  committed (`docs/runbooks/production-firebase-release.md` O4–O5); until they exist, release builds
+  committed (`docs/runbooks/production-firebase-release.md` O4–O5, created by `E4-10`); until they exist, release builds
   fail closed.
 
 Never committed:
@@ -237,7 +237,8 @@ Requirements:
   Their API keys must be restricted to the release package and signing certificates and to the release
   bundle identifier; App Check (`D-67`, `D-249`) and the Firestore rules remain the abuse and
   authorization controls. Widening a key restriction requires the owner.
-- **Production has no automatic billing shutdown** (`D-66`, `D-237`, `D-247`). The production budget
+- **Production has no automatic billing shutdown** (`D-66`, `D-247`; the production budget is part of the
+  reserved `D-237`). The production budget
   only notifies, and reporting is delayed, so a cost spike continues until the owner acts on an alert.
 - **Release Android builds are neither shrunk nor obfuscated** (`D-245`). The APK is larger and its code
   is readable; it contains no secret.
@@ -247,7 +248,7 @@ Requirements:
   hook now compiles only under `#if DEBUG`, and `SwiftDebugOnlyHookRule` keeps it that way, so a Release
   build cannot be steered by whoever launches it.
 - **Store-only privacy obligations are deferred while the app is not published** (`D-236`, accepted
-  on 2026-10-24). Release builds run against the production project, but deleting an Apple-linked
+  on 2026-10-24). When `E4-10` points release builds at the production project, deleting an Apple-linked
   account does not revoke its Sign in with Apple token, production App Check on Android accepts
   versions that Google Play does not recognise, and no iOS privacy manifest, store privacy label or
   public privacy policy exists. A user who deletes an Apple-linked account keeps the app listed under
@@ -260,7 +261,15 @@ Requirements:
   non-fatal report at once and deletes the reports the provider stored while collection was off,
   but the provider's fatal-crash handler stays active until the app restarts, so a fatal crash in
   that same session may still be uploaded on Android. Such a report carries only the `§20.3.1`
-  allowlisted keys, the stable error code and a stack trace. The window is one app session.
+  keys of the last non-fatal report, the uncaught throwable's type and message, and a stack trace. The
+  window is one app session.
+- **A fatal crash report carries the uncaught throwable's message** (`D-241`, `E4-04`). The `§20.3.1`
+  allowlist governs the keys and the throwable of a non-fatal report only; for an uncaught exception the
+  Crashlytics SDK records the exception's type, message and stack trace as thrown. No production
+  exception message interpolates a UID, a token, a note, an odometer value or a cost: the interpolating
+  `require` messages of `:core:model` and `:core:analytics` report only the non-positive or negative
+  value that broke their invariant, and the one interpolating Swift `fatalError` names the build
+  configuration. A new interpolated exception message MUST keep that property.
 
 - **Nothing technical stops an agent merge** (`D-260`, accepted 2026-10-27). Branch protection on
   `main` requires the fifteen checks but no approving or code-owner review, and administrator
@@ -285,8 +294,10 @@ Requirements:
   screen reporting are disabled; Android advertising permissions are removed and iOS links the
   no-ad-ID product. The app never sets an analytics user ID or links analytics to the Firebase UID.
 - Crash collection is disabled by default and follows the same Settings opt-in as analytics
-  (`D-241`). Crash reports carry only the `docs/CONTRACTS.md §20.3.1` allowlisted keys, the
-  recorded error's stable code and stack traces; the app never sets a Crashlytics user identifier.
+  (`D-241`). Non-fatal crash reports carry only the `docs/CONTRACTS.md §20.3.1` allowlisted keys, the
+  recorded error's stable code and stack traces; a fatal crash report also carries the uncaught
+  throwable's type and message (see the residual risk above). The app never sets a Crashlytics user
+  identifier.
 - Release logs never contain the Firebase UID, notes, exact odometer values or costs. Every build
   binds a logger that emits nothing until `E4-08` (`D-242`).
 - In-app account deletion is available and uses the `D-23` Firebase Admin server operation to delete remote data before the auth account. Mobile clients never receive a Firestore hard-delete permission.

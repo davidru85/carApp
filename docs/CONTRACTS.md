@@ -2122,7 +2122,7 @@ Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes
 
 Redaction is the responsibility of the `Logger` implementation, not the caller. The implementation accepts entity IDs as `String`; the caller MUST NOT pre-redact. Redaction is decided from the injected `isDebugBuild` flag: debug builds may log entity IDs in full; release builds log the first 8 characters followed by an ellipsis, and never log the UID at any length.
 
-Until `E4-08` delivers a redacting implementation (`D-242`), the providers of `:wiring:firebase` bind a logger that emits nothing, in debug and release builds alike. `FirebaseAppProvidersTest.theProvidersLoggerReadsNothingItIsGiven` proves that it reads none of its inputs, so no user data can reach a log line.
+Until `E4-08` delivers a redacting implementation (`D-242`), the providers of `:wiring:firebase` bind a logger that emits nothing, in debug and release builds alike. `FirebaseAppProvidersTest.theProvidersLoggerReadsNothingItIsGiven` proves that it reads neither `fields` nor `throwable`, and `SilentLoggerContractTest.theProvidersLoggerBodyIsEmpty` pins its `log` body to `= Unit`, so neither `tag` nor `message` can reach a log line either.
 
 `Throwable.message` and `Throwable.stackTrace` MUST be redacted to stable codes and MUST NOT be logged as text. The throwable class name may be logged in full at `DEBUG`; at `INFO`, `WARN` and `ERROR`, only the class name's last segment may be logged.
 
@@ -2658,12 +2658,12 @@ Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `
 the public `firebaseAppProviders` overload constructs the Firebase implementation as the default of
 its `crashReporter` parameter (`D-199` pattern, `§18` assertion 46).
 
-`setEnabled` is driven only by the `§16.1` opt-in gate (`D-D-241`). A new reporter starts disabled.
+`setEnabled` is driven only by the `§16.1` opt-in gate (`D-241`). A new reporter starts disabled.
 While disabled, `recordNonFatal` is a no-op and nothing is buffered. `setEnabled(false)` also
 discards the crash reports the provider stored on the device while collection was off, so an opt-in
 never uploads data captured before it.
 
-`recordNonFatal` trigger policy: it MUST be called exactly once for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. The call sites are fixed (`D-D-243`):
+`recordNonFatal` trigger policy: it MUST be called exactly once for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. The call sites are fixed (`D-243`):
 
 - the `:core:sync` boundaries that create an `UnexpectedError` or a poisoned transition — the sync
   cycle, the stale-`SYNCING` reset and the tombstone purge — through the graph's `onPoisoned` and
