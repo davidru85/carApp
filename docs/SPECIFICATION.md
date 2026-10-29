@@ -745,6 +745,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-258 | Production Firebase cutover | Production work is story `E4-10`, the last before MVP closure. | Accepted |
 | D-259 | `staging` variant | Release code and settings against the development project, with the `.debug` identity. | Accepted |
 | D-260 | Review enforcement | Required review stays off; the documentation states the real gate. | Accepted |
+| D-261 | iOS Firebase plist names | Each iOS configuration bundles only its own, uniquely named Firebase plist. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

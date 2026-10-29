@@ -81,6 +81,6 @@ owns production identifiers…" becomes `E4-10`; `docs/identifiers.md` wherever 
 
 ## References
 
-- `docs/DECISION_BOARD.md` (decision ID `D-258`); `D-236` (ADR-0237), `D-237` (ADR-0238), `D-238`
+- `docs/DECISION_BOARD.md` (decision ID `D-258`); `D-236` (ADR-0237), `D-237` (reserved; its ADR-0238 is written by `E4-10`), `D-238`
   (ADR-0239), `D-249` (ADR-0250), `D-259` (ADR-0260), `D-209` (ADR-0210), `D-54` (ADR-0055)
 - `docs/identifiers.md`, `docs/BACKLOG.md`, `AGENTS.md`

@@ -5,7 +5,8 @@
 Accepted
 
 The owner selected option A on 2026-10-24; `D-258` (ADR-0259) moved the production files themselves to
-`E4-10`. Supersedes `D-54` (ADR-0055), as amended by `D-259` (ADR-0260).
+`E4-10`. Amends `D-54` (ADR-0055); amended in turn by `D-259` (ADR-0260) and by `D-261` (ADR-0262),
+which gives each iOS configuration a Firebase plist with a file name of its own.
 
 ## Context
 
@@ -103,5 +104,5 @@ The selected option is **A**, in two halves.
 ## References
 
 - `docs/DECISION_BOARD.md` (decision ID `D-238`); `D-54` (ADR-0055), `D-118` (ADR-0119), `D-258`
-  (ADR-0259), `D-259` (ADR-0260), `D-237` (ADR-0238)
+  (ADR-0259), `D-259` (ADR-0260), `D-261` (ADR-0262), `D-237` (reserved; its ADR-0238 is written by `E4-10`)
 - `docs/SECURITY.md`; `docs/identifiers.md`

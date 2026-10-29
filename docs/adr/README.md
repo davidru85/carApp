@@ -259,5 +259,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-258 | [ADR-0259](0259-move-the-production-firebase-cutover-to-story-e4-10.md) | Move the production Firebase cutover to story `E4-10`. | Accepted |
 | D-259 | [ADR-0260](0260-add-a-staging-variant-that-runs-release-code-against-development.md) | Add a `staging` variant that runs release code against development. | Accepted |
 | D-260 | [ADR-0261](0261-do-not-require-review-on-gated-paths-and-document-it.md) | Do not require review on gated paths, and document it. | Accepted |
+| D-261 | [ADR-0262](0262-give-each-ios-configuration-its-own-firebase-plist-name.md) | Give each iOS configuration its own Firebase plist name. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

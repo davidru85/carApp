@@ -47,7 +47,7 @@ script that exits unless `$CONFIGURATION` is `Release` before running the SwiftP
 ## Verification
 
 - `ReleaseAssetsContractTest.iosReleaseArchivesUploadCrashlyticsSymbolsOnlyWhenInstalling`.
-- The owner's archive log shows the phase running (`docs/runbooks/production-firebase-release.md` O8).
+- The owner's archive log shows the phase running (`docs/runbooks/production-firebase-release.md` O8, created by `E4-10`).
 
 ## References
 

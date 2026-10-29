@@ -15,7 +15,7 @@ and changes branch protection.
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| A. Local release-build evidence in `E4-04`; the ten required checks unchanged | No branch-protection change. | A release-only regression is caught only by the next local or owner build. |
+| A. Local release-build evidence in `E4-04`; the fifteen required checks unchanged | No branch-protection change. | A release-only regression is caught only by the next local or owner build. |
 | B. A non-required CI release build job | Continuous signal. | CI time and secrets-free signing setup; scope for a follow-up. |
 
 ## Decision

@@ -6,6 +6,9 @@ Accepted
 
 Accepted by the owner on 2026-08-21.
 
+Its pre-release `targetSdk` review is discharged by `D-246` (ADR-0247), which keeps `targetSdk` 36 for
+the MVP release; `E4-09` re-checks it against the Google Play requirement in force at submission.
+
 ## Context
 
 `E0-06` pinned the toolchain. The pinned Compose BOM requires `compileSdk 37`: the AAR metadata check fails the build below it, so `compileSdk` is not a free choice.

@@ -6,6 +6,10 @@ Accepted
 
 The owner selected option A on 2026-10-27.
 
+Amended by `D-261` (ADR-0262): the Staging plist is
+`iosApp/Config/Staging/GoogleService-Info-Staging.plist`, and each configuration excludes every Firebase
+plist but its own.
+
 ## Context
 
 `D-238` makes release builds fail closed until `E4-10` supplies the production configuration, and
@@ -61,10 +65,11 @@ in Release. Staging is never distributed.
 device. Backend calls pass App Check only on physical devices (Play Integrity, App Attest); emulators and
 simulators keep using the debug provider through a Debug build.
 
-**Measurement.** `E4-03` measures on `staging`. The "release build" wording of
-`docs/versions-matrix.md` (rows "Consumption for 1,000 entries", "Cold start to first content", "List
+**Measurement.** `E4-03` measures on `staging`. The "release build" wording of the two
+`docs/versions-matrix.md` rows that measure an app build ("Cold start to first content", "List
 smoothness") is clarified to name the `staging` build type, and the `E4-03` intake references this
-decision.
+decision. The "release-mode build" of the row "Consumption for 1,000 entries" means the optimized
+Kotlin binaries of `D-80`, not an app build type, and is unchanged.
 
 ## Consequences
 
