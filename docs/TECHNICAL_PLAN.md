@@ -686,7 +686,7 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 ### Phase 4 - MVP Hardening
 
-Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is in flight, with `E4-04` limited to engineering release readiness by `D-236`.
+Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is in flight, with `E4-04` limited to engineering release readiness by `D-236`; `D-258` moved the production Firebase cutover to `E4-10`, the last story before MVP closure.
 
 Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration. Store-submission requirements are outside the phase: `E4-06`, `E2-10` and `E4-09` (`D-236`).
 

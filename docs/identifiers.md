@@ -1,6 +1,6 @@
 # Application Identifiers
 
-> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. A separate production Firebase project is required before release; its identifier is deferred by `D-14`, decided as `D-237` and recorded by `E4-10` (`D-258`) once creation proves it available (`D-32`).
+> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. A separate production Firebase project is required before release; its identifier is deferred by `D-14`; the owner chose it on 2026-10-24 under the reserved `D-237`, which `E4-10` (`D-258`) records once creation proves it available (`D-32`).
 >
 > Related decisions: `D-13` Firestore location, `D-14` Firebase project topology, `D-22` application identifiers.
 
@@ -11,14 +11,14 @@
 | Application and bundle identifiers | Accepted |
 | iOS UI-test bundle identifier | Accepted — test-only and non-distributed |
 | Development Firebase project ID | Accepted |
-| Production Firebase project ID | Decided as `D-237` (`davidruiz-carapp`); recorded by `E4-10` after creation proves it available |
+| Production Firebase project ID | Chosen by the owner (`davidruiz-carapp`) under the reserved `D-237`; not yet recorded as decided: `E4-10` records it after creation proves it available (`D-32`) |
 | Firestore location | Accepted |
 
 ## Application
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Product name | `carApp` | Internal display name. The store display name is `CarApp` (`D-237`, 2026-10-24), applied by `E4-10`. |
+| Product name | `carApp` | Internal display name. The owner chose `CarApp` on 2026-10-24, under the reserved `D-237`, as the production OAuth consent-screen and store display name; `E4-10` applies it to the consent screen and `E4-09` to the store records. |
 | Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
@@ -67,7 +67,7 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Item | Value | Notes |
 |------|-------|-------|
 | Development project ID | `davidruiz-carapp-dev` | Fixed by `D-32`. `carapp-dev`, originally chosen by `D-22`, is held by another Google Cloud customer and is unavailable; Google Cloud project IDs are globally unique. Used by debug builds and by manual testing during development. |
-| Production project ID | `davidruiz-carapp` (`D-237`, owner-decided 2026-10-24), not yet created | Recorded here only after `E4-10` creates the project, which proves the ID available (`D-32`). It uses an alert-only budget with manual intervention; the development automatic cutoff MUST NOT be copied. |
+| Production project ID | `davidruiz-carapp`, chosen by the owner on 2026-10-24 under the reserved `D-237`; not yet created | `E4-10` records it as decided only after creating the project, which proves the ID available (`D-32`). It uses an alert-only budget with manual intervention; the development automatic cutoff MUST NOT be copied. |
 | CI | Firestore emulator plus read-only runtime metadata | Product tests MUST NOT hold Firebase client/admin credentials or write to a real project. D-66 adds one GitHub OIDC identity restricted to `cloudfunctions.functions.get` for the deployed-runtime assertion. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
@@ -90,7 +90,7 @@ repository artifacts. The iOS development key is restricted to the debug bundle 
 |------|-------|
 | Git remote | `git@github.com:davidru85/carApp.git` |
 | Default branch | `main` |
-| Visibility | **Public** (`D-34`). Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks. Because the repository is public, the API keys in `google-services.json` and `GoogleService-Info.plist` are readable by anyone and MUST be restricted before those files are committed (`docs/SECURITY.md`). |
+| Visibility | **Public** (`D-34`). Branch protection for `main` is active with the fifteen required checks of `docs/CONTRACTS.md §18`. Because the repository is public, the API keys in `google-services.json` and `GoogleService-Info.plist` are readable by anyone and MUST be restricted before those files are committed (`docs/SECURITY.md`). |
 | Branch naming | `story/<STORY-ID>-<short-slug>` |
 
 ## Change policy

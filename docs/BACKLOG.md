@@ -1433,9 +1433,9 @@ Acceptance criteria:
 ### E4-03 - Performance and Reliability Hardening - M
 
 Status: scheduled, second story of bundle `E4-B2` (`D-209`, ADR-0210), after `E4-04`.
-`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first because `D-54` (ADR-0055) keeps
-release builds failing closed until it adds the production configuration, and this story measures
-release builds.
+`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first. Since `D-258`
+(ADR-0259) moved the production configuration to `E4-10`, this story measures the `staging` build type of
+`D-259` (ADR-0260), which runs release code and settings against the development project.
 
 Measure and fix MVP performance.
 
@@ -1447,17 +1447,18 @@ Acceptance criteria:
 
 ### E4-04 - Release Preparation - M
 
-Status: in flight, first story of bundle `E4-B2` (`D-209`, ADR-0210), on
-`story/E4-B2-release-readiness`. Limited to engineering release readiness by `D-236` (ADR-0237) on
+Status: engineering scope delivered on 2026-10-27 and under the owner's review in pull request #94;
+first story of bundle `E4-B2` (`D-209`, ADR-0210), on `story/E4-B2-release-readiness`. Two criteria wait
+for the owner-run `staging` device session (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
 2026-10-24: its store-only work moved to `E4-09`. The production Firebase cutover moved to `E4-10` by
 `D-258` (ADR-0259) on 2026-10-27, so this story closes with the fail-closed mechanism of `D-238` and the
 `staging` variant of `D-259`.
 
-Prepare the engineering release: production configuration, crash reporting, release assets and installable release builds. Store submission is `E4-09` (`D-236`).
+Prepare the engineering release: the per-build-type Firebase selection that fails release builds closed (`D-238`), the `staging` variant (`D-259`), crash reporting and release assets. The production project and its configuration are `E4-10` (`D-258`); store submission is `E4-09` (`D-236`).
 
 Acceptance criteria:
 
-- Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
+- Branch protection for `main` is active with the fifteen required checks of `docs/CONTRACTS.md §18` (`D-31`, `D-34`, `D-230`). A public repository without branch protection fails this story.
 
 - App icons and splash are present.
 - Release builds fail closed with the `D-238` mechanism in place: a release build fails before packaging when its restricted configuration is absent, and no release artifact can name the development project.
@@ -1509,10 +1510,27 @@ Acceptance criteria:
 - `docs/identifiers.md` records the production project ID and the production app registrations.
 - The `E4-04` release residual risks that this story closes are removed or rewritten in
   `docs/SECURITY.md`.
+- The Firestore database is created in Native mode in `europe-west1` (`D-13`), which is immutable after
+  creation, before any client reaches the project.
+- `firestore/rules/main.rules` and `firestore/firestore.indexes.json` are deployed to the production
+  project with the repository-pinned Firebase CLI.
+- App Check is enforced for Authentication and Firestore (`D-67`), and the `D-249` verification shows
+  both services `ENFORCED`.
+- `iosApp/Config/Release/Firebase.xcconfig` sets `GOOGLE_REVERSED_CLIENT_ID` to the `REVERSED_CLIENT_ID`
+  of the production plist (`D-238`), and `iosApp/project.yml` lists
+  `Config/Release/GoogleService-Info.plist` as a resource; the `D-261` exclusions keep it out of Debug
+  and Staging, and the `E4-04` guards move to "present and production-only".
+- `firebase.json` sets `oAuthBrandDisplayName` to `carApp` for every project it deploys to, while the
+  production consent screen must name `CarApp`. The intake decides how the production brand is applied
+  without changing the development project, and no `firebase deploy --only auth` runs before that.
+- The restore half of the sideloaded proof uses a permanent (Google or Apple) account, because an
+  anonymous identity is device-bound.
 
 Readiness: the intake needs the owner's schedule and the Apple Developer account kind (`E4-09` item);
 it must ask whether to link a GA4 property in production, because the development project has no
-Analytics link, and that question is open. No decision ID is allocated before the intake.
+Analytics link, and that question is open. `D-237` is reserved for the production project identity
+(`docs/handoffs/E4-B2.md` §Decision ID Allocation) and is recorded by this story once creation proves
+the identifier available (`D-32`); every other choice gets its own `D-n` at the intake.
 
 Depends on: E4-04, E4-03.
 
@@ -1648,6 +1666,10 @@ intake decision, it is not part of the `D-209` bundles and it does not block Pha
 prerequisites" by `D-236`, which moved the store-only work of `E4-04` into it. It is low priority and
 not Ready, it is not part of the `D-209` bundles, it does not block Phase 4, and it MUST be done before
 any App Store or Google Play submission.
+
+`E4-08`, the redacting release logger, was added on 2026-10-24 under "Release observability" by `D-242`,
+which kept the silent logger for the MVP release. It is not Ready, it is not part of the `D-209` bundles,
+and it blocks neither Phase 4 nor MVP completion.
 
 ### Defects found after Phase 1 closed
 
@@ -2150,6 +2172,56 @@ decision row is added, before that intake.
 
 Depends on: E4-01, E4-02.
 
+### E4-09 - Store Submission Readiness - M
+
+Status: Not Ready. Created on 2026-10-24 by `D-236` (ADR-0237), which limited `E4-04` to
+engineering release readiness because carApp is a portfolio project and store publication is not the
+current objective. Low priority. It is not part of the `D-209` bundles and does not block Phase 4. It
+MUST be done before any App Store or Google Play submission, together with `E4-06` and `E2-10`.
+
+Deliver the store-only work that `E4-04` carried before `D-236`.
+
+Acceptance criteria:
+
+- A privacy policy is published at a stable public URL and covers analytics and crash reporting, both
+  off by default and enabled only by the Settings opt-in; `E4-06` links it from the app.
+- A public web page lets a user request account deletion without the app, as the Google Play
+  account-deletion policy requires, and its URL is entered in the Data safety form.
+- The Google Play Data safety form and the App Store privacy nutrition labels are submitted from
+  answers derived from code facts.
+- `iosApp/PrivacyInfo.xcprivacy` is bundled and declares the required-reason APIs the app binary uses
+  and the data types it collects.
+- Deleting an Apple-linked permanent account revokes its Sign in with Apple token before the `D-23`
+  operation, with tested failure semantics.
+- The supported iOS device family is decided and the build passes App Store validation for it (today
+  `TARGETED_DEVICE_FAMILY` is `1,2` while the app is portrait-only without `UIRequiresFullScreen`).
+- Google Play app signing is enrolled, its certificate is registered with the production Firebase
+  Android app and in the Android API key restriction, and production App Check on Android accepts only
+  Play-recognized versions.
+- The Play Console and App Store Connect records exist, with the store display name and the Play
+  512 x 512 listing icon.
+- `targetSdk` is re-checked against the Google Play target-API requirement in force at submission.
+- A signed build is accepted on a Google Play testing track and on TestFlight.
+
+Readiness: its intake needs the owner inputs that `D-236` deferred: the privacy-policy content and
+hosting, the deletion-request page, the store records, Google Play app signing, the Apple Distribution
+certificate, the device-family choice, the Sign in with Apple revocation option and its failure
+semantics, and the production App Check change. Each choice gets its own `D-n` at that intake. No
+decision ID is allocated, and no pending decision row is added, before it.
+
+Additional criteria, added on 2026-10-27:
+
+- The definitive Android upload key is generated and swapped in: its SHA-1 and SHA-256 are registered on
+  the production Firebase Android app, on the Android API-key restriction and in the Play Integrity
+  registration; `google-services.json` is re-downloaded and committed; and builds signed with the interim
+  key are reinstalled. A dedicated key per app is used, never one reused from another project.
+- The Apple Developer account kind (personal or organization) is decided before the App Store Connect
+  record is created, because the bundle identifier binds to it there.
+
+Depends on: E4-04, E4-06.
+
+Human review required.
+
 ### Defects found during Phase 4
 
 These stories were created on 2026-10-23 by the PR #91 review round 2. None is Ready, none is part of
@@ -2259,56 +2331,6 @@ Acceptance criteria:
   covered by tests that fail when two intents are swapped.
 
 Depends on: E4-02.
-
-### E4-09 - Store Submission Readiness - M
-
-Status: Not Ready. Created on 2026-10-24 by `D-236` (ADR-0237), which limited `E4-04` to
-engineering release readiness because carApp is a portfolio project and store publication is not the
-current objective. Low priority. It is not part of the `D-209` bundles and does not block Phase 4. It
-MUST be done before any App Store or Google Play submission, together with `E4-06` and `E2-10`.
-
-Deliver the store-only work that `E4-04` carried before `D-236`.
-
-Acceptance criteria:
-
-- A privacy policy is published at a stable public URL and covers analytics and crash reporting, both
-  off by default and enabled only by the Settings opt-in; `E4-06` links it from the app.
-- A public web page lets a user request account deletion without the app, as the Google Play
-  account-deletion policy requires, and its URL is entered in the Data safety form.
-- The Google Play Data safety form and the App Store privacy nutrition labels are submitted from
-  answers derived from code facts.
-- `iosApp/PrivacyInfo.xcprivacy` is bundled and declares the required-reason APIs the app binary uses
-  and the data types it collects.
-- Deleting an Apple-linked permanent account revokes its Sign in with Apple token before the `D-23`
-  operation, with tested failure semantics.
-- The supported iOS device family is decided and the build passes App Store validation for it (today
-  `TARGETED_DEVICE_FAMILY` is `1,2` while the app is portrait-only without `UIRequiresFullScreen`).
-- Google Play app signing is enrolled, its certificate is registered with the production Firebase
-  Android app and in the Android API key restriction, and production App Check on Android accepts only
-  Play-recognized versions.
-- The Play Console and App Store Connect records exist, with the store display name and the Play
-  512 x 512 listing icon.
-- `targetSdk` is re-checked against the Google Play target-API requirement in force at submission.
-- A signed build is accepted on a Google Play testing track and on TestFlight.
-
-Readiness: its intake needs the owner inputs that `D-236` deferred: the privacy-policy content and
-hosting, the deletion-request page, the store records, Google Play app signing, the Apple Distribution
-certificate, the device-family choice, the Sign in with Apple revocation option and its failure
-semantics, and the production App Check change. Each choice gets its own `D-n` at that intake. No
-decision ID is allocated, and no pending decision row is added, before it.
-
-Additional criteria, added on 2026-10-27:
-
-- The definitive Android upload key is generated and swapped in: its SHA-1 and SHA-256 are registered on
-  the production Firebase Android app, on the Android API-key restriction and in the Play Integrity
-  registration; `google-services.json` is re-downloaded and committed; and builds signed with the interim
-  key are reinstalled. A dedicated key per app is used, never one reused from another project.
-- The Apple Developer account kind (personal or organization) is decided before the App Store Connect
-  record is created, because the bundle identifier binds to it there.
-
-Depends on: E4-04, E4-06.
-
-Human review required.
 
 ### Release observability
 
@@ -2447,16 +2469,17 @@ and project-log entry.
 `E4-B1` runs `E4-01 -> E4-05 -> E4-02` on `story/E4-B1-product-surface`, because `E4-05` adds its
 row to the Settings screen that `E4-01` builds and `E4-02` audits every screen, both of them
 included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after `E4-B1` merges.
-`E4-B2` inverts the original backlog order with the owner's approval: `D-54` (ADR-0055) keeps the
-Firebase configuration debug-only and makes release builds fail closed until `E4-04` adds the
-production configuration, and `E4-03` measures release builds after Crashlytics and the splash have
-changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outside both bundles, and so
-are the follow-ups `E2-10`, `E1-19`, `E1-20`, `E2-11` and `E4-07`.
+`E4-B2` inverts the original backlog order with the owner's approval: `E4-03` measures after Crashlytics
+and the splash have changed cold start. Since `D-258` (ADR-0259) the production configuration arrives with
+`E4-10`, so `E4-03` measures the `staging` build type of `D-259` (ADR-0260). `E4-05` was created by
+`D-210` (ADR-0211). `E4-06` is outside both bundles, and so are the follow-ups `E2-10`, `E1-19`, `E1-20`,
+`E2-11`, `E4-07`, `E4-08` and `E4-09`; `E4-10` runs alone after `E4-B2` merges (`D-258`).
 Inside a bundle every story keeps its own ready check, handoff, TDD cycle and project-log entry.
 
-`D-236` (ADR-0237) limits `E4-04` to engineering release readiness: the production project and
-release configuration, Crashlytics, the release-logging proof, icons and launch screens, the Functions
-split, the account-deletion invoker and installable release builds. Its store-only work is
+`D-236` (ADR-0237) limits `E4-04` to engineering release readiness: Crashlytics, the release-logging
+proof, icons and launch screens, the Functions split, the account-deletion invoker and the release
+configuration mechanism. `D-258` (ADR-0259) then moved the production project, its configuration files
+and the release builds that reach it to `E4-10`. Its store-only work is
 `E4-09`, which, like `E4-06` and `E2-10`, is outside both bundles and MUST be done before any
 App Store or Google Play submission. `E4-04` still precedes `E4-03`.
 

@@ -185,7 +185,7 @@ review.
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-15`, `E1-17` and `E1-18`, then `E4-06`, `E2-10`,
-  `E1-19`, `E1-20`, `E2-11` and `E4-07`, each described below.
+  `E1-19`, `E1-20`, `E2-11`, `E4-07`, `E4-09` and `E4-08`, each described below.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16`, the Vehicle
   UI fuel type selector, merged on 2026-09-28 through pull request #80 as a true merge of
@@ -219,10 +219,13 @@ review.
   (iOS UI test and contract-check hardening) were added on 2026-10-23 by the PR #91 review round 2,
   under the `docs/BACKLOG.md` subsection "Defects found during Phase 4": they are not Ready, they are
   outside the `D-209` bundles, and none blocks Phase 4.
-  `E4-09`, store submission readiness, was added on 2026-10-24 under the same `docs/BACKLOG.md`
-  subsection by `D-236` (ADR-0237), which moved the store-only work of `E4-04` into it: it is low
+  `E4-09`, store submission readiness, was added on 2026-10-24 under the `docs/BACKLOG.md` subsection
+  "Store-submission prerequisites" by `D-236` (ADR-0237), which moved the store-only work of `E4-04` into it: it is low
   priority and not Ready, it is not part of the `D-209` bundles, and it MUST be done before any App
   Store or Google Play submission.
+  `E4-08`, the redacting release logger, was added on 2026-10-24 under the `docs/BACKLOG.md` subsection
+  "Release observability" by `D-242` (ADR-0243), which keeps the silent logger for the MVP release: it
+  is not Ready, it is outside the `D-209` bundles, and it blocks neither Phase 4 nor MVP completion.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
   as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
@@ -770,7 +773,7 @@ Requested by `CODEOWNERS`, reviewed by the owner, and **not** enforced by requir
 account because agents act with the owner's GitHub session, so GitHub forbids self-approval. Required
 approving review is therefore deliberately **off** (`required_approving_review_count = 0`,
 `require_code_owner_reviews = false`, administrator enforcement `false`), while the fifteen required
-checks below still gate every merge. `CODEOWNERS` requests the owner's review automatically; honouring
+checks of §What is enforced, and what is not, still gate every merge. `CODEOWNERS` requests the owner's review automatically; honouring
 it is the process rule, not a platform rule. The residual risk is recorded in `docs/SECURITY.md`.
 
 The paths whose changes are gated:
