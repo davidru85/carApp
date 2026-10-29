@@ -38,6 +38,31 @@
 
 ## Entries
 
+### 2026-10-30 — PR #94 review round 1: iOS release defects corrected, D-261 recorded
+
+- **Type:** correction
+- **Story / Decision:** `E4-04` / `D-261`; corrects the 2026-10-27 `E4-04` entry, whose decision list
+  omitted `D-236` and `D-247`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B2-release-readiness`)
+- **What changed:** the iOS dSYM upload became the last, install-only build phase that `D-240` specifies,
+  so an archive uploads the dSYM it produced; each iOS configuration now bundles only its own, uniquely
+  named Firebase plist (`D-261`), so a Release bundle can no longer carry the development configuration;
+  a guard pins the silent logger's body; the decision records, the `E4-04`, `E4-08`, `E4-09` and `E4-10`
+  backlog entries, `docs/identifiers.md`, `docs/SECURITY.md` and both handoffs were made consistent; a
+  Spanish passage was removed from the `E4-04` handoff (Rule 0).
+- **Why:** the owner's review of pull request #94 found that the symbol phase ran before the binary
+  existed and that the Staging plist shared the production plist's file name, so `EXCLUDED_SOURCE_FILE_NAMES`
+  could not keep it out of Release.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md`,
+  `docs/adr/**`, `docs/CONTRACTS.md §17` and `§20.3.1`, `docs/SECURITY.md`, `docs/versions-matrix.md`,
+  `docs/BACKLOG.md`, `docs/identifiers.md`, `AGENTS.md`, the handoffs of `E4-04` and `E4-B2`,
+  `docs/plans/E4-03-and-E4-10.md`.
+- **Verification:** the complete non-instrumented command is `BUILD SUCCESSFUL` with no `[FAIL]` or
+  `[PENDING]`; the build-logic guards went RED then GREEN; an unsigned Staging archive succeeds without a
+  build cycle and bundles only its own plist; Release still fails before packaging.
+- **Follow-ups / risks:** O15 and O16, the owner-run `staging` device session, close the two `E4-04`
+  criteria still pending.
+
 ### 2026-10-27 — E4-04 closes its engineering scope; the production cutover becomes E4-10
 
 - **Type:** story
