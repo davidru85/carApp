@@ -59,9 +59,9 @@ struct carAppApp: App {
 
 private func configureFirebase() {
     // `D-259`: the plist is selected by configuration, not by `#if DEBUG`, because Staging is release
-    // code with the development project and `DEBUG` cannot tell the two apart. Debug and Staging bundle
-    // the development plist; Release bundles the production one that `E4-10` adds, and the build script
-    // of `D-238` refuses to package a configuration without its plist.
+    // code with the development project and `DEBUG` cannot tell the two apart. Debug and Staging each
+    // bundle their own development plist (`D-261`); Release bundles the production one that `E4-10` adds,
+    // and the build script of `D-238` refuses to package a configuration without its plist.
     let resourceName = firebaseConfigurationResourceName(configuration: currentConfiguration)
 
     guard
@@ -83,8 +83,10 @@ private let currentConfiguration: String =
 /// The plist each configuration bundles. Kept as a free function so it is testable without a bundle.
 func firebaseConfigurationResourceName(configuration: String) -> String {
     switch configuration {
-    case "Debug", "Staging":
+    case "Debug":
         "GoogleService-Info-Debug"
+    case "Staging":
+        "GoogleService-Info-Staging"
     default:
         "GoogleService-Info"
     }

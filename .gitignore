@@ -43,7 +43,7 @@ google-services.json
 !androidApp/src/debug/google-services.json
 !androidApp/src/staging/google-services.json
 !iosApp/Config/Debug/GoogleService-Info-Debug.plist
-!iosApp/Config/Staging/GoogleService-Info.plist
+!iosApp/Config/Staging/GoogleService-Info-Staging.plist
 .env
 .env.*
 !.env.example

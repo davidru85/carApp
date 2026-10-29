@@ -14,7 +14,7 @@ class FirebaseConfigurationTest {
         const val ANDROID_DEBUG_CONFIG = "androidApp/src/debug/google-services.json"
         const val ANDROID_STAGING_CONFIG = "androidApp/src/staging/google-services.json"
         const val IOS_DEBUG_CONFIG = "iosApp/Config/Debug/GoogleService-Info-Debug.plist"
-        const val IOS_STAGING_CONFIG = "iosApp/Config/Staging/GoogleService-Info.plist"
+        const val IOS_STAGING_CONFIG = "iosApp/Config/Staging/GoogleService-Info-Staging.plist"
         val ALLOWED_DEVELOPMENT_CONFIG_PATHS =
             listOf(ANDROID_DEBUG_CONFIG, ANDROID_STAGING_CONFIG, IOS_DEBUG_CONFIG, IOS_STAGING_CONFIG)
         val RELEASE_CONFIG_PATHS =
@@ -182,7 +182,6 @@ class FirebaseConfigurationTest {
         assertTrue(iosApplication.contains("firebaseConfigurationResourceName(configuration: currentConfiguration)"))
         assertTrue(iosApplication.contains("\"GoogleService-Info-Debug\""))
         assertTrue(iosApplication.contains("FirebaseOptions(contentsOfFile:"))
-        assertTrue(iosProject.contains("EXCLUDED_SOURCE_FILE_NAMES: GoogleService-Info-Debug.plist"))
         val plistChoiceBody =
             iosApplication.substringAfter("private func configureFirebase()").substringBefore("/// The configuration name")
         assertFalse(

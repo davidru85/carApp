@@ -14,7 +14,6 @@
 		108BBE054E138D58DB52BCDC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF7A56E87D9090EED34A1AB /* SettingsView.swift */; };
 		15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */; };
 		179631DB8D4F9DD784FE79F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E05A71AB193F5A40C420087 /* Assets.xcassets */; };
-		1C941FBC92DF42DDB1B699FF /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A90527A7E36344B9C17D31B2 /* GoogleService-Info.plist */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
 		2DDBDA982FA76D8AC51AF581 /* AccessibilityAuditUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F9DAF64B167B2A1383D82E /* AccessibilityAuditUITests.swift */; };
@@ -36,6 +35,7 @@
 		737F8ED02EEEA6E056D88B9B /* SpanishLocalizationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5038ED1C5D4BBCA00643D958 /* SpanishLocalizationUITests.swift */; };
 		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
 		7A8C0BFB2CA7B961BC325003 /* AccessibilityUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484183FFD6157C43730C9581 /* AccessibilityUITestSupport.swift */; };
+		7E1F85D8F28148A304ECE46F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		841CAEB3DAF4FA600E08CD23 /* DeparturePromptPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */; };
 		89A249C0252F022EC21E57BF /* AccountConversionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6797DC5AF1C5B90BB3CBA115 /* AccountConversionUITests.swift */; };
@@ -99,6 +99,7 @@
 		0046B86E946AAC2C64B7BBD1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
+		0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Staging.plist"; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionSurfaceTests.swift; sourceTree = "<group>"; };
 		1E05A71AB193F5A40C420087 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -148,7 +149,6 @@
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A3B2F9259C71EB48056AE737 /* LargeContentSizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeContentSizeUITests.swift; sourceTree = "<group>"; };
 		A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWaitPolicyTests.swift; sourceTree = "<group>"; };
-		A90527A7E36344B9C17D31B2 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWait.swift; sourceTree = "<group>"; };
 		AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTrackingTests.swift; sourceTree = "<group>"; };
 		B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModelTests.swift; sourceTree = "<group>"; };
@@ -243,7 +243,7 @@
 			isa = PBXGroup;
 			children = (
 				D17DE65C2560700392905BAC /* Firebase.xcconfig */,
-				A90527A7E36344B9C17D31B2 /* GoogleService-Info.plist */,
+				0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */,
 			);
 			name = Staging;
 			path = Config/Staging;
@@ -370,11 +370,11 @@
 			buildConfigurationList = A341E26390F9E8DF3E134391 /* Build configuration list for PBXNativeTarget "carApp" */;
 			buildPhases = (
 				43E46D303569082042874712 /* Build Shared framework */,
-				8B2B4B39614F592E5E509FDE /* Upload Crashlytics symbols */,
 				4FD7518A55A0F21798044887 /* Verify Firebase configuration for this configuration */,
 				BD446437D5E90F9764FF8B6E /* Sources */,
 				B3B0B1D2B074820A8E592E92 /* Resources */,
 				2EC8FC2657F951912E87F026 /* Frameworks */,
+				8B2B4B39614F592E5E509FDE /* Upload Crashlytics symbols */,
 			);
 			buildRules = (
 			);
@@ -448,7 +448,7 @@
 			files = (
 				179631DB8D4F9DD784FE79F1 /* Assets.xcassets in Resources */,
 				8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */,
-				1C941FBC92DF42DDB1B699FF /* GoogleService-Info.plist in Resources */,
+				7E1F85D8F28148A304ECE46F /* GoogleService-Info-Staging.plist in Resources */,
 				CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -492,7 +492,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n  Debug|Staging)\n    expected_plist=\"GoogleService-Info-Debug.plist\"\n    ;;\n  Release)\n    expected_plist=\"GoogleService-Info.plist\"\n    ;;\n  *)\n    echo \"error: unknown configuration $CONFIGURATION\" >&2\n    exit 1\n    ;;\nesac\nif [ -z \"${GOOGLE_REVERSED_CLIENT_ID:-}\" ]; then\n  echo \"error: GOOGLE_REVERSED_CLIENT_ID is empty for $CONFIGURATION; its Firebase.xcconfig must supply the reversed client ID of $expected_plist\" >&2\n  exit 1\nfi\nplist=\"$SRCROOT/Config/$CONFIGURATION/$( [ \"$CONFIGURATION\" = \"Debug\" ] && echo GoogleService-Info-Debug.plist || ( [ \"$CONFIGURATION\" = \"Staging\" ] && echo GoogleService-Info.plist || echo GoogleService-Info.plist ) )\"\nif [ ! -f \"$plist\" ]; then\n  echo \"error: $CONFIGURATION needs $plist, which does not exist yet (E4-10 supplies the Release one)\" >&2\n  exit 1\nfi\nconfigured=\"$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' \"$plist\")\"\nif [ \"$configured\" != \"$GOOGLE_REVERSED_CLIENT_ID\" ]; then\n  echo \"error: $CONFIGURATION Google URL scheme $GOOGLE_REVERSED_CLIENT_ID does not match $plist ($configured)\" >&2\n  exit 1\nfi\n";
+			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n  Debug)\n    plist=\"$SRCROOT/Config/Debug/GoogleService-Info-Debug.plist\"\n    ;;\n  Staging)\n    plist=\"$SRCROOT/Config/Staging/GoogleService-Info-Staging.plist\"\n    ;;\n  Release)\n    plist=\"$SRCROOT/Config/Release/GoogleService-Info.plist\"\n    ;;\n  *)\n    echo \"error: unknown configuration $CONFIGURATION\" >&2\n    exit 1\n    ;;\nesac\nif [ -z \"${GOOGLE_REVERSED_CLIENT_ID:-}\" ]; then\n  echo \"error: GOOGLE_REVERSED_CLIENT_ID is empty for $CONFIGURATION; its Firebase.xcconfig must supply the reversed client ID of $plist\" >&2\n  exit 1\nfi\nif [ ! -f \"$plist\" ]; then\n  echo \"error: $CONFIGURATION needs $plist, which does not exist yet (E4-10 supplies the Release one)\" >&2\n  exit 1\nfi\nconfigured=\"$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' \"$plist\")\"\nif [ \"$configured\" != \"$GOOGLE_REVERSED_CLIENT_ID\" ]; then\n  echo \"error: $CONFIGURATION Google URL scheme $GOOGLE_REVERSED_CLIENT_ID does not match $plist ($configured)\" >&2\n  exit 1\nfi\n";
 		};
 		8B2B4B39614F592E5E509FDE /* Upload Crashlytics symbols */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -503,14 +503,18 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)",
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Resources/DWARF/$(PRODUCT_NAME)",
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
 			);
 			name = "Upload Crashlytics symbols";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
+			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
 			shellScript = "if [ \"${CONFIGURATION}\" != \"Release\" ]; then\n  echo \"Skipping Crashlytics symbol upload for ${CONFIGURATION}.\"\n  exit 0\nfi\ndsym=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\nif [ ! -d \"$dsym\" ]; then\n  echo \"warning: no dSYM at $dsym; Crashlytics reports for this build will be unreadable\" >&2\n  exit 0\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
 		};
@@ -840,6 +844,7 @@
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Staging.plist GoogleService-Info.plist";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -918,7 +923,7 @@
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info.plist";
+				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Debug.plist GoogleService-Info.plist";
 				INFOPLIST_FILE = Info.plist;
 				KOTLIN_FRAMEWORK_BUILD_TYPE = release;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -981,7 +986,7 @@
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Debug.plist";
+				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Debug.plist GoogleService-Info-Staging.plist";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
