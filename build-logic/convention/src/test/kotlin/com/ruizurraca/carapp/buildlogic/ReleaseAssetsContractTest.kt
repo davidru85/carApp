@@ -84,15 +84,52 @@ class ReleaseAssetsContractTest {
     }
 
     @Test
-    fun crashlyticsSymbolsUploadOnlyFromReleaseBuilds() {
-        // `D-240`: the phase exists, runs only for Release, and the Release configuration must produce
-        // dSYMs for it to upload. Staging and Debug must not reach any project.
+    fun iosReleaseArchivesUploadCrashlyticsSymbolsOnlyWhenInstalling() {
+        // `D-240` (ADR-0241): the upload is a post-build phase that runs only when installing (archives)
+        // and only for Release, with the five Firebase input files. A pre-build phase runs before the
+        // binary and its dSYM exist, so it would upload nothing, or the previous build's dSYM.
         val projectSpec = read("iosApp/project.yml")
-        val phase = projectSpec.substringAfter("name: Upload Crashlytics symbols").substringBefore("- name:")
+        val preBuild =
+            projectSpec
+                .substringAfter("    preBuildScripts:", missingDelimiterValue = "")
+                .substringBefore("    postBuildScripts:")
+        val phase =
+            projectSpec
+                .substringAfter("    postBuildScripts:", missingDelimiterValue = "")
+                .substringAfter("name: Upload Crashlytics symbols", missingDelimiterValue = "")
+                .substringBefore("    configFiles:")
 
+        assertFalse(preBuild.contains("Upload Crashlytics symbols"), "the upload must not be a pre-build phase")
+        assertTrue(phase.isNotEmpty(), "the upload must be declared under postBuildScripts")
+        assertTrue(phase.contains("runOnlyWhenInstalling: true"), "the upload must run only for archives")
         assertTrue(phase.contains("Crashlytics/run"))
         assertTrue(phase.contains("!= \"Release\""), "the phase must skip every non-Release configuration")
-        assertTrue(phase.contains("inputFiles"))
+        listOf(
+            "$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)",
+            "$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Resources/DWARF/$(PRODUCT_NAME)",
+            "$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Info.plist",
+            "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+            "$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+        ).forEach { input -> assertTrue(phase.contains("- $input"), "the upload must declare the input $input") }
+
+        val xcodeProject = read("iosApp/carApp.xcodeproj/project.pbxproj")
+        val appBuildPhases =
+            Regex("""/\* carApp \*/ = \{\s*isa = PBXNativeTarget;.*?buildPhases = \((.*?)\);""", RegexOption.DOT_MATCHES_ALL)
+                .find(xcodeProject)
+                ?.groupValues
+                ?.get(1)
+                .orEmpty()
+                .trim()
+                .lines()
+        assertTrue(
+            appBuildPhases.last().contains("Upload Crashlytics symbols"),
+            "the upload must be the last build phase of the app target; regenerate the project with XcodeGen",
+        )
+        val generatedPhase =
+            xcodeProject
+                .substringAfter("name = \"Upload Crashlytics symbols\";", missingDelimiterValue = "")
+                .substringBefore("shellScript")
+        assertTrue(generatedPhase.contains("runOnlyForDeploymentPostprocessing = 1;"))
     }
 
     @Test

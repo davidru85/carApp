@@ -197,6 +197,61 @@ class FirebaseConfigurationTest {
     }
 
     @Test
+    fun eachIosConfigurationBundlesOnlyItsOwnFirebasePlist() {
+        // `D-238` as amended by `D-261`: every iOS Firebase plist has a file name of its own, and each
+        // configuration excludes every plist that is not its own. `EXCLUDED_SOURCE_FILE_NAMES` matches
+        // file names, so two plists sharing a name could not be told apart, and a Release bundle would
+        // carry the development configuration under the name Release loads.
+        val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+        val iosApplication = repositoryRoot.resolve("iosApp/carAppApp.swift").readText()
+        val ownPlist =
+            mapOf(
+                "Debug" to "GoogleService-Info-Debug.plist",
+                "Staging" to "GoogleService-Info-Staging.plist",
+                "Release" to "GoogleService-Info.plist",
+            )
+        val resourcePlists =
+            Regex("""(?m)^\s*- path: Config/[^/\s]+/(GoogleService-Info[^/\s]*\.plist)\s*$""")
+                .findAll(projectSpec)
+                .map { match -> match.groupValues[1] }
+                .toList()
+
+        assertEquals(resourcePlists.distinct(), resourcePlists, "two Firebase plist resources share a file name")
+        assertEquals(
+            listOf("GoogleService-Info-Debug.plist", "GoogleService-Info-Staging.plist"),
+            resourcePlists.filterNot { name -> name == "GoogleService-Info.plist" }.sorted(),
+            "Debug and Staging each bundle their own development plist",
+        )
+        val appConfigs =
+            projectSpec
+                .substringAfter("      configs:\n", missingDelimiterValue = "")
+                .substringBefore("  carAppTests:", missingDelimiterValue = "")
+        ownPlist.forEach { (configuration, plist) ->
+            val excluded =
+                appConfigs
+                    .substringAfter("        $configuration:\n", missingDelimiterValue = "")
+                    .lineSequence()
+                    .takeWhile { line -> line.startsWith("          ") }
+                    .firstOrNull { line -> line.trim().startsWith("EXCLUDED_SOURCE_FILE_NAMES:") }
+                    ?.substringAfter(":")
+                    ?.trim()
+                    ?.removeSurrounding("\"")
+                    ?.split(Regex("""\s+"""))
+                    ?.toSet()
+                    .orEmpty()
+            val expected = ownPlist.values.toSet() - plist
+            assertEquals(expected, excluded, "$configuration must exclude every Firebase plist except $plist")
+            assertTrue(
+                xcodeProject.contains("EXCLUDED_SOURCE_FILE_NAMES = \"${expected.sorted().joinToString(" ")}\";"),
+                "the generated Xcode project must carry the $configuration exclusions; regenerate it with XcodeGen",
+            )
+        }
+        assertTrue(iosApplication.contains("\"GoogleService-Info-Staging\""), "Staging must load its own plist")
+        assertTrue(projectSpec.contains("plist=\"\$SRCROOT/Config/Staging/GoogleService-Info-Staging.plist\""))
+    }
+
+    @Test
     fun theStagingVariantRunsReleaseCodeAgainstTheDevelopmentProject() {
         // `D-259`: staging is the only build that exercises release code against a backend today, so it
         // must inherit release settings, keep the debug identity and never see the debug App Check
@@ -228,7 +283,10 @@ class FirebaseConfigurationTest {
         val ignoredPaths = repositoryRoot.resolve(".gitignore").readLines().map(String::trim)
 
         assertTrue(androidBuild.contains("carapp.releaseSigningProperties"))
-        assertTrue(androidBuild.contains("keystore.properties"), "the guard names the file it refuses")
+        assertTrue(
+            androidBuild.contains("check(!signingFile.startsWith(repositoryRoot))"),
+            "a signing properties file inside the repository must be refused",
+        )
         assertTrue(
             androidBuild.contains("rootProject.projectDir") || androidBuild.contains("rootDir"),
             "the repository root must be known so an in-repository path can be refused",
