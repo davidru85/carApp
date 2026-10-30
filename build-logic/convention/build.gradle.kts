@@ -77,6 +77,10 @@ gradlePlugin {
             id = "carapp.android.application"
             implementationClass = "com.ruizurraca.carapp.buildlogic.AndroidApplicationConventionPlugin"
         }
+        register("androidBenchmark") {
+            id = "carapp.android.benchmark"
+            implementationClass = "com.ruizurraca.carapp.buildlogic.AndroidBenchmarkConventionPlugin"
+        }
         register("compose") {
             id = "carapp.compose"
             implementationClass = "com.ruizurraca.carapp.buildlogic.ComposeConventionPlugin"

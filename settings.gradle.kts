@@ -49,6 +49,9 @@ include(":feature:vehicle")
 include(":feature:fuel")
 include(":feature:session")
 
+// E4-03 (D-252): the Macrobenchmark module. Test-only; it measures the androidApp benchmark build type.
+include(":benchmark")
+
 // Provider modules are a closed, explicit registry (D-44). A planned path does not become a
 // Gradle project until its owning story creates the directory; filesystem-wide discovery is
 // deliberately forbidden because it would admit unreviewed modules silently.

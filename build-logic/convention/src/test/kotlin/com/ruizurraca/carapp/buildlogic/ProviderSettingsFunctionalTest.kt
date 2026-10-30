@@ -77,6 +77,7 @@ private class SettingsFixture(private val root: File) {
             ":feature:vehicle",
             ":feature:fuel",
             ":feature:session",
+            ":benchmark",
         ).forEach(::createProject)
     }
 

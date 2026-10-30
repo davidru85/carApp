@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- E4-03 (D-252): the measured application must be visible to this package on API 30 and later. -->
+    <queries>
+        <package android:name="com.ruizurraca.carapp.debug" />
+    </queries>
+
+</manifest>
