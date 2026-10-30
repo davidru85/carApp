@@ -626,6 +626,95 @@ class FuelEntryStateHoldersTest {
         assertEquals(SyncStatus.Syncing, holder.state.value.syncStatus)
     }
 
+    /** `E4-03` (`D-256`), `docs/CONTRACTS.md §14`: `close()` cancels the work this holder owns. */
+    @Test
+    fun listCloseCancelsEveryCoroutineTheHolderStarted() =
+        runTest {
+            val callerJob = Job()
+            val holder =
+                createFuelEntryListStateHolder(
+                    scope = CoroutineScope(callerJob + UnconfinedTestDispatcher(testScheduler)),
+                    vehicleId = VEHICLE_ID.value,
+                    repository = FakeFuelEntryRepository(),
+                    dispatchers = TestDispatcherProvider(),
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            advanceUntilIdle()
+            assertTrue(
+                callerJob.children.any { child -> child.isActive },
+                "precondition: the holder runs work under the caller's job",
+            )
+
+            holder.close()
+            advanceUntilIdle()
+
+            assertTrue(
+                callerJob.children.none { child -> child.isActive },
+                "close() must cancel every coroutine the list holder started",
+            )
+            callerJob.cancel()
+        }
+
+    @Test
+    fun listCloseLeavesTheCallerScopeActive() =
+        runTest {
+            val callerJob = Job()
+            val holder =
+                createFuelEntryListStateHolder(
+                    scope = CoroutineScope(callerJob + UnconfinedTestDispatcher(testScheduler)),
+                    vehicleId = VEHICLE_ID.value,
+                    repository = FakeFuelEntryRepository(),
+                    dispatchers = TestDispatcherProvider(),
+                )
+
+            holder.close()
+
+            assertTrue(callerJob.isActive, "close() releases the holder, never the scope its caller owns")
+            callerJob.cancel()
+        }
+
+    @Test
+    fun formCloseCancelsEveryCoroutineTheHolderStarted() =
+        runTest {
+            val callerJob = Job()
+            val holder =
+                createForm(
+                    scope = CoroutineScope(callerJob + UnconfinedTestDispatcher(testScheduler)),
+                    repository = FakeFuelEntryRepository(),
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            advanceUntilIdle()
+            assertTrue(
+                callerJob.children.any { child -> child.isActive },
+                "precondition: the holder runs work under the caller's job",
+            )
+
+            holder.close()
+            advanceUntilIdle()
+
+            assertTrue(
+                callerJob.children.none { child -> child.isActive },
+                "close() must cancel every coroutine the form holder started",
+            )
+            callerJob.cancel()
+        }
+
+    @Test
+    fun formCloseLeavesTheCallerScopeActive() =
+        runTest {
+            val callerJob = Job()
+            val holder =
+                createForm(
+                    scope = CoroutineScope(callerJob + UnconfinedTestDispatcher(testScheduler)),
+                    repository = FakeFuelEntryRepository(),
+                )
+
+            holder.close()
+
+            assertTrue(callerJob.isActive, "close() releases the holder, never the scope its caller owns")
+            callerJob.cancel()
+        }
+
     private fun TestScope.createCollectedListHolder(repository: FakeFuelEntryRepository): FuelEntryListStateHolder {
         val holder =
             createFuelEntryListStateHolder(
