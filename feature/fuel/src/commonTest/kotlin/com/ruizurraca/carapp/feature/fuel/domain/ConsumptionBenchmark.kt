@@ -12,7 +12,7 @@ internal const val CONSUMPTION_THRESHOLD_NANOS = 100_000_000L
  * `E4-03` (`D-255`): the `D-80` gate is `median < 100 ms`, so a median of exactly 100 ms misses it. The
  * JVM task, the optimized `iosArm64` test and the iPhone app all judge a median through this one rule.
  */
-internal fun exceedsConsumptionThreshold(medianNanos: Long): Boolean = medianNanos < 0L
+internal fun exceedsConsumptionThreshold(medianNanos: Long): Boolean = medianNanos >= CONSUMPTION_THRESHOLD_NANOS
 
 internal data class ConsumptionBenchmarkResult(
     val medianNanos: Long,
