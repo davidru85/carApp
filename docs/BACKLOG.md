@@ -1432,8 +1432,9 @@ Acceptance criteria:
 
 ### E4-03 - Performance and Reliability Hardening - M
 
-Status: scheduled, second story of bundle `E4-B2` (`D-209`, ADR-0210), after `E4-04`.
-`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first. Since `D-258`
+Status: in flight, second story of bundle `E4-B2` (`D-209`, ADR-0210), on
+`story/E4-B2-release-readiness`. `E4-04` merged first, through pull request #94 on 2026-10-30; `D-262`
+(ADR-0263) delivers this story through the bundle's second pull request. Since `D-258`
 (ADR-0259) moved the production configuration to `E4-10`, this story measures the `staging` build type of
 `D-259` (ADR-0260), which runs release code and settings against the development project.
 
@@ -1447,8 +1448,8 @@ Acceptance criteria:
 
 ### E4-04 - Release Preparation - M
 
-Status: engineering scope delivered on 2026-10-27 and under the owner's review in pull request #94;
-first story of bundle `E4-B2` (`D-209`, ADR-0210), on `story/E4-B2-release-readiness`. Two criteria wait
+Status: engineering scope delivered on 2026-10-27 and merged on 2026-10-30 through pull request #94
+(merge commit `bf6c8e21`); first story of bundle `E4-B2` (`D-209`, ADR-0210). Two criteria wait
 for the owner-run `staging` device session (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
 2026-10-24: its store-only work moved to `E4-09`. The production Firebase cutover moved to `E4-10` by
 `D-258` (ADR-0259) on 2026-10-27, so this story closes with the fail-closed mechanism of `D-238` and the
@@ -2465,7 +2466,8 @@ touch the same statements, and `E3-B2` runs `E3-15 -> E3-16` after `E3-B1` merge
 decides `D-149` and `D-150`; both conditions were met on 2026-10-15. Inside a bundle every story keeps its own ready check, handoff, TDD cycle
 and project-log entry.
 
-`D-209` (ADR-0210) delivers Phase 4 as two consecutive bundles, each through one pull request:
+`D-209` (ADR-0210) delivers Phase 4 as two consecutive bundles, each through one pull request, except
+that `D-262` (ADR-0263) delivers `E4-B2` through two:
 `E4-B1` runs `E4-01 -> E4-05 -> E4-02` on `story/E4-B1-product-surface`, because `E4-05` adds its
 row to the Settings screen that `E4-01` builds and `E4-02` audits every screen, both of them
 included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after `E4-B1` merges.
@@ -2555,7 +2557,7 @@ proof after E3-04.
 | E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
 | E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
 | E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
-| E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`) | 4 | M | — |
+| E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`, merged in PR #94) | 4 | M | — |
 | E4-10 Production Firebase cutover (last story before MVP closure, `D-258`) | 4 | M | Yes |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
 | E4-09 Store submission readiness (postponed, low priority) | follow-up | M | Yes |

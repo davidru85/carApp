@@ -14,6 +14,12 @@ Amended by `D-258` (ADR-0259) on 2026-10-27: the production Firebase cutover mov
 `E4-10`, the last story before MVP closure. The composition and order of `E4-B2` are still unchanged,
 but `E4-B2` no longer closes the MVP: `E4-10` does, after this bundle merges.
 
+Amended by `D-262` (ADR-0263) on 2026-10-30: pull request #94 merged `E4-04` and the `E4-03` and
+`E4-10` plan before `E4-03` started, so `E4-B2` is delivered through two pull requests from
+`story/E4-B2-release-readiness`: pull request #94 for `E4-04`, and a second one for `E4-03` and the
+bundle closure.
+The stories, their order and the branch of `E4-B2` are unchanged; only the number of pull requests changes.
+
 ## Context
 
 Phase 3 closed on 2026-10-15 when bundle `E3-B2` merged through pull request #89, and its record

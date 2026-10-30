@@ -268,6 +268,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-259 | `staging` variant | Release code and settings, `.debug` identity, development configuration | Accepted | `E4-03` measures it. See ADR-0260. |
 | D-260 | Review enforcement | Off; documentation corrected; secret scanning on | Accepted | Sole author cannot self-approve. See ADR-0261. |
 | D-261 | iOS Firebase plist names | Unique plist name per configuration; each configuration excludes the others | Accepted | Keeps development configuration out of Release. See ADR-0262. |
+| D-262 | E4-B2 delivery | Two pull requests from one branch: #94 (`E4-04`), then `E4-03` and the closure | Accepted | Pull request #94 merged before `E4-03` started. See ADR-0263. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

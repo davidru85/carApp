@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-10-30 — Pull request #94 merged; E4-B2 continues through a second pull request (D-262)
+
+- **Type:** decision
+- **Story / Decision:** `E4-B2` / `D-262`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B2-release-readiness`)
+- **What changed:** pull request #94 merged `E4-04` and the `E4-03` and `E4-10` plan into `main` on
+  2026-10-30 (merge commit `bf6c8e21`), before `E4-03` started. `D-262` (ADR-0263) records that
+  `E4-B2` is delivered through two pull requests from the same branch, recreated from `main`;
+  `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRIBUTING.md` and ADR-0210 now say so, and the `E4-03`
+  intake answers are recorded in `docs/handoffs/E4-B2.md`.
+- **Why:** `D-209` delivered each Phase 4 bundle through one pull request, which the pull request #94
+  merge no longer allows for `E4-B2`.
+- **Documents touched:** ADR-0263 and the four decision mirrors; ADR-0210; `AGENTS.md`;
+  `docs/CONTRIBUTING.md`; `docs/BACKLOG.md`; `docs/handoffs/E4-B2.md`.
+- **Verification:** `./gradlew contractCheck --rerun-tasks` reports 255 decisions and 255 ADRs, with
+  no `[FAIL]` or `[PENDING]`.
+- **Follow-ups / risks:** `E4-03` starts with its intake; the open `E4-04` owner-run items are tracked
+  in `docs/handoffs/E4-B2.md` §Owner-Run Checklist.
+
 ### 2026-10-30 — PR #94 review round 1: iOS release defects corrected, D-261 recorded
 
 - **Type:** correction

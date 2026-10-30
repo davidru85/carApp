@@ -746,6 +746,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-259 | `staging` variant | Release code and settings against the development project, with the `.debug` identity. | Accepted |
 | D-260 | Review enforcement | Required review stays off; the documentation states the real gate. | Accepted |
 | D-261 | iOS Firebase plist names | Each iOS configuration bundles only its own, uniquely named Firebase plist. | Accepted |
+| D-262 | E4-B2 delivery | Bundle `E4-B2` is delivered through two pull requests: #94 (`E4-04`) and a second one (`E4-03` and the bundle closure). | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
