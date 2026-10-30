@@ -238,6 +238,28 @@ class PerformanceHarnessContractTest {
         )
     }
 
+    @Test
+    fun iosPerformanceTestsRunOnlyOnADeviceAgainstTheBenchmarkConfiguration() {
+        val projectSpec = read("iosApp/project.yml")
+        val target = yamlBlock(projectSpec, "carAppPerformanceUITests")
+        val scheme = yamlBlock(projectSpec, "carAppPerformance")
+        val shippingScheme = yamlBlock(projectSpec.substringAfter("\nschemes:"), "carApp")
+
+        assertTrue(target.contains("type: bundle.ui-testing"), "iosApp/project.yml must declare carAppPerformanceUITests (D-253)")
+        assertTrue(target.contains("SUPPORTED_PLATFORMS: iphoneos"))
+        assertTrue(target.contains("PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.perfuitests"))
+        assertTrue(target.contains("TEST_TARGET_NAME: carApp"))
+        assertTrue(scheme.contains("config: Benchmark"))
+        assertTrue(scheme.contains("carAppPerformanceUITests"))
+        assertFalse(shippingScheme.contains("carAppPerformanceUITests"), "the CI scheme never runs device tests")
+        assertTrue(
+            read("iosApp/PerformanceUITests/LaunchPerformanceUITests.swift")
+                .contains("XCTApplicationLaunchMetric(waitUntilResponsive: false)"),
+        )
+        assertTrue(read("iosApp/PerformanceUITests/ListScrollPerformanceUITests.swift").contains("XCTHitchMetric(application: app)"))
+        assertTrue(read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift").contains("\"Benchmark vehicle\""))
+    }
+
     private companion object {
         const val ANDROID_VEHICLE_LIST = "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
         const val CONSUMPTION_ENTRY =
