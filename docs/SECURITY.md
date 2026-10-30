@@ -54,7 +54,12 @@ Allowed in the repository:
   the other build type, and `FirebaseConfigurationTest` enforces it. The production keys must be
   restricted to the release package, signing certificates and bundle identifier before either file is
   committed (`docs/runbooks/production-firebase-release.md` O4–O5, created by `E4-10`); until they exist, release builds
-  fail closed.
+  fail closed. Under `D-259` the `staging` build type and the `Staging` configuration reuse the development
+  configuration (`androidApp/src/staging/google-services.json`,
+  `iosApp/Config/Staging/GoogleService-Info-Staging.plist`). Under `D-252` and `D-253` the non-shipping
+  benchmark derivatives reuse it too: `androidApp/src/benchmark/google-services.json` is a byte-identical
+  copy of the staging file, and the iOS `Benchmark` configuration bundles the Staging plist. None of these
+  builds is ever distributed.
 
 Never committed:
 
@@ -246,7 +251,10 @@ Requirements:
   by the next local or owner build, not by a required check.
 - **The client could be steered only in Debug through the launch environment** (`E4-04`). Every UI-test
   hook now compiles only under `#if DEBUG`, and `SwiftDebugOnlyHookRule` keeps it that way, so a Release
-  build cannot be steered by whoever launches it.
+  build cannot be steered by whoever launches it. `E4-03` (`D-254`) adds one launch-argument hook,
+  `-CARAPP_BENCHMARK_SEED`, compiled only under `#if CARAPP_BENCHMARK`, which only the non-shipping
+  `Benchmark` configuration defines; the rule now also covers `processInfo.arguments`, and
+  `PerformanceHarnessContractTest` keeps `CARAPP_BENCHMARK` out of every other configuration.
 - **Store-only privacy obligations are deferred while the app is not published** (`D-236`, accepted
   on 2026-10-24). When `E4-10` points release builds at the production project, deleting an Apple-linked
   account does not revoke its Sign in with Apple token, production App Check on Android accepts

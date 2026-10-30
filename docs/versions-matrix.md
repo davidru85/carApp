@@ -28,6 +28,7 @@ These groups move together. Bumping one member REQUIRES revalidating the whole g
 | **Android build** | AGP, Gradle, JDK toolchain, Compose BOM, `compileSdk`, `targetSdk` | AGP requires specific Gradle and JDK versions, and a Compose BOM declares a minimum AGP and `compileSdk`. Compose BOM `2026.08.00` requires `compileSdk 37` and AGP 9.1.0 or higher, which is what moved the whole group. |
 | **Android Vehicle UI support** | Compose BOM, Navigation, AndroidX Test runner/rules, `compileSdk`, emulator API and emulator-runner action | Compose UI tests are BOM-managed, Navigation and AndroidX Test must compile against the pinned Android build, and the CI emulator must provide the app's target API. |
 | **AGP 9 build model** | AGP, `com.android.kotlin.multiplatform.library`, Kotlin Gradle plugin | Since AGP 9.0 Kotlin support is built into AGP: `org.jetbrains.kotlin.android` is rejected, and `com.android.library` is incompatible with the KMP plugin, so `:shared` must use `com.android.kotlin.multiplatform.library` and its `androidLibrary` DSL. |
+| **Android performance tooling** | AGP, Macrobenchmark, UiAutomator, AndroidX Test, `targetSdk` | Macrobenchmark drives the app through UiAutomator and AndroidX Test from a `com.android.test` module built by AGP; it reads startup and frame traces on the device API the app targets. `D-252`. |
 
 ## Pinned versions
 
@@ -68,6 +69,10 @@ decision exists, otherwise the story or normative section that fixes it.
 | Android Compose UI tests | `androidx.compose.ui:ui-test-junit4`, `ui-test-manifest` | managed by Compose BOM 2026.08.00 | [ADR-0085](adr/0085-use-compose-navigation-and-instrumented-ui-tests.md) (`D-84`) | Instrumented test artifact plus debug manifest support; no separate Compose version pin. |
 | Android accessibility checks | `androidx.compose.ui:ui-test-junit4-accessibility` | managed by Compose BOM 2026.08.00 (resolves 1.12.0) | [ADR-0217](adr/0217-check-android-accessibility-with-the-compose-accessibility-test-framework.md) (`D-216`) | Instrumented tests only. Brings `com.google.android.apps.common.testing.accessibility.framework:accessibility-test-framework` 4.1.1, whose runtime dependencies resolve to the pinned AndroidX Test 1.7.0 pair. `enableAccessibilityChecks()` needs API 34+, which the `D-84` API 36 emulator provides; no separate version pin. |
 | AndroidX Test | `androidx.test:runner`, `androidx.test:rules` | 1.7.0 | [ADR-0085](adr/0085-use-compose-navigation-and-instrumented-ui-tests.md) (`D-84`) | Stable runner/rules pair verified against the official AndroidX Test release page on 2026-08-30. |
+| Android macrobenchmark | `androidx.benchmark:benchmark-macro-junit4` | 1.5.0 | [ADR-0253](adr/0253-measure-android-performance-with-macrobenchmark.md) (`D-252`) | Stable 2026-09-09. Only in `:benchmark`; never in an app artifact. |
+| Android UI automation | `androidx.test.uiautomator:uiautomator` | 2.4.0 | [ADR-0253](adr/0253-measure-android-performance-with-macrobenchmark.md) (`D-252`) | Stable 2026-07-01; the line Macrobenchmark 1.5.0 is built on. Only in `:benchmark`. |
+| AndroidX Test JUnit extension | `androidx.test.ext:junit` | 1.3.0 | [ADR-0253](adr/0253-measure-android-performance-with-macrobenchmark.md) (`D-252`) | `AndroidJUnit4` runner class of the 1.7.0 AndroidX Test release line. Only in `:benchmark`. |
+| Android leak detection | `com.squareup.leakcanary:leakcanary-android-instrumentation` | 2.14 | [ADR-0257](adr/0257-verify-leaks-and-state-holder-cancellation.md) (`D-256`) | Latest stable; 3.0 is alpha. `androidTestImplementation` only, with a manual `AppWatcher` installation. |
 | Android background work | `androidx.work:work-runtime` | 2.11.2 | [ADR-0185](adr/0185-pin-workmanager-for-the-android-background-cadence.md) (`D-184`) | Supplies the `enqueueUniquePeriodicWork` cadence and `CoroutineWorker` that `docs/CONTRACTS.md §9.1` requires for the Android `Periodic` trigger. The newest stable release, not the 2.12.0-rc line; it compiles against the pinned `compileSdk` 37 and `minSdk` 26. |
 | Android emulator CI action | `ReactiveCircus/android-emulator-runner` | 2.38.0 (`a421e43855164a8197daf9d8d40fe71c6996bb0d`) | [ADR-0085](adr/0085-use-compose-navigation-and-instrumented-ui-tests.md) (`D-84`) | Immutable peeled tag commit verified with `git ls-remote`; runs API 36 x86_64 with Linux KVM. |
 | SQLDelight | `app.cash.sqldelight` | 2.3.2 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Uses the SQLite 3.24 dialect, asynchronous generation and migration verification. |
@@ -134,8 +139,8 @@ Enforced in CI by Kover (`D-18`). A module below its threshold fails the build.
 | Target | Reference environment | Method | Threshold |
 |--------|----------------------|--------|-----------|
 | Consumption for 1,000 entries | Shared test on the CI Linux runner (JVM), plus one manual run on the reference iPhone | 1,000 synthetic entries, optimized Kotlin binaries (the uninstrumented JVM task and the `iosArm64` `RELEASE` binaries of `D-80`), discard 5 warm-up runs, take the median of 20 runs | < 100 ms |
-| Cold start to first content | Reference devices below, `staging` build (`D-259`: release code and settings against the development project), app force-stopped, device idle | Median of 10 runs, measured to the first frame that shows real content, not the splash | < 2 s |
-| List smoothness | Reference devices below, `staging` build (`D-259`), 1,000 fuel entries | Scripted fling across the full list; count frames over 32 ms | 0 frames over 32 ms |
+| Cold start to first content | Reference devices below, `staging` build (`D-259`: release code and settings against the development project), measured through its `benchmark` / `Benchmark` derivative (`D-252`, `D-253`), app force-stopped, device idle and offline | Median of 10 runs, measured to the first frame that shows real content, not the splash: a returning user's populated vehicle list (gate) and the welcome screen of a signed-out install (second figure) (`D-251`) | < 2 s |
+| List smoothness | Reference devices below, `staging` build (`D-259`) through its `benchmark` / `Benchmark` derivative, 1,000 seeded fuel entries (`D-254`) | Scripted fling across the full list, 5 iterations; count frames over 32 ms as defined below | 0 frames over 32 ms |
 
 Reference devices:
 
@@ -149,6 +154,25 @@ The reference OS is the baseline the thresholds were defined against, and it mat
 
 If a reference device is unavailable, the measurement is still run and the actual device is recorded in the handoff and in `docs/PROJECT_LOG.md`; it does not silently pass.
 
+### Measurement tooling (`E4-03`)
+
+| Target | Android | iOS | Gate readout |
+|--------|---------|-----|--------------|
+| Cold start | Macrobenchmark `StartupTimingMetric`, `StartupMode.COLD`, `CompilationMode.None()`, 10 iterations, in `:benchmark` against the `benchmark` build type derived from `staging` (`D-252`) | `XCTApplicationLaunchMetric(waitUntilResponsive: false)`, 10 iterations, in `carAppPerformanceUITests` over the `Benchmark` configuration derived from `Staging` (`D-253`) | Median of `timeToFullDisplayMs` (Android) or of the 10 launch durations (iOS). Both end at the first-content marker: `ReportDrawn()` on Android, the MetricKit extended launch task on iOS (`D-251`). |
+| Smoothness | Macrobenchmark `FrameTimingMetric`, 5 iterations, fling to the end of the list | `XCTHitchMetric`, 5 iterations of 30 fast swipes (iOS 26 or later); Instruments "Animation Hitches" otherwise | Count of frames over 32 ms over all iterations. |
+| Consumption | `:feature:fuel:consumptionBenchmark` (JVM, CI) | `ConsumptionBenchmarkApp` on the iPhone (`D-255`) | Median of 20 after 5 warm-ups, through `exceedsConsumptionThreshold`. |
+
+**Frames over 32 ms.** For a display whose refresh interval is `T = 1000 / refreshHz` ms, a frame is over
+32 ms when its lateness `L` satisfies `L > (floor(32 / T) - 1) * T`. Android reads `L` from
+`frameOverrunMs`; iOS reads it as the hitch duration. On the 60 Hz reference devices this is any late
+frame, so the Android count is the number of positive `frameOverrunMs` values and the iOS count is the
+hitch count. `frameDurationCpuMs > 32` is reported as a diagnostic only.
+
+**Data and state.** Measurements run on the seeded history of `D-254` (one vehicle, 1,000 entries),
+adopted once into a development anonymous identity (`D-251`), with the device offline. The procedure
+is `docs/runbooks/performance-measurement.md`; the Xcode that ran each iOS measurement is recorded with
+its figures.
+
 `D-80` makes the JVM consumption measurement a standalone
 `:feature:fuel:consumptionBenchmark` task. It reuses shared test data but runs outside every normal
 test task and without the Kover agent, so coverage instrumentation cannot affect the result. The
@@ -157,4 +181,6 @@ margin satisfied the owner-approved condition for enabling the `< 100 ms` gate, 
 task now enforces the threshold in a separate Linux CI step. The same data and measurement
 procedure are compiled into an optimized `iosArm64` test binary for the mandatory manual device
 run. Linking that binary is acceptance evidence; it does not substitute for the real-device
-result, which remains explicitly pending when no iPhone is available.
+result. `E4-03` (`D-255`) runs the same procedure on the iPhone through the non-shipping
+`ConsumptionBenchmarkApp` and records the device, OS, date and median in a dated closure update at
+the top of `docs/handoffs/E1-05.md`.
