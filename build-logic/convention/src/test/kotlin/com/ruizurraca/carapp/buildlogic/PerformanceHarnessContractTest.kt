@@ -192,7 +192,26 @@ class PerformanceHarnessContractTest {
         assertTrue(kotlin.contains("1_500L") && swift.contains("\"1.500\""), "price differs between hosts")
     }
 
+    @Test
+    fun firstContentIsReportedOnBothHosts() {
+        val iosList = read("iosApp/VehicleListView.swift")
+
+        assertTrue(read(ANDROID_VEHICLE_LIST).contains("ReportDrawn()"), "the populated list must report full display (D-251)")
+        assertTrue(
+            read("androidApp/src/main/java/com/ruizurraca/carapp/AndroidOnboarding.kt").contains("ReportDrawn()"),
+            "the welcome screen must report full display (D-251)",
+        )
+        assertTrue(read("iosApp/carAppApp.swift").contains("LaunchMeasurement.shared.begin()"))
+        assertTrue(read("iosApp/WelcomeView.swift").contains("LaunchMeasurement.shared.finishAtFirstContent()"))
+        assertEquals(
+            3,
+            Regex("""LaunchMeasurement\.shared\.finishAtFirstContent\(\)""").findAll(iosList).count(),
+            "the first vehicle row, the empty list and the unreadable list each end the launch task",
+        )
+    }
+
     private companion object {
+        const val ANDROID_VEHICLE_LIST = "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
         const val CONSUMPTION_ENTRY =
             "feature/fuel/src/iosArm64DeviceBenchmark/kotlin/com/ruizurraca/carapp/feature/fuel/domain/" +
                 "ConsumptionBenchmarkEntry.kt"
