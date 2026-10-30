@@ -255,7 +255,7 @@ jobs:
       - name: Check the pinned Xcode major version
         run: scripts/check-xcode-pin.sh
       - name: Link the optimized consumption device-test binary
-        run: ./gradlew :feature:fuel:linkReleaseTestIosArm64 --stacktrace
+        run: ./gradlew :feature:fuel:linkReleaseTestIosArm64 :feature:fuel:linkConsumptionBenchmarkReleaseFrameworkIosArm64 --stacktrace
       - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
       - name: Run iOS unit tests
         working-directory: iosApp

@@ -13,6 +13,21 @@ kotlin {
             binaries.test(listOf(NativeBuildType.RELEASE))
         }
     }
+
+    iosArm64 {
+        // `E4-03` (`D-255`, ADR-0256): the D-80 run on a real iPhone. The compilation is associated
+        // with the test compilation so the unchanged `measureConsumptionBenchmark` procedure stays in
+        // commonTest; it contains only the exported entry point, so nothing reaches `Shared` or Android.
+        val compilations = this.compilations
+        val deviceBenchmark =
+            compilations.create("deviceBenchmark") {
+                associateWith(compilations.getByName("test"))
+            }
+        binaries.framework("ConsumptionBenchmark", listOf(NativeBuildType.RELEASE)) {
+            compilation = deviceBenchmark
+            baseName = "ConsumptionBenchmark"
+        }
+    }
 }
 
 dependencies {
