@@ -76,6 +76,7 @@
 		DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386580F3F32E7C04067DEE4E /* NativeSignIn.swift */; };
 		E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */; };
 		E40D8982412D833C47095BAF /* AnonymousReminderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */; };
+		E655BF2DFF7214F9C4FAEEAA /* ViewModelDeallocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F82742CFDA8BE2E2B85CFC /* ViewModelDeallocationTests.swift */; };
 		EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
@@ -170,6 +171,7 @@
 		832632443696C292C93ACBB3 /* carAppPerformanceUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppPerformanceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderCopyTests.swift; sourceTree = "<group>"; };
 		8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowUITests.swift; sourceTree = "<group>"; };
+		86F82742CFDA8BE2E2B85CFC /* ViewModelDeallocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelDeallocationTests.swift; sourceTree = "<group>"; };
 		87243F51351B46DEF5827671 /* SettingsPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentation.swift; sourceTree = "<group>"; };
 		88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAndFuelFlowUITests.swift; sourceTree = "<group>"; };
 		8B4DDF68481A819B505F8816 /* ViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels.swift; sourceTree = "<group>"; };
@@ -330,6 +332,7 @@
 				B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */,
 				54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */,
 				48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */,
+				86F82742CFDA8BE2E2B85CFC /* ViewModelDeallocationTests.swift */,
 				3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */,
 			);
 			path = Tests;
@@ -713,6 +716,7 @@
 				F852EA19B6E4BBA331227BFC /* SettingsViewModelTests.swift in Sources */,
 				33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */,
 				5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */,
+				E655BF2DFF7214F9C4FAEEAA /* ViewModelDeallocationTests.swift in Sources */,
 				CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
