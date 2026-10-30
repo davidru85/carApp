@@ -446,7 +446,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Area | Requirement |
 |------|-------------|
 | Platforms | Android `minSdk 26`, iOS 16+; Kotlin/Native targets `iosArm64` and `iosSimulatorArm64`. `iosX64` is not supported (`D-37`). |
-| Performance | Cold start to first content under 2 s, median of 10 runs on the reference devices in a release build. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
+| Performance | Cold start to first content under 2 s, median of 10 runs on the reference devices in the `staging` build type (`D-259`), a release-optimized build that runs release code against the development project. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
 | Offline | 100% of MVP functionality usable without network, including first launch. |
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
@@ -741,6 +741,12 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-248 | Release build evidence | Release-build evidence is local; the required checks are unchanged. | Accepted |
 | D-249 | Production App Check profile | Production keeps the off-Play Play Integrity profile until Play app signing exists. | Accepted |
 | D-250 | Release version scheme | `MAJOR.MINOR.PATCH` plus one integer build number, first release `1.0.0` / `1`. | Accepted |
+| D-251 | Cold-start first content | The cold-start gate ends at a returning user's populated vehicle list; the welcome screen of a signed-out device is a second figure. | Accepted |
+| D-252 | Android performance tooling | Macrobenchmark and UiAutomator in a `:benchmark` test module against a `benchmark` build type derived from `staging`. | Accepted |
+| D-253 | iOS performance tooling | On-device XCTest launch and hitch metrics over a `Benchmark` configuration derived from `Staging`; Instruments only where XCTest is not exact. | Accepted |
+| D-254 | Benchmark data seeding | One vehicle and 1,000 entries written through the product repositories by a benchmark-only entry point, offline and under the local owner. | Accepted |
+| D-255 | D-80 real-iPhone execution | A non-shipping iPhone app runs the consumption benchmark from a separate framework; the shared Swift surface is unchanged. | Accepted |
+| D-256 | Leak and cancellation verification | LeakCanary in Android UI tests, iOS deallocation tests and state-holder cancellation tests. | Accepted |
 | D-257 | Android release signing | Read signing from an out-of-repository properties file; unsigned and silent when absent. | Accepted |
 | D-258 | Production Firebase cutover | Production work is story `E4-10`, the last before MVP closure. | Accepted |
 | D-259 | `staging` variant | Release code and settings against the development project, with the `.debug` identity. | Accepted |

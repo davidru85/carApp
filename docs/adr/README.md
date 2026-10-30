@@ -255,6 +255,12 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-248 | [ADR-0249](0249-keep-e4-04-release-build-evidence-local.md) | Keep `E4-04` release-build evidence local. | Accepted |
 | D-249 | [ADR-0250](0250-production-app-check-uses-the-off-play-play-integrity-profile.md) | Use the off-Play Play Integrity profile in production until `E4-09`. | Accepted |
 | D-250 | [ADR-0251](0251-release-version-scheme.md) | Release version scheme `1.0.0` / `1`. | Accepted |
+| D-251 | [ADR-0252](0252-gate-cold-start-on-the-returning-user-vehicle-list.md) | Gate cold start on a returning user's populated vehicle list, with production first-content markers. | Accepted |
+| D-252 | [ADR-0253](0253-measure-android-performance-with-macrobenchmark.md) | Measure Android performance with Macrobenchmark in `:benchmark`. | Accepted |
+| D-253 | [ADR-0254](0254-measure-ios-performance-with-on-device-xctest.md) | Measure iOS performance with on-device XCTest over a `Benchmark` configuration. | Accepted |
+| D-254 | [ADR-0255](0255-seed-benchmark-data-through-a-benchmark-only-entry-point.md) | Seed benchmark data through a benchmark-only entry point. | Accepted |
+| D-255 | [ADR-0256](0256-run-the-d80-benchmark-in-a-non-shipping-iphone-app.md) | Run the D-80 benchmark in a non-shipping iPhone app. | Accepted |
+| D-256 | [ADR-0257](0257-verify-leaks-and-state-holder-cancellation.md) | Verify leaks and state-holder cancellation. | Accepted |
 | D-257 | [ADR-0258](0258-read-android-release-signing-from-an-out-of-repository-properties-file.md) | Read Android release signing from an out-of-repository properties file. | Accepted |
 | D-258 | [ADR-0259](0259-move-the-production-firebase-cutover-to-story-e4-10.md) | Move the production Firebase cutover to story `E4-10`. | Accepted |
 | D-259 | [ADR-0260](0260-add-a-staging-variant-that-runs-release-code-against-development.md) | Add a `staging` variant that runs release code against development. | Accepted |

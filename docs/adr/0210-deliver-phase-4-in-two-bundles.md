@@ -20,6 +20,12 @@ Amended by `D-262` (ADR-0263) on 2026-10-30: pull request #94 merged `E4-04` and
 bundle closure.
 The stories, their order and the branch of `E4-B2` are unchanged; only the number of pull requests changes.
 
+Amended in `E4-03` on 2026-10-30 (R-4, applying `D-259`; no new decision): where this ADR says that
+`E4-03` measures cold start "in a release build", "release-build measurements" or "on the release build
+that will ship", read the `staging` build type of `D-259` (ADR-0260), measured through its `benchmark`
+and `Benchmark` derivatives (`D-252`, `D-253`): release code and settings against the development
+project, because release builds fail closed until `E4-10` (`D-238`, `D-258`).
+
 ## Context
 
 Phase 3 closed on 2026-10-15 when bundle `E3-B2` merged through pull request #89, and its record

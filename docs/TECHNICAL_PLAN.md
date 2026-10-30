@@ -263,6 +263,12 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-248 | Release build evidence | Local only | Accepted | No new required check. See ADR-0249. |
 | D-249 | Production App Check profile | Off-Play Play Integrity until `E4-09` | Accepted | Applied by `E4-10`. See ADR-0250. |
 | D-250 | Release version scheme | `1.0.0` / `1`, integer build number per upload | Accepted | Gradle and iOS build settings. See ADR-0251. |
+| D-251 | Cold-start first content | Populated vehicle list of a returning user; welcome screen as second figure; production markers on both hosts; returning-user state by offline seeding plus one online adoption (R-a) | Accepted | Measures what a returning user waits for. See ADR-0252. |
+| D-252 | Android performance tooling | Macrobenchmark 1.5.0 + UiAutomator 2.4.0 in `:benchmark`; `benchmark` build type derived from `staging` | Accepted | Scripted cold start and frame lateness on release code. See ADR-0253. |
+| D-253 | iOS performance tooling | Device-only XCTest launch and hitch metrics over the `Benchmark` configuration derived from `Staging` | Accepted | Exact on iOS 26 at 60 Hz; Instruments otherwise. See ADR-0254. |
+| D-254 | Benchmark data seeding | Benchmark-only entry points over `seedBenchmarkFuelHistory` / the existing view models | Accepted | Real write path, nothing enqueued while seeding; the hook rule covers launch arguments. See ADR-0255. |
+| D-255 | D-80 real-iPhone execution | `ConsumptionBenchmark` framework from a `deviceBenchmark` compilation, `ConsumptionBenchmarkApp` target | Accepted | Records the open `E1-05` device result in a dated closure update. See ADR-0256. |
+| D-256 | Leak and cancellation verification | LeakCanary rule chain, iOS deallocation tests, holder cancellation tests | Accepted | Executes `docs/CONTRACTS.md §14` `close()` semantics. See ADR-0257. |
 | D-257 | Android release signing | Out-of-repository properties file via a Gradle property | Accepted | Unsigned and silent when absent; rejects in-repository paths. See ADR-0258. |
 | D-258 | Production Firebase cutover | Story `E4-10`, last before MVP closure | Accepted | `E4-04` keeps the mechanism and `staging`. See ADR-0259. |
 | D-259 | `staging` variant | Release code and settings, `.debug` identity, development configuration | Accepted | `E4-03` measures it. See ADR-0260. |

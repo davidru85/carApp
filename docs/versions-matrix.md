@@ -133,7 +133,7 @@ Enforced in CI by Kover (`D-18`). A module below its threshold fails the build.
 
 | Target | Reference environment | Method | Threshold |
 |--------|----------------------|--------|-----------|
-| Consumption for 1,000 entries | Shared test on the CI Linux runner (JVM), plus one manual run on the reference iPhone | 1,000 synthetic entries, release-mode build, discard 5 warm-up runs, take the median of 20 runs | < 100 ms |
+| Consumption for 1,000 entries | Shared test on the CI Linux runner (JVM), plus one manual run on the reference iPhone | 1,000 synthetic entries, optimized Kotlin binaries (the uninstrumented JVM task and the `iosArm64` `RELEASE` binaries of `D-80`), discard 5 warm-up runs, take the median of 20 runs | < 100 ms |
 | Cold start to first content | Reference devices below, `staging` build (`D-259`: release code and settings against the development project), app force-stopped, device idle | Median of 10 runs, measured to the first frame that shows real content, not the splash | < 2 s |
 | List smoothness | Reference devices below, `staging` build (`D-259`), 1,000 fuel entries | Scripted fling across the full list; count frames over 32 ms | 0 frames over 32 ms |
 
