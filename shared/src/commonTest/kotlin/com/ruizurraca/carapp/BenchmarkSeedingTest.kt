@@ -48,7 +48,10 @@ class BenchmarkSeedingTest {
                 assertIs<BenchmarkSeedResult.Seeded>(seedBenchmarkFuelHistory(graph, SEEDED_ENTRIES))
 
                 val queries = handle.database.databaseQueries
-                assertEquals(1L, queries.countActiveVehiclesByOwner(LOCAL_OWNER.value).awaitAsOne())
+                assertEquals(
+                    1L,
+                    queries.countActiveVehiclesByOwner(LOCAL_OWNER.value).awaitAsOne(),
+                )
                 assertEquals(
                     SEEDED_ENTRIES.toLong(),
                     queries.countActiveFuelEntriesByOwner(LOCAL_OWNER.value).awaitAsOne(),
@@ -62,7 +65,12 @@ class BenchmarkSeedingTest {
             withSeedingGraph { graph, handle ->
                 assertIs<BenchmarkSeedResult.Seeded>(seedBenchmarkFuelHistory(graph, SEEDED_ENTRIES))
 
-                assertEquals(0L, handle.database.databaseQueries.countOutboxRows().awaitAsOne())
+                assertEquals(
+                    0L,
+                    handle.database.databaseQueries
+                        .countOutboxRows()
+                        .awaitAsOne(),
+                )
             }
         }
 
@@ -86,7 +94,9 @@ class BenchmarkSeedingTest {
                 )
                 assertEquals(
                     0L,
-                    handle.database.databaseQueries.countActiveVehiclesByOwner(LOCAL_OWNER.value).awaitAsOne(),
+                    handle.database.databaseQueries
+                        .countActiveVehiclesByOwner(LOCAL_OWNER.value)
+                        .awaitAsOne(),
                 )
             }
         }
@@ -101,7 +111,9 @@ class BenchmarkSeedingTest {
                 )
                 assertEquals(
                     0L,
-                    handle.database.databaseQueries.countActiveVehiclesByOwner(SIGNED_IN_OWNER.value).awaitAsOne(),
+                    handle.database.databaseQueries
+                        .countActiveVehiclesByOwner(SIGNED_IN_OWNER.value)
+                        .awaitAsOne(),
                 )
             }
         }

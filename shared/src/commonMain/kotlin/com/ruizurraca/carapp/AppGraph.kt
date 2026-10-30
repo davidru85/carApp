@@ -513,6 +513,20 @@ internal class DefaultAppGraph(
 
     internal val fuelRepositoryForTest: FuelEntryRepository get() = fuelRepository
 
+    /**
+     * `E4-03` (`D-254`): the benchmark seeding writer over the same decorated repositories the holders
+     * use. Internal, so it reaches neither the Kotlin-facing `AppGraph` surface (`§20.10`) nor Swift.
+     */
+    internal fun benchmarkFuelHistorySeeder(): BenchmarkFuelHistorySeeder {
+        checkOpen()
+        return BenchmarkFuelHistorySeeder(
+            ownerContext = ownerAwareDependencies.ownerContext,
+            connectivity = dependencies.connectivityObserver,
+            createVehicle = vehicleRuntime::createVehicle,
+            fuelRepository = fuelRepository,
+        )
+    }
+
     /** `E4-04` seam: the settings repository the settings holder receives. Internal, never exported. */
     internal val settingsHolderRepositoryForTest: SettingsRepository get() = settingsHolderRepository
 
