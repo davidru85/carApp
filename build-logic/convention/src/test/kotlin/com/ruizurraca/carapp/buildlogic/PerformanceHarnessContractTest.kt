@@ -260,6 +260,33 @@ class PerformanceHarnessContractTest {
         assertTrue(read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift").contains("\"Benchmark vehicle\""))
     }
 
+    @Test
+    fun everyComposeInstrumentedTestDetectsLeaks() {
+        val composeRuleFactory = Regex("""create(Android|Empty)?ComposeRule""")
+        val composeTests =
+            repositoryRoot
+                .resolve("androidApp/src/androidTest")
+                .walkTopDown()
+                .filter { file -> file.isFile && file.extension == "kt" }
+                .filter { file -> composeRuleFactory.containsMatchIn(file.readText()) }
+                .toList()
+
+        assertTrue(composeTests.isNotEmpty())
+        composeTests.forEach { file ->
+            val text = file.readText()
+            assertTrue(
+                text.contains("val leakDetection = leakDetecting("),
+                "${file.name} must wrap its Compose rule in leakDetecting(...) (D-256)",
+            )
+            assertFalse(
+                Regex("""@get:Rule\s+val composeRule""").containsMatchIn(text),
+                "${file.name} must not register its Compose rule outside the leak chain",
+            )
+        }
+        val leakCanaryLines = read("androidApp/build.gradle.kts").lines().filter { line -> line.contains("leakcanary") }
+        assertEquals(listOf("    androidTestImplementation(libs.leakcanary.android.instrumentation)"), leakCanaryLines)
+    }
+
     private companion object {
         const val ANDROID_VEHICLE_LIST = "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
         const val CONSUMPTION_ENTRY =
