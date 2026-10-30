@@ -8,6 +8,9 @@ internal object NativeTestExemptionContract {
         // `E3-09`: the GitLive firebase-analytics klib binds FIRAnalytics through a cinterop, so its
         // standalone Native test binary needs the same Apple-side linking the other two roots do.
         ":integration:firebase-analytics",
+        // `E4-04`: the GitLive firebase-crashlytics klib binds FIRCrashlytics through a cinterop, so
+        // its standalone Native test binary needs the same Apple-side linking as the other roots.
+        ":integration:firebase-crashlytics",
     )
 
     fun deriveExpectedModules(

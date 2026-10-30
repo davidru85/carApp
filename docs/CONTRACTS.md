@@ -1916,7 +1916,10 @@ uses actual-cost email thresholds at 50%, 90% and 100% and publishes to the proj
 topic. The `stopBilling` 2nd gen function removes the development project's billing association
 when reported actual cost is greater than or equal to the budget. Budget alerts are notifications,
 not a spending cap; reporting delay can produce overshoot. Production MUST NOT deploy or inherit
-`stopBilling`: its budget response is aggressive notification plus manual intervention.
+`stopBilling`: its budget response is aggressive notification plus manual intervention. `stopBilling`
+lives in the development-only `dev-billing` Functions codebase (`functions-dev-billing/`); the product
+codebase `default` (`functions/`) MUST NOT export it, and production deploys `functions:default` only
+(`D-247`).
 
 `stopBilling` MUST use the dedicated keyless identity governed by D-69, check that billing remains
 enabled before attempting an update and return without writing when it is already disabled. Its
@@ -2091,6 +2094,8 @@ Forbidden in any payload: exact odometer values, exact fuel volume, exact cost o
 
 Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered. The provider SDK initialises at process start, before any `AnalyticsTracker` exists, so each host also disables collection in its platform configuration — the `firebase_analytics_collection_enabled` manifest `meta-data` set to `false` on Android and the `FIREBASE_ANALYTICS_COLLECTION_ENABLED` `Info.plist` key set to `false` on iOS — and only the tracker's `setEnabled(true)` after the opt-in turns collection on (`§18` assertion 39).
 
+Crash reporting follows the same opt-in (`D-241`). The `:shared` opt-in gate that commands `AnalyticsTracker.setEnabled` commands `CrashReporter.setEnabled` with the same value, at startup and on every change, so a fresh install reports no crash data and an opt-out stops it. The Firebase Crashlytics SDK also initialises at process start, so each host also disables its collection in platform configuration — the `firebase_crashlytics_collection_enabled` manifest `meta-data` set to `false` on Android and the `FirebaseCrashlyticsCollectionEnabled` `Info.plist` key set to `false` on iOS (`§18` assertion 48). The provider persists the last command across launches and applies a disable from the next launch; `§20.3.1` defines what the reporter does meanwhile.
+
 `setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete; a successful update changes no count and MUST NOT call it. The calls are made by `:shared` application-level orchestration (`D-196`): the opt-in call by the opt-in gate, and the post-write calls by the `:shared` decorators that wrap the committed repository write. It MUST NOT be called from domain or data code. Buckets are computed from the owner's active (non-deleted) vehicle and fuel-entry counts, read through read-only owner-scoped queries in `:core:database` (`D-197`). An `E3-09` fixture MUST assert the call cadence.
 
 Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events. A fixture MUST assert failure events are emitted from presentation, not domain or data. The `VehicleCreated` and `FuelEntryCreated` events are emitted by the same `:shared` decorators once the repository write has returned `Ok` (`D-196`); that is application-level orchestration, not domain or data persistence logic.
@@ -2116,6 +2121,8 @@ Every sync cycle generates a `cycleId` (§20.7) that is included as a field on e
 Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes, exact odometer values, exact costs, or the Firebase UID in release builds.
 
 Redaction is the responsibility of the `Logger` implementation, not the caller. The implementation accepts entity IDs as `String`; the caller MUST NOT pre-redact. Redaction is decided from the injected `isDebugBuild` flag: debug builds may log entity IDs in full; release builds log the first 8 characters followed by an ellipsis, and never log the UID at any length.
+
+Until `E4-08` delivers a redacting implementation (`D-242`), the providers of `:wiring:firebase` bind a logger that emits nothing, in debug and release builds alike. `FirebaseAppProvidersTest.theProvidersLoggerReadsNothingItIsGiven` proves that it reads neither `fields` nor `throwable`, and `SilentLoggerContractTest.theProvidersLoggerBodyIsEmpty` pins its `log` body to `= Unit`, so neither `tag` nor `message` can reach a log line either.
 
 `Throwable.message` and `Throwable.stackTrace` MUST be redacted to stable codes and MUST NOT be logged as text. The throwable class name may be logged in full at `DEBUG`; at `INFO`, `WARN` and `ERROR`, only the class name's last segment may be logged.
 
@@ -2157,10 +2164,11 @@ concurrency limit queues jobs.
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
 module whose Native test binary transitively links `:integration:firebase-auth`,
-`:integration:firebase-firestore` or `:integration:firebase-analytics` qualifies. CI compares that
-derived set with the explicit task exclusions and MUST fail in both directions. The current
-resolution is `:integration:firebase-auth`, `:integration:firebase-firestore`,
-`:integration:firebase-analytics`, `:wiring:firebase` and `:composition:ios`; this is observed
+`:integration:firebase-firestore`, `:integration:firebase-analytics` or
+`:integration:firebase-crashlytics` qualifies. CI compares that derived set with the explicit task
+exclusions and MUST fail in both directions. The current resolution is
+`:integration:firebase-auth`, `:integration:firebase-firestore`, `:integration:firebase-analytics`,
+`:integration:firebase-crashlytics`, `:wiring:firebase` and `:composition:ios`; this is observed
 output, not a permanent allowlist, and changes when the graph changes.
 
 Optional checks:
@@ -2187,14 +2195,24 @@ Optional checks:
 16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
 18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
-19. The Cloud Functions runtime, Functions manifest and cloud-runtime CI assertion equal the
-    normative runtime row in `docs/versions-matrix.md`; a hardcoded second runtime fails.
+19. The Cloud Functions runtime, both Functions manifests (`functions/package.json`,
+    `functions-dev-billing/package.json`), every `firebase.json` codebase runtime and the
+    cloud-runtime CI assertion equal the normative runtime row in `docs/versions-matrix.md`; a
+    hardcoded second runtime fails.
 20. The Google authentication and Cloud SDK GitHub Actions use the immutable SHAs recorded in
     `docs/versions-matrix.md`, not floating tags.
 21. The `shared-tests` workflow executes both aggregate test tasks. Its declared standalone
     Kotlin/Native exclusions equal the set derived by taking the transitive reverse dependency
-    closure from `:integration:firebase-auth` and `:integration:firebase-firestore` across the
+    closure from the `D-75` roots — `:integration:firebase-auth`, `:integration:firebase-firestore`,
+    `:integration:firebase-analytics` and `:integration:firebase-crashlytics` — across the
     Native-test project graph; equality fails on either addition or removal.
+22. Only `functions/src/auth/onAnonymousUserDeleted.ts` uses Cloud Functions 1st gen. The product
+    codebase `default` (`functions/`) exports exactly `deleteAccount`,
+    `deleteOrphanedAnonymousAccount`, `issueOrphanCleanupTicket` and `onAnonymousUserDeleted`; the
+    development-only codebase `dev-billing` (`functions-dev-billing/`) exports exactly `stopBilling`
+    and uses no 1st gen API; `firebase.json` declares exactly those two codebases on the matrix
+    runtime (`D-136`, `D-247`).
+
 25. The foundational GitHub Actions (`actions/checkout`, `actions/setup-java`, `actions/setup-node`
     and `gradle/actions/setup-gradle`) use the immutable SHAs recorded in `docs/versions-matrix.md`;
     floating refs, missing rows or unrecorded SHAs fail the check.
@@ -2322,6 +2340,23 @@ Optional checks:
     both fail. Every `ios-ui-tests-<shard>` check is in
     `PROTECTED_CHECK_NAMES`, and no protected `ios-ui-tests-*` name lacks a manifest shard
     (`D-230`).
+
+46. The Firebase Crashlytics implementation is named only by `:wiring:firebase` and its own module,
+    `:wiring:firebase` constructs it, it records nothing until the opt-in turns it on — both its
+    internal default and its public no-argument constructor start disabled — and no source of
+    `:integration:firebase-crashlytics` sets a provider user identifier (`§20.3.1`, `D-21`). It
+    mirrors assertion 37 for the second Firebase observability integration.
+47. The iOS app links exactly the `FirebaseCrashlytics` SwiftPM product, in `iosApp/project.yml`
+    and in the generated Xcode project. GitLive 2.6.0 does not supply Firebase Apple dependencies
+    transitively (`docs/adr/0076`), so without it the Kotlin/Native cinterop klib for Firebase
+    Crashlytics resolves to `framework 'FirebaseCrashlytics' not found`, and only at the Xcode link
+    step.
+48. Both hosts disable Firebase Crashlytics collection in their platform configuration:
+    `androidApp/src/main/AndroidManifest.xml` declares the `firebase_crashlytics_collection_enabled`
+    `meta-data` with the value `false` exactly once, and `iosApp/Info.plist` declares
+    `FirebaseCrashlyticsCollectionEnabled` as `false` exactly once, comments excluded. The SDK
+    initialises at process start, before the graph's opt-in gate can command it (`§16.1`,
+    `D-241`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -2609,13 +2644,39 @@ interface CrashReporter {
     fun recordNonFatal(error: AppError, fields: Map<String, String>)
     fun setEnabled(enabled: Boolean)
 }
+
+object CrashFieldAllowlist {
+    const val CODE = "code"
+    val KEYS: Set<String>   // code, cycleId, entityType, syncState, syncTrigger, consumptionInvalidReason, confirmation
+    fun filter(fields: Map<String, String>): Map<String, String>
+}
 ```
 
-The no-op implementation lives in `:core:crash` and is the default fake selected by the
-`:shared:testing` graph factory. Firebase Crashlytics types stay inside
-`:integration:firebase-crashlytics` and `:wiring:firebase`.
+The no-op implementation lives in `:core:crash`. It is the default fake selected by the
+`:shared:testing` graph factory and the default of the internal `firebaseAppProviders` overload.
+Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`;
+the public `firebaseAppProviders` overload constructs the Firebase implementation as the default of
+its `crashReporter` parameter (`D-199` pattern, `§18` assertion 46).
 
-`recordNonFatal` trigger policy: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
+`setEnabled` is driven only by the `§16.1` opt-in gate (`D-241`). A new reporter starts disabled.
+While disabled, `recordNonFatal` is a no-op and nothing is buffered. `setEnabled(false)` also
+discards the crash reports the provider stored on the device while collection was off, so an opt-in
+never uploads data captured before it.
+
+`recordNonFatal` trigger policy: it MUST be called exactly once for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. The call sites are fixed (`D-243`):
+
+- the `:core:sync` boundaries that create an `UnexpectedError` or a poisoned transition — the sync
+  cycle, the stale-`SYNCING` reset and the tombstone purge — through the graph's `onPoisoned` and
+  `onFailure` bindings;
+- the `:shared` chokepoints where an `AppError` becomes a `UiMessage`: the single session and
+  departure conversion of `SessionStateHolder`, and, for the feature and settings holders that
+  `docs/TECHNICAL_PLAN.md §4` keeps away from `:core:crash`, the vehicle, fuel-entry and settings
+  repositories the graph hands them. These chokepoints record only `UnexpectedError`, with the single
+  field `code`;
+- not `SyncStateHolder` and not a vehicle-list refresh: they publish a `SyncController` result whose
+  `UnexpectedError` was already recorded at the boundary that created it.
+
+`fields` follows the `§17` allowlist in the closed key form of `CrashFieldAllowlist`: `code` (the `AppError.code` of the originating failure), `cycleId`, `entityType`, `syncState`, `syncTrigger`, `consumptionInvalidReason` and `confirmation`. The Firebase implementation drops every other key before the provider sees it, sends the recorded error's own `AppError.code` under the reporter-owned key `errorCode`, sets every allowlisted key on every report (blank when absent) so that no report inherits a previous report's value, never sets a user identifier, and records a throwable whose message is the `AppError.code` alone. A count, duration or flag key joins the set only with an amendment of this section. `NonFatalReportingTest`, `SessionNonFatalReportingTest`, `NonFatalReportingRepositoriesTest` and `NonFatalReportingAppGraphTest` are the `E4-04` call-site fixture; `E3-03`'s `DefaultSyncControllerTest` and `TombstonePurgeAppGraphTest` cover the `:core:sync` bindings.
 
 ### 20.3.2 Database types — `:core:database`
 

@@ -38,7 +38,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Offline-first remote backup to Cloud Firestore for recovery on a new device.
 - Single active device per account. A backup can be restored on a new device, but simultaneous use on multiple devices is not supported in the MVP.
 - Discreet backup status indicator with manual retry.
-- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, account linking offered only to an anonymous identity (Google on Android; Apple and Google on iOS, per F-1 and F-4; `D-210`), sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
+- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in (which also governs crash reporting, `D-241`), account linking offered only to an anonymous identity (Google on Android; Apple and Google on iOS, per F-1 and F-4; `D-210`), sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
 - Spanish and English localization.
 - Firebase App Check enforcement for Authentication and Firestore, using App Attest on iOS, Play
   Integrity on Android and debug providers only in local or CI-specific builds (`D-67`).
@@ -301,13 +301,13 @@ deferred to `E5-02`, `E5-03`, and `E5-04` and do not block MVP completion. The e
 | Remote backend | Cloud Firestore |
 | Auth | Firebase Authentication through GitLive 2.6.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
-| Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter` (`E4-04`), off until the Settings opt-in (`D-241`) |
 | Async | Coroutines and Flow |
 | DI | Koin KMP for wiring, constructor injection for implementation classes |
 | iOS interop | SKIE only in `:composition:ios`, which exports `:shared` through the single `Shared` framework |
 | Serialization | `kotlinx.serialization` |
 | Dates | `kotlinx-datetime` |
-| Logging | Kermit behind `Logger` |
+| Logging | Kermit behind `Logger`; every build binds a silent logger until `E4-08` (`D-242`) |
 
 Exact versions are pinned in `docs/versions-matrix.md` and declared only in `gradle/libs.versions.toml`.
 
@@ -453,7 +453,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, backup and recovery tests, Firestore emulator tests. |
 | Development | Test-driven development (TDD) is compulsory for product code, per the rule below. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
-| Privacy | Analytics off by default; after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
+| Privacy | Analytics and crash reporting off by default, enabled together by one Settings opt-in (`D-241`); after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); in-app account deletion, crash reporting redaction; a privacy policy and store privacy labels before any App Store or Google Play submission (`D-236`). |
 
 ### TDD rule
 
@@ -567,7 +567,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-72 | Billing cutoff acceptance trigger | Exercise the real cutoff with two controlled threshold events, expected-versus-actual evidence and timed owner recovery. | Accepted |
 | D-73 | Cloud Functions artifact retention | Retain deployment artifacts for one day in the exact Cloud Functions Artifact Registry repository and verify real cleanup. | Accepted |
 | D-74 | iOS Keychain persistence acceptance | Use test-only XCUITest bundle `com.ruizurraca.carapp.uitests` to verify Firebase Auth through the UI across a real process restart. | Accepted |
-| D-75 | Firebase standalone Kotlin/Native test exception | Derive the standalone Native-test exemption from the transitive dependency graph rooted at the Firebase integration modules; its current resolution is Auth, Firestore, Analytics, Firebase wiring and iOS composition. | Accepted |
+| D-75 | Firebase standalone Kotlin/Native test exception | Derive the standalone Native-test exemption from the transitive dependency graph rooted at the Firebase integration modules; its current resolution is Auth, Firestore, Analytics, Crashlytics, Firebase wiring and iOS composition. | Accepted |
 | D-76 | Vehicle validation boundary | Pure Vehicle validators receive immutable pre-write facts; E1-03 is the imperative shell that loads facts, validates and mutates in one transaction. | Accepted |
 | D-77 | Fuel Entry validation boundary | Pure Fuel Entry validators receive immutable pre-write facts and return canonical persistence values; E1-06 loads facts, validates and mutates in one transaction. | Accepted |
 | D-78 | Consumption invalidation precedence | Apply the single-reason precedence `NoPreviousFullTank > NonPositiveDistance > DuplicateOdometerInSegment > MissedEntriesInSegment > InconsistentOdometerInSegment`. | Accepted |
@@ -727,6 +727,25 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-233 | Account replacement write window | A write made while a confirmed account replacement runs can be lost; accepted as a residual risk until `E2-10`. | Accepted |
 | D-234 | Departure hand-over routing | The departure screen also shows the hand-over between a successful remote departure step and the local clear, on both hosts. | Accepted |
 | D-235 | No-account sign-in copy | The no-account sign-in error tells the owner to add an account in the device settings and try again, in every sign-in context. | Accepted |
+| D-236 | `E4-04` scope | Release preparation delivers engineering release readiness; store-submission work is the separate story `E4-09`, required before any store submission. | Accepted |
+| D-239 | Android Crashlytics Gradle plugin | Pin the Crashlytics Gradle plugin 3.0.8 and apply it only to `:androidApp`. | Accepted |
+| D-241 | Crash collection consent | Crash collection follows the Settings analytics opt-in and is off by default. | Accepted |
+| D-242 | Release logging | Keep the silent logger in every build, proven by a test; a redacting Kermit logger is follow-up `E4-08`. | Accepted |
+| D-243 | `recordNonFatal` call sites | Record non-fatals once, where `:shared` turns an error into a message, plus the `:core:sync` bindings. | Accepted |
+| D-247 | Billing cutoff deployment boundary | The billing cutoff ships only from the development-only `dev-billing` Functions codebase; production deploys `functions:default`. | Accepted |
+| D-238 | Firebase configuration selection | Each build type selects its own restricted configuration; a release build fails before packaging when it is absent. | Accepted |
+| D-240 | iOS Crashlytics symbol upload | Upload dSYMs from a Release-only run-script phase. | Accepted |
+| D-244 | Launch screens | Platform launch mechanisms, light-only `#FEF7FF`, the circle logo and three icon appearances. | Accepted |
+| D-245 | R8 | Minification stays off for the MVP release. | Accepted |
+| D-246 | `targetSdk` | `targetSdk` stays 36. | Accepted |
+| D-248 | Release build evidence | Release-build evidence is local; the required checks are unchanged. | Accepted |
+| D-249 | Production App Check profile | Production keeps the off-Play Play Integrity profile until Play app signing exists. | Accepted |
+| D-250 | Release version scheme | `MAJOR.MINOR.PATCH` plus one integer build number, first release `1.0.0` / `1`. | Accepted |
+| D-257 | Android release signing | Read signing from an out-of-repository properties file; unsigned and silent when absent. | Accepted |
+| D-258 | Production Firebase cutover | Production work is story `E4-10`, the last before MVP closure. | Accepted |
+| D-259 | `staging` variant | Release code and settings against the development project, with the `.debug` identity. | Accepted |
+| D-260 | Review enforcement | Required review stays off; the documentation states the real gate. | Accepted |
+| D-261 | iOS Firebase plist names | Each iOS configuration bundles only its own, uniquely named Firebase plist. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

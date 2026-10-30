@@ -89,7 +89,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-72 | Billing cutoff acceptance trigger | Two controlled threshold events on the real topic, expected-versus-actual evidence and timed recovery | Accepted | Verifies the deployed destructive path and the already-disabled no-op without manufacturing billable usage. |
 | D-73 | Cloud Functions artifact retention | One-day cleanup on the exact Functions Artifact Registry repository with observed deletion | Accepted | Keeps a short inspection window while bounding development storage cost and treating Git as the source of truth. |
 | D-74 | iOS Keychain persistence acceptance | Test-only XCUITest bundle drives UI across a terminated and relaunched real app process | Accepted | Proves signed-app Keychain persistence without shared access groups, host hooks or manual interaction. |
-| D-75 | Firebase standalone Kotlin/Native test exception | Derive exemptions from the transitive Native-test project graph rooted at the Firebase integration modules; current resolution is five modules | Accepted | Avoids a second Firebase dependency manager or experimental toolchain while a graph-derived exact-set guard and real-host acceptance keep the changing coverage loss explicit. |
+| D-75 | Firebase standalone Kotlin/Native test exception | Derive exemptions from the transitive Native-test project graph rooted at the Firebase integration modules; current resolution is six modules | Accepted | Avoids a second Firebase dependency manager or experimental toolchain while a graph-derived exact-set guard and real-host acceptance keep the changing coverage loss explicit. |
 | D-76 | Vehicle validation boundary | Pure validators consume immutable pre-write facts; E1-03 loads facts, validates and mutates in one transaction | Accepted | Extends the contractual `CalculateConsumption` functional-core pattern to writes; the transaction is the only local guarantee because remote duplicates must remain ingestible without a unique index. |
 | D-77 | Fuel Entry validation boundary | Pure validators consume immutable pre-write facts and return canonical values; E1-06 loads facts, validates and mutates in one transaction | Accepted | Preserves atomic R-1 validation while keeping R-2 derivation and warning behavior deterministic and independently testable. |
 | D-78 | Consumption invalidation precedence | Apply the explicit structural-first single-reason precedence | Accepted | Keeps the unconditional non-positive-distance guarantee reachable and preserves the canonical result and Swift projection shapes. |
@@ -249,6 +249,25 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-233 | Account replacement write window | Residual risk in `docs/SECURITY.md`; closing criterion in `E2-10` | Accepted | Amends `D-228`. See ADR-0234. |
 | D-234 | Departure hand-over routing | `UNKNOWN` with `isBusy` routes to `DepartureScreen` (Android) and `DepartureView` (iOS) | Accepted | Extends `D-214`. See ADR-0235. |
 | D-235 | No-account sign-in copy | `error_auth_no_account` copy on both hosts and in `docs/CONTRACTS.md §14.1` | Accepted | Amends `D-219`. See ADR-0236. |
+| D-236 | `E4-04` scope | Engineering release readiness in `E4-04`; store-only work in `E4-09` | Accepted | Portfolio objective: Phase 4 keeps a real release candidate without store accounts. See ADR-0237. |
+| D-239 | Android Crashlytics Gradle plugin | `com.google.firebase.crashlytics` 3.0.8, `:androidApp` only | Accepted | The Crashlytics Android SDK needs the injected build ID; the version stays in the catalog like `D-57`. See ADR-0240. |
+| D-241 | Crash collection consent | The analytics opt-in gate also commands `CrashReporter.setEnabled`; host keys off | Accepted | Lowest consent exposure with no new Settings row. See ADR-0242. |
+| D-242 | Release logging | Silent logger kept and proven; Kermit logger deferred to `E4-08` | Accepted | Keeps `E4-04` bounded; `§17` does not require logging to exist. See ADR-0243. |
+| D-243 | `recordNonFatal` call sites | `NonFatalReporting` at the `:shared` message chokepoints; `CrashFieldAllowlist` in `:core:crash` | Accepted | Few sites and one fixture, within `§4`. See ADR-0244. |
+| D-247 | Billing cutoff deployment boundary | `stopBilling` only in `functions-dev-billing/` (`dev-billing`); production deploys `functions:default` | Accepted | Keeps the `D-66` cutoff out of production; assertion 22 guards both export sets. See ADR-0248. |
+| D-238 | Firebase configuration selection | Per build type; absent release configuration fails the build | Accepted | `E4-04` owns the mechanism, `E4-10` the files (`D-258`). See ADR-0239. |
+| D-240 | iOS Crashlytics symbol upload | Release-only `Crashlytics/run` phase | Accepted | Symbols upload only from an archive. See ADR-0241. |
+| D-244 | Launch screens | Platform mechanisms; `#FEF7FF` light-only, three icon appearances | Accepted | No splash dependency. See ADR-0245. |
+| D-245 | R8 | Off for the MVP | Accepted | Also off in `staging`. See ADR-0246. |
+| D-246 | `targetSdk` | 36 | Accepted | Discharges ADR-0026. See ADR-0247. |
+| D-248 | Release build evidence | Local only | Accepted | No new required check. See ADR-0249. |
+| D-249 | Production App Check profile | Off-Play Play Integrity until `E4-09` | Accepted | Applied by `E4-10`. See ADR-0250. |
+| D-250 | Release version scheme | `1.0.0` / `1`, integer build number per upload | Accepted | Gradle and iOS build settings. See ADR-0251. |
+| D-257 | Android release signing | Out-of-repository properties file via a Gradle property | Accepted | Unsigned and silent when absent; rejects in-repository paths. See ADR-0258. |
+| D-258 | Production Firebase cutover | Story `E4-10`, last before MVP closure | Accepted | `E4-04` keeps the mechanism and `staging`. See ADR-0259. |
+| D-259 | `staging` variant | Release code and settings, `.debug` identity, development configuration | Accepted | `E4-03` measures it. See ADR-0260. |
+| D-260 | Review enforcement | Off; documentation corrected; secret scanning on | Accepted | Sole author cannot self-approve. See ADR-0261. |
+| D-261 | iOS Firebase plist names | Unique plist name per configuration; each configuration excludes the others | Accepted | Keeps development configuration out of Release. See ADR-0262. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -274,7 +293,7 @@ gradle/libs.versions.toml       single source of dependency versions
 :integration:firebase-auth      Firebase Auth implementation
 :integration:firebase-firestore Firestore RemoteSyncSource implementation
 :integration:firebase-analytics Firebase Analytics implementation
-:integration:firebase-crashlytics Firebase Crashlytics implementation, Phase 4
+:integration:firebase-crashlytics Firebase Crashlytics implementation (E4-04)
 
 :feature:vehicle                domain/data/presentation packages
 :feature:fuel                   domain/data/presentation packages
@@ -667,9 +686,9 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 ### Phase 4 - MVP Hardening
 
-Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is next.
+Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is in flight, with `E4-04` limited to engineering release readiness by `D-236`; `D-258` moved the production Firebase cutover to `E4-10`, the last story before MVP closure.
 
-Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
+Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration. Store-submission requirements are outside the phase: `E4-06`, `E2-10` and `E4-09` (`D-236`).
 
 ## 11. Risks and Mitigations
 
@@ -725,8 +744,10 @@ Manual at phase gates:
 callable collision path and every other function use 2nd gen. No new 1st gen function may be added
 to this project; `onAnonymousUserDeleted` is the only permitted exception.
 
-The single `functions/` package is pinned to Node.js 22 only because it must host this temporary
-1st gen exception and the project's 2nd gen functions without a second runtime or deployment path.
+The product `functions/` package is pinned to Node.js 22 only because it must host this temporary
+1st gen exception and the project's 2nd gen functions without a second runtime. The development-only
+`functions-dev-billing/` package (`D-247`) carries `stopBilling` on the same runtime so that a
+production deploy can exclude it; it is a deployment boundary, not a second runtime.
 This is not separate technical debt: the runtime and Auth trigger move together in the same TD-01
 migration and recurring review. Node.js 22 deprecates on **2027-04-30** and is decommissioned on
 **2027-10-31**. Decommission is a hard deadline. If generally available 2nd gen Authentication
@@ -742,9 +763,9 @@ Exact migration surface once E3-10 and E3-11 create it:
 | `functions/src/index.ts` | `onAnonymousUserDeleted` export | Retain the public deployed function name while switching its implementation export. |
 | `functions/test/contract/functionGenerationPolicy.test.ts` | sole-1st-gen allowlist | Remove the D-63 exception and require every exported function to use 2nd gen. |
 | `functions/test/integration/anonymousCleanup.test.ts` | automatic-cleanup trigger coverage | Run the same deletion, idempotency and overlap assertions against the 2nd gen trigger. |
-| `firebase.json` | Functions source/codebase deployment entry | Verify the existing deployment target deploys the migrated function; there is no permitted second codebase or hidden 1st gen deployment entry. |
+| `firebase.json` | Functions source/codebase deployment entries | Verify the `default` codebase deploys the migrated function; the only other permitted codebase is the development-only `dev-billing` (`D-247`), and neither has a hidden 1st gen deployment entry. |
 | `functions/package.json` | `firebase-functions` dependency and Functions test scripts | Raise the pinned SDK only if the first GA 2nd gen Auth trigger requires it, then update `docs/versions-matrix.md` under the normal library-review gate. |
-| `functions/package.json`, `firebase.json` | Node.js 22 runtime | Move the complete Functions package to a current supported runtime after the Auth trigger is 2nd gen; do not create a separate runtime migration story. |
+| `functions/package.json`, `functions-dev-billing/package.json`, `firebase.json` | Node.js 22 runtime | Move both Functions packages and both codebase runtimes to a current supported runtime after the Auth trigger is 2nd gen; do not create a separate runtime migration story. |
 
 `functions/src/deletion/dataLocationRegistry.ts`,
 `functions/src/deletion/userDeletionService.ts` (`deleteUserData`) and
@@ -786,7 +807,7 @@ native SDK pin and the test exception MUST NOT be reviewed as unrelated migratio
 Once 2nd gen Authentication user-deletion triggers are generally available, migration is scheduled
 as its own backlog story. It MUST NOT be folded into an unrelated story. Closing TD-01 requires the
 new story to migrate the trigger, remove the allowlist exception, pass the automatic-cleanup and
-overlap tests, move the complete Functions package to a current supported runtime, deploy under the
+overlap tests, move both Functions packages to a current supported runtime, deploy under the
 retained function name, and append the final review outcome here. The deliberately temporary
 Node.js 24 -> 22 -> current-runtime sequence is rejected; Node.js 22 is selected once and leaves
 only when TD-01 closes.

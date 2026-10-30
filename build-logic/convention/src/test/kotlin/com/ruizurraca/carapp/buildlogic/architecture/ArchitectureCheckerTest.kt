@@ -341,9 +341,21 @@ class ArchitectureCheckerTest {
 
     @Test
     fun storiesMayNotCreateUnownedProviderModulesEarly() {
-        ArchitectureChecker.NOT_YET_INTRODUCED_MODULES.forEach {
-            assertRejected(module(it), "module-before-owning-story")
-        }
+        // `E4-04` created the last planned module, so the live set is empty and the rule body is fed a
+        // fabricated plan instead: the rule keeps a firing fixture for the next planned module.
+        val planned = setOf(":integration:firebase-planned")
+        assertTrue(
+            ArchitectureChecker
+                .moduleBeforeOwningStory(module(":integration:firebase-planned"), planned)
+                .any { it.rule == "module-before-owning-story" },
+            "a planned module created before its owning story must be rejected",
+        )
+        assertTrue(
+            ArchitectureChecker.moduleBeforeOwningStory(module(":integration:firebase-auth"), planned).isEmpty(),
+            "a module outside the plan is not rejected by this rule",
+        )
+        assertEquals(emptySet(), ArchitectureChecker.NOT_YET_INTRODUCED_MODULES)
+        assertAccepted(module(":integration:firebase-crashlytics"))
         assertAccepted(module(":core:model"))
         assertAccepted(module(":core:database"))
         assertAccepted(module(":core:auth"))

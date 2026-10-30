@@ -5,6 +5,7 @@ import java.io.File
 internal data class CloudRuntimeContractInputs(
     val firebaseConfig: String,
     val functionsPackage: String,
+    val devBillingFunctionsPackage: String,
     val runtimeScript: String,
     val versionMatrix: String,
     val workflow: String,
@@ -17,6 +18,7 @@ internal class CloudRuntimeContract private constructor(
         CloudRuntimeContractInputs(
             firebaseConfig = repoRoot.resolve("firebase.json").readText(),
             functionsPackage = repoRoot.resolve("functions/package.json").readText(),
+            devBillingFunctionsPackage = repoRoot.resolve("functions-dev-billing/package.json").readText(),
             runtimeScript = repoRoot.resolve("scripts/verify-cloud-runtime.sh").readText(),
             versionMatrix = repoRoot.resolve("docs/versions-matrix.md").readText(),
             workflow = repoRoot.resolve(".github/workflows/ci.yml").readText(),
@@ -33,13 +35,17 @@ internal class CloudRuntimeContract private constructor(
         val expected = matrixValue("Cloud Functions runtime")
         val packageRuntime = Regex("\"node\"\\s*:\\s*\"(\\d+)\"")
             .find(inputs.functionsPackage)?.groupValues?.get(1)
-        val firebaseRuntime = Regex("\"runtime\"\\s*:\\s*\"nodejs(\\d+)\"")
-            .find(inputs.firebaseConfig)?.groupValues?.get(1)
+        val devBillingPackageRuntime = Regex("\"node\"\\s*:\\s*\"(\\d+)\"")
+            .find(inputs.devBillingFunctionsPackage)?.groupValues?.get(1)
+        // D-247: every Functions codebase runs on the matrix runtime.
+        val firebaseRuntimes = Regex("\"runtime\"\\s*:\\s*\"nodejs(\\d+)\"")
+            .findAll(inputs.firebaseConfig).map { it.groupValues[1] }.toSet()
         val workflowUsesScript = inputs.workflow.contains("./scripts/verify-cloud-runtime.sh")
         val scriptReadsNormativeSources =
             listOf(
                 "docs/versions-matrix.md",
                 "functions/package.json",
+                "functions-dev-billing/package.json",
                 "firebase.json",
                 "buildConfig.runtime",
                 "gcloud functions describe",
@@ -49,7 +55,10 @@ internal class CloudRuntimeContract private constructor(
             listOfNotNull(
                 "version matrix".takeIf { expected == null },
                 "functions/package.json=$packageRuntime".takeIf { packageRuntime != expected },
-                "firebase.json=$firebaseRuntime".takeIf { firebaseRuntime != expected },
+                "functions-dev-billing/package.json=$devBillingPackageRuntime".takeIf {
+                    devBillingPackageRuntime != expected
+                },
+                "firebase.json=$firebaseRuntimes".takeIf { firebaseRuntimes != setOfNotNull(expected) },
                 "workflow runtime script".takeUnless { workflowUsesScript },
                 "runtime script normative inputs".takeUnless { scriptReadsNormativeSources },
                 "hardcoded CI runtime".takeIf { hardcodedCiRuntime },

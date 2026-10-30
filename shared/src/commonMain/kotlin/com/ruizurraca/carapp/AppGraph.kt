@@ -33,6 +33,7 @@ import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryFormStateH
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.session.data.SqlDelightAnonymousReminderRepository
 import com.ruizurraca.carapp.feature.session.data.SqlDelightSettingsRepository
+import com.ruizurraca.carapp.feature.session.domain.SettingsRepository
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormStateHolder
@@ -119,6 +120,10 @@ internal class DefaultAppGraph(
     // the controller in `init`, once that controller exists.
     private val ownerRecoveryGate = OwnerRecoveryGate(dependencies.ownerContext)
     private val ownerAwareDependencies = dependencies.copy(ownerContext = ownerRecoveryGate)
+
+    // `E4-04` (`D-243`): the one `§20.3.1` policy every `:shared` AppError-to-UiMessage chokepoint
+    // applies, bound to the graph's reporter. The `:core:sync` sites keep their own bindings below.
+    private val nonFatals = NonFatalReporting(dependencies.crashReporter)
 
     private val accountConversion =
         AccountConversionCoordinator(
@@ -214,6 +219,7 @@ internal class DefaultAppGraph(
     private val analyticsEmissions =
         AnalyticsEmissions(
             tracker = dependencies.analyticsTracker,
+            crashReporter = dependencies.crashReporter,
             ownerContext = ownerAwareDependencies.ownerContext,
             activeRowCounts = { ownerId -> activeRowCountsForTest?.invoke(ownerId) ?: activeRowCounts(ownerId) },
         )
@@ -225,25 +231,33 @@ internal class DefaultAppGraph(
             localOwnerAdoption,
             syncController,
             analyticsEmissions,
+            nonFatals,
         )
+
+    // `E4-04` (`D-243`): the policy decorator is outermost, so every error the fuel-entry holders
+    // can show passes it exactly once.
     private val fuelRepository: FuelEntryRepository =
-        SyncRequestingFuelEntryRepository(
+        NonFatalReportingFuelEntryRepository(
             delegate =
-                AdoptionNotifyingFuelEntryRepository(
+                SyncRequestingFuelEntryRepository(
                     delegate =
-                        AnalyticsNotifyingFuelEntryRepository(
+                        AdoptionNotifyingFuelEntryRepository(
                             delegate =
-                                SqlDelightFuelEntryRepository(
-                                    databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-                                    ownerContext = ownerAwareDependencies.ownerContext,
-                                    clock = dependencies.clock,
-                                    uuidGenerator = dependencies.uuidGenerator,
+                                AnalyticsNotifyingFuelEntryRepository(
+                                    delegate =
+                                        SqlDelightFuelEntryRepository(
+                                            databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
+                                            ownerContext = ownerAwareDependencies.ownerContext,
+                                            clock = dependencies.clock,
+                                            uuidGenerator = dependencies.uuidGenerator,
+                                        ),
+                                    emissions = analyticsEmissions,
                                 ),
-                            emissions = analyticsEmissions,
+                            adoption = localOwnerAdoption,
                         ),
-                    adoption = localOwnerAdoption,
+                    syncController = syncController,
                 ),
-            syncController = syncController,
+            nonFatals = nonFatals,
         )
     private val anonymousReminders =
         SqlDelightAnonymousReminderRepository(
@@ -254,6 +268,15 @@ internal class DefaultAppGraph(
             databaseAccess = SettingsDatabaseAccess(databaseHandle.database),
             localeProvider = dependencies.localeProvider,
             canCreateDefaults = { !closed },
+        )
+
+    // `E4-04` (`D-243`): the settings holder's graph boundary. `SettingsStateHolder` turns this
+    // repository's errors into its `UiMessage`, so the repository it is handed reports first. The
+    // analytics opt-in gate keeps the undecorated flow: it publishes no message.
+    private val settingsHolderRepository: SettingsRepository =
+        NonFatalReportingSettingsRepository(
+            delegate = settingsRepository,
+            nonFatals = nonFatals,
         )
 
     init {
@@ -413,6 +436,7 @@ internal class DefaultAppGraph(
             accountConversion = accountConversion,
             analyticsTracker = dependencies.analyticsTracker,
             accountDeparture = accountDeparture,
+            nonFatals = nonFatals,
         )
     }
 
@@ -420,7 +444,7 @@ internal class DefaultAppGraph(
         checkOpen()
         return SettingsStateHolder(
             scope = scope,
-            repository = settingsRepository,
+            repository = settingsHolderRepository,
             dispatchers = dependencies.dispatchers,
         )
     }
@@ -488,6 +512,9 @@ internal class DefaultAppGraph(
     internal val vehicleRuntimeForTest: VehicleSliceRuntime get() = vehicleRuntime
 
     internal val fuelRepositoryForTest: FuelEntryRepository get() = fuelRepository
+
+    /** `E4-04` seam: the settings repository the settings holder receives. Internal, never exported. */
+    internal val settingsHolderRepositoryForTest: SettingsRepository get() = settingsHolderRepository
 
     /**
      * A pure replacement for the count accessor, for the story's tests only. `null` in production, so

@@ -10,6 +10,8 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.model.UserSettings
 import kotlinx.coroutines.CancellationException
@@ -50,6 +52,12 @@ import kotlin.concurrent.Volatile
  */
 internal class AnalyticsEmissions(
     private val tracker: AnalyticsTracker,
+    /**
+     * `D-241`: crash collection follows the same opt-in, so the gate below commands both. The
+     * default is the `:core:crash` no-op so the analytics fixtures keep their shape; the graph passes
+     * its own reporter.
+     */
+    private val crashReporter: CrashReporter = NoOpCrashReporter,
     private val ownerContext: OwnerContext,
     /**
      * A port rather than the accessor itself, so the two rules this class owns are testable without a
@@ -121,6 +129,9 @@ internal class AnalyticsEmissions(
     private suspend fun applyOptIn(enabled: Boolean) {
         this.enabled = enabled
         tracker.setEnabled(enabled)
+        // `D-241`: one opt-in governs usage and crash data alike, so the crash reporter receives the
+        // same command at the same moment, at startup and on every change.
+        crashReporter.setEnabled(enabled)
         // The cadence's opt-in half: the one `setUserProperties` call that belongs to the transition
         // itself. The disabled half deliberately does not call it.
         if (!enabled) return

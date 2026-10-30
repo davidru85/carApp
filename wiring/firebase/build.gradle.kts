@@ -9,6 +9,7 @@ kotlin {
             implementation(project(":integration:firebase-auth"))
             implementation(project(":integration:firebase-firestore"))
             implementation(project(":integration:firebase-analytics"))
+            implementation(project(":integration:firebase-crashlytics"))
         }
     }
 }

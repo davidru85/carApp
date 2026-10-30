@@ -265,14 +265,14 @@ enum AccessibilityAuditAllowlist {
             screen: "settings",
             auditType: .dynamicType,
             elementIdentifier: "",
-            elementLabel: "Share usage analytics",
+            elementLabel: "Share usage and crash data",
             reason: "`settings_analytics` is the label of the settings analytics row, whose `Toggle` is rendered only once the stored settings are read (`R3`); the system renders that row and the app cannot change a `Form` row label's type style."
         ),
         AccessibilityAuditAllowance(
             screen: "settings",
             auditType: .dynamicType,
             elementIdentifier: "",
-            elementLabelPrefix: "Sends pseudonymous usage events",
+            elementLabelPrefix: "Sends pseudonymous usage measurements",
             reason: "`settings_analytics_description` is the footer of the same conditional row; the system renders it and the app cannot change a `Form` row footer's type style."
         ),
     ]

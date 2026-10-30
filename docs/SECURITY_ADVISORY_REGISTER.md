@@ -14,7 +14,7 @@ severity gate remains active and every acceptance has a dated re-evaluation path
 | Affected package | `uuid@9.0.1`; v3, v5 and v6 with an external output buffer |
 | Production audit | Seven moderate entries remain with development dependencies excluded |
 | Dependency path | `firebase-functions` requires `firebase-admin` as a mandatory peer; Firebase Admin includes Cloud Storage, which includes the affected UUID version |
-| Reachability | `functions/test/dependencyReachability.test.mjs` invokes the exported `stopBilling` CloudEvent path through `CloudBillingGateway` and the Billing disassociation request, while recording loaded modules. Cloud Storage and `uuid` are not loaded; the affected variants are therefore unreachable. |
+| Reachability | `functions-dev-billing/test/dependencyReachability.test.mjs` invokes the exported `stopBilling` CloudEvent path through `CloudBillingGateway` and the Billing disassociation request, and `functions/test/dependencyReachability.test.mjs` loads the four product functions, both while recording loaded modules (`D-247` split the two packages). Cloud Storage and `uuid` are not loaded; the affected variants are therefore unreachable. |
 | CI policy | Report moderate findings; fail on high and critical with `npm audit --omit=dev --audit-level=high` |
 | Review owner | David Ruiz |
 | Next review | 2026-12-01, as part of the existing TD-01 quarterly review |

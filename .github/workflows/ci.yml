@@ -120,6 +120,15 @@ jobs:
       - name: Cloud Functions Firestore emulator integration tests
         working-directory: functions
         run: npm run test:emulator
+      - name: Install development billing Functions dependencies
+        working-directory: functions-dev-billing
+        run: npm ci
+      - name: Development billing Functions production dependency audit
+        working-directory: functions-dev-billing
+        run: npm run audit
+      - name: Development billing Functions tests
+        working-directory: functions-dev-billing
+        run: npm test
       - name: Authenticate for deployed runtime verification
         if: >-
           github.event_name == 'push' ||
@@ -211,8 +220,8 @@ jobs:
       - name: Run Android application and KMP host tests
         timeout-minutes: 10
         run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --stacktrace
-      # D-75 derives the current five exclusions from the transitive Native-test project graph
-      # rooted at the three Firebase integrations. Keeping this invocation separate makes a Native
+      # D-75 derives the current six exclusions from the transitive Native-test project graph
+      # rooted at the four Firebase integrations. Keeping this invocation separate makes a Native
       # simulator stall visible instead of hiding it behind the Android-host aggregate.
       - name: Run Kotlin/Native simulator tests
         timeout-minutes: 10
@@ -221,6 +230,7 @@ jobs:
           -x :integration:firebase-auth:iosSimulatorArm64Test
           -x :integration:firebase-firestore:iosSimulatorArm64Test
           -x :integration:firebase-analytics:iosSimulatorArm64Test
+          -x :integration:firebase-crashlytics:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test
           -x :composition:ios:iosSimulatorArm64Test
           --max-workers=2

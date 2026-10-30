@@ -58,6 +58,29 @@ real publisher cadence but did not naturally cross its threshold because reporte
 zero. D-72 therefore used controlled threshold messages. Recovery restored and API-verified the
 final EUR 10 amount.
 
+## Functions Codebases
+
+`D-247` deploys `stopBilling` from the development-only `dev-billing` codebase
+(`functions-dev-billing/`), never from the product `default` codebase (`functions/`). Only this project
+deploys `dev-billing`; production deploys `functions:default` alone
+(`docs/runbooks/production-firebase-release.md`, created by `E4-10`).
+
+Firebase records a function's codebase in its `firebase-functions-codebase` label at deployment, and a
+deploy of one codebase deletes the functions labelled with that codebase that its source no longer
+exports. `stopBilling` was deployed before the split, under `default`. The first deployment after the
+split MUST therefore be the `dev-billing` codebase, which relabels it:
+
+1. `./node_modules/.bin/firebase deploy --only functions:dev-billing --project davidruiz-carapp-dev`
+2. `gcloud functions describe stopBilling --gen2 --region=europe-west1 --project=davidruiz-carapp-dev --format='value(labels)'`
+   MUST contain `firebase-functions-codebase=dev-billing`.
+3. `gcloud run services get-iam-policy stopbilling --region=europe-west1 --project=davidruiz-carapp-dev`
+   MUST still show `roles/run.invoker` for the cutoff identity only (Fixed Controls).
+4. Only then may `functions:default` be deployed alone. `--only functions` deploys both codebases
+   together and is also safe.
+
+A deploy of `functions:default` before step 1 offers to delete `stopBilling`: answer no and run step 1
+first.
+
 ## Budget Publication Cadence
 
 Google documents budget Pub/Sub updates as occurring multiple times per day, including when usage

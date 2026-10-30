@@ -25,6 +25,16 @@ class CloudRuntimeContractTest {
         for (fixture in listOf(
             inputs.copy(functionsPackage = inputs.functionsPackage.replace("\"node\": \"22\"", "\"node\": \"24\"")),
             inputs.copy(firebaseConfig = inputs.firebaseConfig.replace("\"runtime\": \"nodejs22\"", "\"runtime\": \"nodejs24\"")),
+            inputs.copy(
+                firebaseConfig =
+                    inputs.firebaseConfig.substringBeforeLast("\"runtime\": \"nodejs22\"") +
+                        "\"runtime\": \"nodejs24\"" +
+                        inputs.firebaseConfig.substringAfterLast("\"runtime\": \"nodejs22\""),
+            ),
+            inputs.copy(
+                devBillingFunctionsPackage =
+                    inputs.devBillingFunctionsPackage.replace("\"node\": \"22\"", "\"node\": \"24\""),
+            ),
             inputs.copy(workflow = inputs.workflow.replace("./scripts/verify-cloud-runtime.sh", "true")),
             inputs.copy(runtimeScript = inputs.runtimeScript.replace("buildConfig.runtime", "serviceConfig.timeoutSeconds")),
         )) {
@@ -56,6 +66,7 @@ class CloudRuntimeContractTest {
         CloudRuntimeContractInputs(
             firebaseConfig = repositoryRoot.resolve("firebase.json").readText(),
             functionsPackage = repositoryRoot.resolve("functions/package.json").readText(),
+            devBillingFunctionsPackage = repositoryRoot.resolve("functions-dev-billing/package.json").readText(),
             runtimeScript = repositoryRoot.resolve("scripts/verify-cloud-runtime.sh").readText(),
             versionMatrix = repositoryRoot.resolve("docs/versions-matrix.md").readText(),
             workflow = repositoryRoot.resolve(".github/workflows/ci.yml").readText(),

@@ -4,9 +4,18 @@ options:
   deploymentTarget:
     iOS: "16.0"
   developmentLanguage: en
+configs:
+  Debug: debug
+  Release: release
+  # `D-259`: release settings with the development project, for local verification and `E4-03`.
+  Staging: release
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    # `D-250`: the first release. `MARKETING_VERSION` is MAJOR.MINOR.PATCH and
+    # `CURRENT_PROJECT_VERSION` rises by one per upload to either store.
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     ENABLE_USER_SCRIPT_SANDBOXING: NO
 packages:
@@ -60,7 +69,14 @@ targets:
           - "es.lproj"
           - "es.lproj/**"
         buildPhase: resources
+      # `D-238`/`D-259`: each configuration bundles only its own Firebase plist. The development one
+      # serves Debug and Staging; Release bundles the production plist that `E4-10` adds, and until it
+      # exists the build fails before packaging instead of falling back.
+      - path: Assets.xcassets
       - path: Config/Debug/GoogleService-Info-Debug.plist
+        buildPhase: resources
+      - path: Config/Staging/GoogleService-Info-Staging.plist
+        buildPhase: resources
     dependencies:
       - package: Firebase
         product: FirebaseAppCheck
@@ -77,6 +93,10 @@ targets:
       # D-203 selects the pinned no-ad-ID product; FIRAnalytics remains the same framework.
       - package: Firebase
         product: FirebaseAnalyticsWithoutAdIdSupport
+      # E4-04: the GitLive firebase-crashlytics cinterop binds FIRCrashlytics, so the static Shared
+      # framework's FirebaseCrashlytics references must be linked by the app target (D-65, ADR-0076).
+      - package: Firebase
+        product: FirebaseCrashlytics
       - package: GoogleSignIn
         product: GoogleSignIn
     preBuildScripts:
@@ -85,9 +105,70 @@ targets:
         script: |
           cd "$SRCROOT/.."
           ./gradlew :composition:ios:embedAndSignAppleFrameworkForXcode
+      # `D-238`/`D-261`: a configuration must carry exactly the Firebase pair its name implies, and a
+      # Release build must not fall back to development values. ADR-0055 requires the failure before
+      # packaging, which `FirebaseApp.configure()` at launch cannot do.
+      - name: Verify Firebase configuration for this configuration
+        basedOnDependencyAnalysis: false
+        script: |
+          set -eu
+          case "$CONFIGURATION" in
+            Debug)
+              plist="$SRCROOT/Config/Debug/GoogleService-Info-Debug.plist"
+              ;;
+            Staging)
+              plist="$SRCROOT/Config/Staging/GoogleService-Info-Staging.plist"
+              ;;
+            Release)
+              plist="$SRCROOT/Config/Release/GoogleService-Info.plist"
+              ;;
+            *)
+              echo "error: unknown configuration $CONFIGURATION" >&2
+              exit 1
+              ;;
+          esac
+          if [ -z "${GOOGLE_REVERSED_CLIENT_ID:-}" ]; then
+            echo "error: GOOGLE_REVERSED_CLIENT_ID is empty for $CONFIGURATION; its Firebase.xcconfig must supply the reversed client ID of $plist" >&2
+            exit 1
+          fi
+          if [ ! -f "$plist" ]; then
+            echo "error: $CONFIGURATION needs $plist, which does not exist yet (E4-10 supplies the Release one)" >&2
+            exit 1
+          fi
+          configured="$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' "$plist")"
+          if [ "$configured" != "$GOOGLE_REVERSED_CLIENT_ID" ]; then
+            echo "error: $CONFIGURATION Google URL scheme $GOOGLE_REVERSED_CLIENT_ID does not match $plist ($configured)" >&2
+            exit 1
+          fi
+    postBuildScripts:
+      # `D-240` (ADR-0241): Crashlytics can read an iOS report only if the dSYM of the build that produced
+      # it was uploaded. The phase is the last one of the target, so the binary and its dSYM exist when
+      # it runs; it runs only when installing (archives) and exits for every configuration but Release,
+      # so Staging and Debug never upload to any project.
+      - name: Upload Crashlytics symbols
+        basedOnDependencyAnalysis: false
+        runOnlyWhenInstalling: true
+        script: |
+          if [ "${CONFIGURATION}" != "Release" ]; then
+            echo "Skipping Crashlytics symbol upload for ${CONFIGURATION}."
+            exit 0
+          fi
+          dsym="${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
+          if [ ! -d "$dsym" ]; then
+            echo "warning: no dSYM at $dsym; Crashlytics reports for this build will be unreadable" >&2
+            exit 0
+          fi
+          "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+        inputFiles:
+          - $(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)
+          - $(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Resources/DWARF/$(PRODUCT_NAME)
+          - $(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Info.plist
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
     configFiles:
-      Debug: Signing.xcconfig
-      Release: Signing.xcconfig
+      Debug: Config/Debug/Firebase.xcconfig
+      Release: Config/Release/Firebase.xcconfig
+      Staging: Config/Staging/Firebase.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
@@ -97,9 +178,14 @@ targets:
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
+          EXCLUDED_SOURCE_FILE_NAMES: "GoogleService-Info-Staging.plist GoogleService-Info.plist"
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
-          EXCLUDED_SOURCE_FILE_NAMES: GoogleService-Info-Debug.plist
+          EXCLUDED_SOURCE_FILE_NAMES: "GoogleService-Info-Debug.plist GoogleService-Info-Staging.plist"
+        Staging:
+          PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
+          EXCLUDED_SOURCE_FILE_NAMES: "GoogleService-Info-Debug.plist GoogleService-Info.plist"
+          KOTLIN_FRAMEWORK_BUILD_TYPE: release
   carAppTests:
     type: bundle.unit-test
     platform: iOS

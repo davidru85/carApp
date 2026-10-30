@@ -1,0 +1,9 @@
+// `D-238`: the Google Sign-In URL scheme of this configuration. Each configuration supplies its own
+// value, so a Release build can never return a sign-in to the development project.
+//
+// The value is the REVERSED_CLIENT_ID of the same configuration's GoogleService-Info plist. Change
+// `E4-10` sets the Release value together with the production plist it must match.
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.330616809208-qfc7lcaqe6vb1g3tn0ok7jkkmn8slkr4
+
+// The target keeps its signing configuration, which includes the untracked Local.xcconfig (`D-118`).
+#include "../../Signing.xcconfig"

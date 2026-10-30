@@ -6,9 +6,14 @@ struct ContentView: View {
     let graph: SwiftAppGraph
 
     private var destination: OnboardingDestination {
+        #if DEBUG
+        // UI tests force the welcome screen through the launch environment. Like
+        // CARAPP_UI_TEST_FORCE_FIRST_VEHICLE, the seam exists only in Debug, so a launch environment
+        // cannot steer a Release build (E4-04).
         if ProcessInfo.processInfo.environment["CARAPP_UI_TEST_FORCE_WELCOME"] == "1" {
             return .welcome
         }
+        #endif
         let session = model.sessionState
         return resolveOnboardingDestination(
             sessionPhase: session.phase,

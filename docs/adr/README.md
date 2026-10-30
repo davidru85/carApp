@@ -241,5 +241,24 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-233 | [ADR-0234](0234-accept-the-account-replacement-write-window-as-a-residual-risk.md) | Accept the account replacement write window as a residual risk. | Accepted |
 | D-234 | [ADR-0235](0235-route-the-departure-hand-over-to-the-departure-screen.md) | Route the departure hand-over to the departure screen. | Accepted |
 | D-235 | [ADR-0236](0236-make-the-no-account-copy-valid-in-every-sign-in-context.md) | Make the no-account copy valid in every sign-in context. | Accepted |
+| D-236 | [ADR-0237](0237-limit-e4-04-to-engineering-release-readiness.md) | Limit `E4-04` to engineering release readiness; store-only work moves to `E4-09`. | Accepted |
+| D-239 | [ADR-0240](0240-pin-the-crashlytics-gradle-plugin.md) | Pin the Crashlytics Gradle plugin 3.0.8 on `:androidApp`. | Accepted |
+| D-241 | [ADR-0242](0242-tie-crash-collection-to-the-analytics-opt-in.md) | Tie crash collection to the Settings analytics opt-in, off by default. | Accepted |
+| D-242 | [ADR-0243](0243-keep-the-silent-release-logger.md) | Keep the silent release logger, prove it, and defer the redacting logger. | Accepted |
+| D-243 | [ADR-0244](0244-record-non-fatals-at-the-shared-message-chokepoints.md) | Record non-fatals once at the shared message chokepoints. | Accepted |
+| D-247 | [ADR-0248](0248-deploy-the-billing-cutoff-from-a-development-only-codebase.md) | Deploy the billing cutoff from a development-only codebase. | Accepted |
+| D-238 | [ADR-0239](0239-commit-restricted-firebase-configuration-per-build-type.md) | Select Firebase configuration per build type and fail closed without it. | Accepted |
+| D-240 | [ADR-0241](0241-upload-crashlytics-symbols-from-ios-release-archives.md) | Upload Crashlytics symbols from iOS Release archives. | Accepted |
+| D-244 | [ADR-0245](0245-use-platform-launch-screens-without-a-splash-library.md) | Use platform launch screens without a splash library. | Accepted |
+| D-245 | [ADR-0246](0246-keep-r8-disabled-for-the-mvp-release.md) | Keep R8 disabled for the MVP release. | Accepted |
+| D-246 | [ADR-0247](0247-keep-targetsdk-36-for-the-mvp-release.md) | Keep `targetSdk` 36 for the MVP release. | Accepted |
+| D-248 | [ADR-0249](0249-keep-e4-04-release-build-evidence-local.md) | Keep `E4-04` release-build evidence local. | Accepted |
+| D-249 | [ADR-0250](0250-production-app-check-uses-the-off-play-play-integrity-profile.md) | Use the off-Play Play Integrity profile in production until `E4-09`. | Accepted |
+| D-250 | [ADR-0251](0251-release-version-scheme.md) | Release version scheme `1.0.0` / `1`. | Accepted |
+| D-257 | [ADR-0258](0258-read-android-release-signing-from-an-out-of-repository-properties-file.md) | Read Android release signing from an out-of-repository properties file. | Accepted |
+| D-258 | [ADR-0259](0259-move-the-production-firebase-cutover-to-story-e4-10.md) | Move the production Firebase cutover to story `E4-10`. | Accepted |
+| D-259 | [ADR-0260](0260-add-a-staging-variant-that-runs-release-code-against-development.md) | Add a `staging` variant that runs release code against development. | Accepted |
+| D-260 | [ADR-0261](0261-do-not-require-review-on-gated-paths-and-document-it.md) | Do not require review on gated paths, and document it. | Accepted |
+| D-261 | [ADR-0262](0262-give-each-ios-configuration-its-own-firebase-plist-name.md) | Give each iOS configuration its own Firebase plist name. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

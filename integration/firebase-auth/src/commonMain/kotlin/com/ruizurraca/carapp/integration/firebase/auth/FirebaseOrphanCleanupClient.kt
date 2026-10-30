@@ -105,7 +105,7 @@ private class GitLiveFirebaseFunctionsGateway : FirebaseFunctionsGateway {
     }
 }
 
-private fun FunctionsExceptionCode.toGatewayFailure(): FirebaseFunctionsFailure =
+internal fun FunctionsExceptionCode.toGatewayFailure(): FirebaseFunctionsFailure =
     when (name) {
         "UNAVAILABLE" -> FirebaseFunctionsFailure.UNAVAILABLE
         "DEADLINE_EXCEEDED" -> FirebaseFunctionsFailure.DEADLINE_EXCEEDED

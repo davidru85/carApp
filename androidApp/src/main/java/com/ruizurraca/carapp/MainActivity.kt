@@ -88,6 +88,8 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // `D-244`: leave the launch theme before the first frame, so the splash does not survive it.
+        setTheme(R.style.Theme_CarApp)
         super.onCreate(savedInstanceState)
         val viewModel =
             ViewModelProvider(

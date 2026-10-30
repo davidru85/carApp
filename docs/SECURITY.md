@@ -46,11 +46,15 @@ Allowed in the repository:
   debug bundle identifier. Moving Android development to another machine requires an explicit
   additional fingerprint; restrictions MUST NOT be widened automatically.
 
-  Under `D-54`, the restricted development configurations are build-specific:
-  `androidApp/src/debug/google-services.json` and
-  `iosApp/Config/Debug/GoogleService-Info-Debug.plist`. They MUST NOT be included in release
-  artifacts. Release builds fail closed until E4-04 supplies separately reviewed production
-  configuration.
+  Under `D-238` (amending `D-54`), each build type carries only its own restricted
+  configuration. Debug uses `androidApp/src/debug/google-services.json` and
+  `iosApp/Config/Debug/GoogleService-Info-Debug.plist` for `davidruiz-carapp-dev`; Release uses
+  `androidApp/src/release/google-services.json` and `iosApp/Config/Release/GoogleService-Info.plist`
+  for the production project of `docs/identifiers.md`. A configuration MUST NOT reach an artifact of
+  the other build type, and `FirebaseConfigurationTest` enforces it. The production keys must be
+  restricted to the release package, signing certificates and bundle identifier before either file is
+  committed (`docs/runbooks/production-firebase-release.md` O4–O5, created by `E4-10`); until they exist, release builds
+  fail closed.
 
 Never committed:
 
@@ -63,7 +67,8 @@ Never committed:
 Requirements:
 
 - `.gitignore` MUST cover the entries above from the first commit.
-- Secret scanning MUST be enabled on the repository.
+- Secret scanning MUST be enabled on the repository. It is enabled, together with push protection,
+  since 2026-10-27 (`D-260`).
 - Product tests in CI run against the Firestore emulator and MUST NOT hold Firebase client or
   administrator credentials or write to a real Firebase project. D-66 permits one short-lived
   GitHub OIDC identity whose custom role contains only `cloudfunctions.functions.get`; it can read
@@ -223,6 +228,62 @@ Requirements:
   100%. Cost reporting can arrive late, so charges can exceed the budget. The intended development
   response is a complete project outage followed by owner-led manual recovery. Production MUST NOT
   inherit this automatic cutoff.
+- **The release Firebase configuration is not yet supplied, so release builds fail closed**
+  (`D-238`, `D-54`). `./gradlew :androidApp:assembleRelease` stops at
+  `processReleaseGoogleServices` until the owner provides the restricted production
+  `google-services.json`; no release artifact can be built without it.
+- **Production Firebase client configuration will be public** (`D-238`). The release
+  `google-services.json` and `GoogleService-Info.plist` are to be committed to the public repository.
+  Their API keys must be restricted to the release package and signing certificates and to the release
+  bundle identifier; App Check (`D-67`, `D-249`) and the Firestore rules remain the abuse and
+  authorization controls. Widening a key restriction requires the owner.
+- **Production has no automatic billing shutdown** (`D-66`, `D-247`; the production budget is part of the
+  reserved `D-237`). The production budget
+  only notifies, and reporting is delayed, so a cost spike continues until the owner acts on an alert.
+- **Release Android builds are neither shrunk nor obfuscated** (`D-245`). The APK is larger and its code
+  is readable; it contains no secret.
+- **Release builds are verified locally, not in CI** (`D-248`). A release-only build regression is found
+  by the next local or owner build, not by a required check.
+- **The client could be steered only in Debug through the launch environment** (`E4-04`). Every UI-test
+  hook now compiles only under `#if DEBUG`, and `SwiftDebugOnlyHookRule` keeps it that way, so a Release
+  build cannot be steered by whoever launches it.
+- **Store-only privacy obligations are deferred while the app is not published** (`D-236`, accepted
+  on 2026-10-24). When `E4-10` points release builds at the production project, deleting an Apple-linked
+  account does not revoke its Sign in with Apple token, production App Check on Android accepts
+  versions that Google Play does not recognise, and no iOS privacy manifest, store privacy label or
+  public privacy policy exists. A user who deletes an Apple-linked account keeps the app listed under
+  Sign in with Apple in their Apple Account settings until they remove it there. `E4-09`
+  closes all of them and MUST land before any App Store or Google Play submission.
+
+- **An opt-out reaches the provider's fatal-crash handler at the next launch** (`D-241`, `E4-04`).
+  Both Crashlytics SDKs persist the collection command and apply a disable from the next app launch.
+  When the owner of a device turns the Settings opt-in off, the crash reporter drops every later
+  non-fatal report at once and deletes the reports the provider stored while collection was off,
+  but the provider's fatal-crash handler stays active until the app restarts, so a fatal crash in
+  that same session may still be uploaded on Android. Such a report carries only the `§20.3.1`
+  keys of the last non-fatal report, the uncaught throwable's type and message, and a stack trace. The
+  window is one app session.
+- **A fatal crash report carries the uncaught throwable's message** (`D-241`, `E4-04`). The `§20.3.1`
+  allowlist governs the keys and the throwable of a non-fatal report only; for an uncaught exception the
+  Crashlytics SDK records the exception's type, message and stack trace as thrown. No production
+  exception message interpolates a UID, a token, a note, an odometer value or a cost: the interpolating
+  `require` messages of `:core:model` and `:core:analytics` report only the non-positive or negative
+  value that broke their invariant, and the one interpolating Swift `fatalError` names the build
+  configuration. A new interpolated exception message MUST keep that property.
+
+- **Nothing technical stops an agent merge** (`D-260`, accepted 2026-10-27). Branch protection on
+  `main` requires the fifteen checks but no approving or code-owner review, and administrator
+  enforcement is off, because the sole collaborator is also the sole author and GitHub forbids
+  self-approval. Agents act with the owner's GitHub credentials, so only the process rule that agents
+  never merge stands between an agent and `main`. A machine account that could author agent pull
+  requests for the owner to approve was considered and declined for now.
+- **Two acknowledged development API keys remain in the commit history** (`D-260`, 2026-10-27).
+  Secret scanning is enabled and raised exactly two `google_api_key` alerts from commit `0ddef323`, for
+  `androidApp/src/debug/google-services.json` and
+  `iosApp/Config/Debug/GoogleService-Info-Debug.plist`. Both are resolved `wont_fix`: Firebase client
+  configuration is not a secret under this policy, and both keys were verified restricted by
+  application and by API target on 2026-10-27. GitHub does not apply push protection to that pattern, so
+  committing restricted Firebase client configuration is unaffected.
 
 ## Privacy
 
@@ -232,7 +293,13 @@ Requirements:
   pseudonymous session measurement (`D-203`). AAID, IDFA, IDFV, personalized ad signals and automatic
   screen reporting are disabled; Android advertising permissions are removed and iOS links the
   no-ad-ID product. The app never sets an analytics user ID or links analytics to the Firebase UID.
-- Release logs never contain the Firebase UID, notes, exact odometer values or costs.
+- Crash collection is disabled by default and follows the same Settings opt-in as analytics
+  (`D-241`). Non-fatal crash reports carry only the `docs/CONTRACTS.md §20.3.1` allowlisted keys, the
+  recorded error's stable code and stack traces; a fatal crash report also carries the uncaught
+  throwable's type and message (see the residual risk above). The app never sets a Crashlytics user
+  identifier.
+- Release logs never contain the Firebase UID, notes, exact odometer values or costs. Every build
+  binds a logger that emits nothing until `E4-08` (`D-242`).
 - In-app account deletion is available and uses the `D-23` Firebase Admin server operation to delete remote data before the auth account. Mobile clients never receive a Firestore hard-delete permission.
 - App Check debug tokens are secrets. They MUST NOT be committed, printed by CI or embedded in a
   distributed build. Debug-provider dependencies and factories are forbidden in release variants.

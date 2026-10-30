@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- `D-244`: the adaptive icon background, exported from the owner's Figma file on 2026-10-27. -->
+    <color name="ic_launcher_background">#006A57</color>
+    <!-- `D-244`: the app is light-only, so the launch background is the default Material 3 light surface. -->
+    <color name="launch_background">#FEF7FF</color>
+</resources>

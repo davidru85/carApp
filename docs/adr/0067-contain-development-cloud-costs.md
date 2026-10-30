@@ -4,6 +4,10 @@
 
 Accepted
 
+[ADR-0248](0248-deploy-the-billing-cutoff-from-a-development-only-codebase.md) (`D-247`) moves
+`stopBilling` and `@google-cloud/billing` from the single `functions/` package into the
+development-only `functions-dev-billing/` package and `dev-billing` codebase, on the same runtime.
+
 ## Context
 
 E0-07 requires Firebase Authentication with Identity Platform, which requires Cloud Billing on

@@ -40,6 +40,7 @@ firebaseBom = "34.18.0"
 firebaseApple = "11.8.0" # D-65; exact GitLive 2.6.0 Apple cinterop generation version
 googleSignInIos = "9.2.0" # D-113; exact SwiftPM pin, revalidate whenever D-65 moves
 googleServices = "4.5.0" # D-57; processes Android's debug-only Firebase configuration
+crashlyticsGradle = "3.0.8" # D-239; injects the build ID the Crashlytics Android SDK requires
 gitlive = "2.6.0" # GitLive 2.6.x, never the 3.0 alpha (D-5, D-6)
 
 # --- Android native authentication group (D-112) ---
@@ -84,6 +85,7 @@ gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", versio
 gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
 gitlive-firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitlive" }
 gitlive-firebase-analytics = { module = "dev.gitlive:firebase-analytics", version.ref = "gitlive" }
+gitlive-firebase-crashlytics = { module = "dev.gitlive:firebase-crashlytics", version.ref = "gitlive" }
 
 # Android native authentication (D-112)
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
@@ -141,3 +143,4 @@ kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsGradle" }

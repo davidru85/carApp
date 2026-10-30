@@ -41,7 +41,6 @@ test("onAnonymousUserDeleted is the only 1st gen function in the project", () =>
       "deleteOrphanedAnonymousAccount",
       "issueOrphanCleanupTicket",
       "onAnonymousUserDeleted",
-      "stopBilling",
     ],
   );
   assert.deepEqual(
@@ -61,9 +60,11 @@ test("the deployment configuration declares no hidden 1st gen entry point", () =
   assert.match(triggerSource, /auth\s*\r?\n?\s*\.user\(\)\s*\r?\n?\s*\.onDelete/);
   assert.match(triggerSource, /export const onAnonymousUserDeleted/);
 
-  assert.equal(firebaseConfig.functions.source, "functions");
-  assert.equal(firebaseConfig.functions.codebase, "default");
-  assert.equal(firebaseConfig.functions.runtime, "nodejs22");
+  // D-247: two codebases; the product one keeps the single 1st gen exception.
+  assert.deepEqual(firebaseConfig.functions.map(({codebase}) => codebase), ["default", "dev-billing"]);
+  const productCodebase = firebaseConfig.functions.find(({codebase}) => codebase === "default");
+  assert.equal(productCodebase.source, "functions");
+  assert.equal(productCodebase.runtime, "nodejs22");
 });
 
 function collectSources(rootUrl) {

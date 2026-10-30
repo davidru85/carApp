@@ -19,11 +19,12 @@ object ArchitectureChecker {
     /**
      * Planned provider modules whose owning stories have not started yet.
      *
-     * `:integration:firebase-analytics` left this set when `E3-09` created it. What remains is
-     * `:integration:firebase-crashlytics`, which `E4-04` owns.
+     * `:integration:firebase-analytics` left this set when `E3-09` created it, and
+     * `:integration:firebase-crashlytics` left it when `E4-04` created it, so no planned module
+     * remains. The rule stays: the story that plans a module adds it here, and
+     * [moduleBeforeOwningStory] keeps a firing fixture while the set is empty.
      */
-    val NOT_YET_INTRODUCED_MODULES =
-        setOf(":integration:firebase-crashlytics")
+    val NOT_YET_INTRODUCED_MODULES: Set<String> = emptySet()
 
     private val PLATFORM_IMPORT_PREFIXES = listOf(
         "android.", "androidx.", "platform.Foundation", "platform.UIKit", "platform.darwin",
@@ -249,7 +250,17 @@ object ArchitectureChecker {
 
     /** A planned module becomes legal only when its owning backlog story starts. */
     private fun checkModuleIsIntroducedByItsOwningStory(module: ModuleUnderCheck): List<Violation> =
-        if (module.path in NOT_YET_INTRODUCED_MODULES) {
+        moduleBeforeOwningStory(module, NOT_YET_INTRODUCED_MODULES)
+
+    /**
+     * The rule body, parameterised by the planned set so its fixture can fire while
+     * [NOT_YET_INTRODUCED_MODULES] is empty: a rule with no failing fixture passes everything.
+     */
+    internal fun moduleBeforeOwningStory(
+        module: ModuleUnderCheck,
+        plannedModules: Set<String>,
+    ): List<Violation> =
+        if (module.path in plannedModules) {
             listOf(
                 Violation(
                     module.path,

@@ -1433,9 +1433,9 @@ Acceptance criteria:
 ### E4-03 - Performance and Reliability Hardening - M
 
 Status: scheduled, second story of bundle `E4-B2` (`D-209`, ADR-0210), after `E4-04`.
-`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first because `D-54` (ADR-0055) keeps
-release builds failing closed until it adds the production configuration, and this story measures
-release builds.
+`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first. Since `D-258`
+(ADR-0259) moved the production configuration to `E4-10`, this story measures the `staging` build type of
+`D-259` (ADR-0260), which runs release code and settings against the development project.
 
 Measure and fix MVP performance.
 
@@ -1447,23 +1447,94 @@ Acceptance criteria:
 
 ### E4-04 - Release Preparation - M
 
-Status: next, first story of bundle `E4-B2` (`D-209`, ADR-0210), which starts now that bundle
-`E4-B1` has merged (2026-10-23).
+Status: engineering scope delivered on 2026-10-27 and under the owner's review in pull request #94;
+first story of bundle `E4-B2` (`D-209`, ADR-0210), on `story/E4-B2-release-readiness`. Two criteria wait
+for the owner-run `staging` device session (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
+2026-10-24: its store-only work moved to `E4-09`. The production Firebase cutover moved to `E4-10` by
+`D-258` (ADR-0259) on 2026-10-27, so this story closes with the fail-closed mechanism of `D-238` and the
+`staging` variant of `D-259`.
 
-Prepare release assets and store requirements.
+Prepare the engineering release: the per-build-type Firebase selection that fails release builds closed (`D-238`), the `staging` variant (`D-259`), crash reporting and release assets. The production project and its configuration are `E4-10` (`D-258`); store submission is `E4-09` (`D-236`).
 
 Acceptance criteria:
 
-- Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
+- Branch protection for `main` is active with the fifteen required checks of `docs/CONTRACTS.md §18` (`D-31`, `D-34`, `D-230`). A public repository without branch protection fails this story.
 
 - App icons and splash are present.
-- Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
-- A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
+- Release builds fail closed with the `D-238` mechanism in place: a release build fails before packaging when its restricted configuration is absent, and no release artifact can name the development project.
+- The `staging` variant (`D-259`) builds and runs against the development project on both platforms.
 - `:integration:firebase-crashlytics` implements `CrashReporter` with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
-- Release builds are installable on both platforms.
-- Account deletion and Apple sign-in requirements are satisfied.
+- Distribution through Google Play or the App Store is `E4-09`.
+- Account deletion completes end to end on both platforms through the `D-23` server operation. Revoking the Sign in with Apple token on deletion is `E4-09`.
 - Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
 - Release logging redaction is verified: no UID, notes, odometer or cost values in release logs.
+
+### E4-10 - Production Firebase Cutover - M
+
+Status: Not Ready. Created on 2026-10-27 by `D-258` (ADR-0259), which moved every production-dependent
+item out of `E4-04` because the owner keeps all work against `davidruiz-carapp-dev` until the last steps
+before the MVP closes. It is the last story before MVP closure: a standalone pull request after `E4-B2`
+merges, not bundled, so `D-209` is unaffected. Not Ready until the owner schedules it.
+
+Create the production Firebase project, point release builds at it, and prove that both platforms run
+against it.
+
+Acceptance criteria:
+
+- The project is created with the repository-pinned Firebase CLI
+  (`./node_modules/.bin/firebase projects:create <id> --display-name "CarApp"`), because `gcloud projects
+  create` does not enable Firebase. The identifier is the owner's `D-237` value, and its availability is
+  proven by the creation itself (`D-32`).
+- Billing is linked (Blaze) **before** Identity Platform and Cloud Functions. The budget is EUR 10, the
+  billing account's currency, with alerts at 50 %, 90 % and 100 % of actual spend plus 100 % of forecast,
+  and **no** Pub/Sub topic and no automatic cutoff. The Budget API call needs an explicit
+  `--billing-project`.
+- Identity Platform is enabled with anonymous sign-in and `autodeleteAnonymousUsers: true`, matching the
+  development project.
+- The `google.com` **and** `apple.com` providers are enabled, because the iOS app uses Sign in with
+  Apple. The Apple OAuth code-flow `.p8` used for token revocation stays in `E4-09`.
+- The OAuth consent screen names `CarApp` and the owner's support email.
+- The interim Android keystore's SHA-1 and SHA-256 are registered on the Firebase Android app, not only
+  on the API-key restriction, because Google sign-in needs them.
+- Both client API keys are restricted before `androidApp/src/release/google-services.json` and
+  `iosApp/Config/Release/GoogleService-Info.plist` are written, and `.gitignore` gains their negations in
+  the same commit. The `E4-04` guards move from "absent is correct" to "present and production-only".
+- The Apple Team ID is entered on the Firebase iOS app for App Attest, read from `Local.xcconfig`
+  without printing it.
+- The Play Integrity API is enabled for the off-Play profile of `D-249`.
+- Cloud Functions are deployed from the `default` codebase only, with the one-day artifact retention of
+  `D-73`; `functions:dev-billing` is never deployed here.
+- A sideloaded release build on each platform reaches the production project: anonymous sign-in, a
+  vehicle write, a backup and a restore. iOS is proven with `xcodebuild -configuration Release`, because
+  `linkReleaseFrameworkIosArm64` never reads the plist.
+- `docs/identifiers.md` records the production project ID and the production app registrations.
+- The `E4-04` release residual risks that this story closes are removed or rewritten in
+  `docs/SECURITY.md`.
+- The Firestore database is created in Native mode in `europe-west1` (`D-13`), which is immutable after
+  creation, before any client reaches the project.
+- `firestore/rules/main.rules` and `firestore/firestore.indexes.json` are deployed to the production
+  project with the repository-pinned Firebase CLI.
+- App Check is enforced for Authentication and Firestore (`D-67`), and the `D-249` verification shows
+  both services `ENFORCED`.
+- `iosApp/Config/Release/Firebase.xcconfig` sets `GOOGLE_REVERSED_CLIENT_ID` to the `REVERSED_CLIENT_ID`
+  of the production plist (`D-238`), and `iosApp/project.yml` lists
+  `Config/Release/GoogleService-Info.plist` as a resource; the `D-261` exclusions keep it out of Debug
+  and Staging, and the `E4-04` guards move to "present and production-only".
+- `firebase.json` sets `oAuthBrandDisplayName` to `carApp` for every project it deploys to, while the
+  production consent screen must name `CarApp`. The intake decides how the production brand is applied
+  without changing the development project, and no `firebase deploy --only auth` runs before that.
+- The restore half of the sideloaded proof uses a permanent (Google or Apple) account, because an
+  anonymous identity is device-bound.
+
+Readiness: the intake needs the owner's schedule and the Apple Developer account kind (`E4-09` item);
+it must ask whether to link a GA4 property in production, because the development project has no
+Analytics link, and that question is open. `D-237` is reserved for the production project identity
+(`docs/handoffs/E4-B2.md` §Decision ID Allocation) and is recorded by this story once creation proves
+the identifier available (`D-32`); every other choice gets its own `D-n` at the intake.
+
+Depends on: E4-04, E4-03.
+
+Human review required.
 
 ## Post-MVP / Future Scope
 
@@ -1590,6 +1661,15 @@ submission.
 "Defects found after Phase 2 closed" by `D-228` during `E4-05`. It is a correctness follow-up
 that closes two `E2-04` hazards the `E4-05` surface made reachable; it is not Ready until its
 intake decision, it is not part of the `D-209` bundles and it does not block Phase 4.
+
+`E4-09`, store submission readiness, was added on 2026-10-24 under "Store-submission
+prerequisites" by `D-236`, which moved the store-only work of `E4-04` into it. It is low priority and
+not Ready, it is not part of the `D-209` bundles, it does not block Phase 4, and it MUST be done before
+any App Store or Google Play submission.
+
+`E4-08`, the redacting release logger, was added on 2026-10-24 under "Release observability" by `D-242`,
+which kept the silent logger for the MVP release. It is not Ready, it is not part of the `D-209` bundles,
+and it blocks neither Phase 4 nor MVP completion.
 
 ### Defects found after Phase 1 closed
 
@@ -2087,10 +2167,60 @@ Acceptance criteria:
 
 Readiness: the story needs two inputs from the owner at its intake: the URL, and where the policy is
 hosted. A hosting service that is not already `Accepted` in `docs/DECISION_BOARD.md` needs its own
-`D-n`. The policy content itself stays with `E4-04`. No decision ID is allocated, and no pending
+`D-n`. The policy content itself is `E4-09` (`D-236`). No decision ID is allocated, and no pending
 decision row is added, before that intake.
 
 Depends on: E4-01, E4-02.
+
+### E4-09 - Store Submission Readiness - M
+
+Status: Not Ready. Created on 2026-10-24 by `D-236` (ADR-0237), which limited `E4-04` to
+engineering release readiness because carApp is a portfolio project and store publication is not the
+current objective. Low priority. It is not part of the `D-209` bundles and does not block Phase 4. It
+MUST be done before any App Store or Google Play submission, together with `E4-06` and `E2-10`.
+
+Deliver the store-only work that `E4-04` carried before `D-236`.
+
+Acceptance criteria:
+
+- A privacy policy is published at a stable public URL and covers analytics and crash reporting, both
+  off by default and enabled only by the Settings opt-in; `E4-06` links it from the app.
+- A public web page lets a user request account deletion without the app, as the Google Play
+  account-deletion policy requires, and its URL is entered in the Data safety form.
+- The Google Play Data safety form and the App Store privacy nutrition labels are submitted from
+  answers derived from code facts.
+- `iosApp/PrivacyInfo.xcprivacy` is bundled and declares the required-reason APIs the app binary uses
+  and the data types it collects.
+- Deleting an Apple-linked permanent account revokes its Sign in with Apple token before the `D-23`
+  operation, with tested failure semantics.
+- The supported iOS device family is decided and the build passes App Store validation for it (today
+  `TARGETED_DEVICE_FAMILY` is `1,2` while the app is portrait-only without `UIRequiresFullScreen`).
+- Google Play app signing is enrolled, its certificate is registered with the production Firebase
+  Android app and in the Android API key restriction, and production App Check on Android accepts only
+  Play-recognized versions.
+- The Play Console and App Store Connect records exist, with the store display name and the Play
+  512 x 512 listing icon.
+- `targetSdk` is re-checked against the Google Play target-API requirement in force at submission.
+- A signed build is accepted on a Google Play testing track and on TestFlight.
+
+Readiness: its intake needs the owner inputs that `D-236` deferred: the privacy-policy content and
+hosting, the deletion-request page, the store records, Google Play app signing, the Apple Distribution
+certificate, the device-family choice, the Sign in with Apple revocation option and its failure
+semantics, and the production App Check change. Each choice gets its own `D-n` at that intake. No
+decision ID is allocated, and no pending decision row is added, before it.
+
+Additional criteria, added on 2026-10-27:
+
+- The definitive Android upload key is generated and swapped in: its SHA-1 and SHA-256 are registered on
+  the production Firebase Android app, on the Android API-key restriction and in the Play Integrity
+  registration; `google-services.json` is re-downloaded and committed; and builds signed with the interim
+  key are reinstalled. A dedicated key per app is used, never one reused from another project.
+- The Apple Developer account kind (personal or organization) is decided before the App Store Connect
+  record is created, because the bundle identifier binds to it there.
+
+Depends on: E4-04, E4-06.
+
+Human review required.
 
 ### Defects found during Phase 4
 
@@ -2202,6 +2332,40 @@ Acceptance criteria:
 
 Depends on: E4-02.
 
+### Release observability
+
+### E4-08 - Redacting Release Logger (Kermit) - M
+
+Status: Not Ready. Created by `E4-04` on 2026-10-24 under `D-242` (ADR-0243), which kept the silent
+logger in every build for the MVP release. Not scheduled; it does not block Phase 4 or MVP
+completion. The owner schedules it.
+
+Today `firebaseAppProviders` binds a `Logger` whose `log` body is empty, in debug and release builds
+alike, and Kermit (`D-15`) is pinned but used by no module.
+`FirebaseAppProvidersTest.theProvidersLoggerReadsNothingItIsGiven` proves the silent logger reads
+none of its inputs.
+
+Acceptance criteria:
+
+- A `Logger` implementation backed by Kermit 2.1.0 (`D-15`) replaces the silent logger that
+  `:wiring:firebase` binds. Kermit types never leave the sink implementation. Where the
+  implementation lives is decided at intake; a new module is a decision with its own `D-n`.
+- Redaction follows `docs/CONTRACTS.md §17`, decided from the injected `isDebugBuild` flag, with one
+  test per rule:
+  - in release builds an entity ID is logged as its first 8 characters followed by an ellipsis;
+  - the Firebase UID is never logged in release builds, at any length;
+  - `Throwable.message` and `Throwable.stackTrace` are never logged as text, only stable codes;
+  - at `INFO`, `WARN` and `ERROR` only the last segment of a throwable's class name is logged;
+  - a field whose value is outside the `§17` allowlist is dropped.
+- Debug builds may log entity IDs in full.
+- Whether an optional Crashlytics breadcrumb sink limited to the `§17` allowlist is added
+  (ADR-0023) is put to the owner at intake.
+- `theProvidersLoggerReadsNothingItIsGiven` is replaced by the redaction tests above, and
+  `docs/CONTRACTS.md §17` drops the interim sentence that `D-242` added.
+
+Dependencies: `E4-04`. Human review gates: logging and privacy rules (gated topic) and
+`docs/CONTRACTS.md`.
+
 ## Outstanding Owner Decisions
 
 No decision is open. The owner accepted `D-173` as option B on 2026-10-14, delivered by `E3-18` in
@@ -2246,6 +2410,7 @@ E3-10 deletion service -> E3-11 anonymous cleanup entry points -> E2-04 collisio
 E2-02 Firebase Auth integration + E3-04 repository sync wiring -> E3-12 cross-device recovery proof
 E4-01 Settings UI -> E4-05 account conversion surface -> E4-02 accessibility and localization (bundle E4-B1, D-209)
 E4-B1 merged -> E4-04 release preparation -> E4-03 performance and reliability (bundle E4-B2, D-209)
+  -> E4-10 production Firebase cutover (D-258; last before MVP closure)
 ```
 
 `E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires
@@ -2304,12 +2469,19 @@ and project-log entry.
 `E4-B1` runs `E4-01 -> E4-05 -> E4-02` on `story/E4-B1-product-surface`, because `E4-05` adds its
 row to the Settings screen that `E4-01` builds and `E4-02` audits every screen, both of them
 included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after `E4-B1` merges.
-`E4-B2` inverts the original backlog order with the owner's approval: `D-54` (ADR-0055) keeps the
-Firebase configuration debug-only and makes release builds fail closed until `E4-04` adds the
-production configuration, and `E4-03` measures release builds after Crashlytics and the splash have
-changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outside both bundles, and so
-are the follow-ups `E2-10`, `E1-19`, `E1-20`, `E2-11` and `E4-07`.
+`E4-B2` inverts the original backlog order with the owner's approval: `E4-03` measures after Crashlytics
+and the splash have changed cold start. Since `D-258` (ADR-0259) the production configuration arrives with
+`E4-10`, so `E4-03` measures the `staging` build type of `D-259` (ADR-0260). `E4-05` was created by
+`D-210` (ADR-0211). `E4-06` is outside both bundles, and so are the follow-ups `E2-10`, `E1-19`, `E1-20`,
+`E2-11`, `E4-07`, `E4-08` and `E4-09`; `E4-10` runs alone after `E4-B2` merges (`D-258`).
 Inside a bundle every story keeps its own ready check, handoff, TDD cycle and project-log entry.
+
+`D-236` (ADR-0237) limits `E4-04` to engineering release readiness: Crashlytics, the release-logging
+proof, icons and launch screens, the Functions split, the account-deletion invoker and the release
+configuration mechanism. `D-258` (ADR-0259) then moved the production project, its configuration files
+and the release builds that reach it to `E4-10`. Its store-only work is
+`E4-09`, which, like `E4-06` and `E2-10`, is outside both bundles and MUST be done before any
+App Store or Google Play submission. `E4-04` still precedes `E4-03`.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -2383,12 +2555,15 @@ proof after E3-04.
 | E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
 | E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
 | E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
-| E4-04 Release preparation (bundle `E4-B2`) | 4 | M | — |
+| E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`) | 4 | M | — |
+| E4-10 Production Firebase cutover (last story before MVP closure, `D-258`) | 4 | M | Yes |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
+| E4-09 Store submission readiness (postponed, low priority) | follow-up | M | Yes |
 | E1-19 iOS fuel-entry swipe delete deletes nothing | follow-up | S | — |
 | E1-20 Settings observation survives a read failure | follow-up | S | — |
 | E2-11 Departure marker write failure leaves a dead-end departure screen | follow-up | S | Yes |
 | E4-07 iOS UI test and contract-check hardening | follow-up | S | — |
+| E4-08 Redacting release logger (Kermit) (follow-up, not scheduled) | follow-up | M | Yes |
 | E5-01 Electric and hybrid vehicle energy model | 5 (Post-MVP) | L | Yes |
 | E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
 | E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- `D-244`: API 26 to 30 show this window background; API 31+ uses the theme's splash attributes. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+    <item
+        android:drawable="@drawable/launch_logo"
+        android:gravity="center"
+        android:width="160dp"
+        android:height="160dp" />
+</layer-list>

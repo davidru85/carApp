@@ -27,6 +27,7 @@ import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.SyncTriggerAdapter
 import com.ruizurraca.carapp.core.common.UuidGenerator
+import com.ruizurraca.carapp.core.crash.CrashReporter
 import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.createPersistentDatabaseFactory
@@ -41,6 +42,7 @@ import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.integration.firebase.analytics.FirebaseAnalyticsTracker
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseOrphanCleanupClient
+import com.ruizurraca.carapp.integration.firebase.crashlytics.FirebaseCrashReporter
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -83,6 +85,10 @@ fun firebaseAppProviders(
     // Injected rather than built inline so a host can supply its own tracker — a test, or a build
     // that must not collect — without this module gaining a second construction site.
     analyticsTracker: AnalyticsTracker = FirebaseAnalyticsTracker(),
+    // `E4-04` (`D-21`, `D-199` pattern): the one place the Firebase Crashlytics implementation is
+    // constructed. Injected rather than built inline so a host can supply its own reporter without
+    // this module gaining a second construction site.
+    crashReporter: CrashReporter = FirebaseCrashReporter(),
 ): AppProviders {
     val dispatchers = stagedDispatcherProvider()
     val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
@@ -94,6 +100,7 @@ fun firebaseAppProviders(
         tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
         analyticsTracker = analyticsTracker,
+        crashReporter = crashReporter,
         localeProvider = localeProvider,
         dispatchers = dispatchers,
         connectivityObserver = connectivityObserver,
@@ -123,6 +130,9 @@ internal fun firebaseAppProviders(
     // `E3-09`. The staged default is the no-op: a graph built without a host therefore collects
     // nothing, which is the correct posture for a build that has no provider wired.
     analyticsTracker: AnalyticsTracker = noAnalyticsTracking,
+    // `E4-04` (`D-199` pattern). The default is the `:core:crash` no-op: a graph built without a host
+    // reports nothing, which is the correct posture for a build that has no provider wired.
+    crashReporter: CrashReporter = NoOpCrashReporter,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
     dispatchers: DispatcherProvider = stagedDispatcherProvider(),
     // Real platform reachability is injected by each host composition boundary, the same shape
@@ -139,7 +149,7 @@ internal fun firebaseAppProviders(
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = analyticsTracker
-        override val crashReporter = NoOpCrashReporter
+        override val crashReporter = crashReporter
         override val clock = AppClock { Clock.System.now() }
         override val dispatchers = dispatchers
         override val uuidGenerator = stagedUuidGenerator()

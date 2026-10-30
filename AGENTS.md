@@ -170,9 +170,10 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** bundle `E4-B2` (`E4-04`, then `E4-03`), the second of the two Phase 4 bundles of `D-209`
-  (ADR-0210). Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests
-  #91 and #92. Both are listed below and in `docs/BACKLOG.md`. Phase 3 closed
+- **Next:** bundle `E4-B2` (`E4-04`, then `E4-03`), the second and last Phase 4 bundle under
+  `D-209` (ADR-0210), is in flight on `story/E4-B2-release-readiness`; `D-236` (ADR-0237) limits
+  `E4-04` to engineering release readiness. Bundle `E4-B1` merged on 2026-10-23 through pull
+  requests #91 and #92. Both bundles are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
   `docs/handoffs/E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
@@ -184,7 +185,7 @@ review.
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-15`, `E1-17` and `E1-18`, then `E4-06`, `E2-10`,
-  `E1-19`, `E1-20`, `E2-11` and `E4-07`, each described below.
+  `E1-19`, `E1-20`, `E2-11`, `E4-07`, `E4-09` and `E4-08`, each described below.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16`, the Vehicle
   UI fuel type selector, merged on 2026-09-28 through pull request #80 as a true merge of
@@ -218,6 +219,13 @@ review.
   (iOS UI test and contract-check hardening) were added on 2026-10-23 by the PR #91 review round 2,
   under the `docs/BACKLOG.md` subsection "Defects found during Phase 4": they are not Ready, they are
   outside the `D-209` bundles, and none blocks Phase 4.
+  `E4-09`, store submission readiness, was added on 2026-10-24 under the `docs/BACKLOG.md` subsection
+  "Store-submission prerequisites" by `D-236` (ADR-0237), which moved the store-only work of `E4-04` into it: it is low
+  priority and not Ready, it is not part of the `D-209` bundles, and it MUST be done before any App
+  Store or Google Play submission.
+  `E4-08`, the redacting release logger, was added on 2026-10-24 under the `docs/BACKLOG.md` subsection
+  "Release observability" by `D-242` (ADR-0243), which keeps the silent logger for the MVP release: it
+  is not Ready, it is outside the `D-209` bundles, and it blocks neither Phase 4 nor MVP completion.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
   as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
@@ -262,21 +270,20 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-04` and `E4-03`, delivered as bundle `E4-B2` under `D-209` (ADR-0210).
-  Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05` account conversion host surface,
-  `E4-02` accessibility and localization), merged on 2026-10-23 after the owner's gated review. Pull
-  request #91 merged `story/E4-B1-product-surface` into `main` (merge commit `28354df8`, whose second
-  parent is the branch head `730d51ed`) after two review correction rounds and the `D-229` and
-  `D-230` CI corrections; pull request #92 then merged the third review round's corrections from
-  `story/E4-B1-review-round-3-corrections` (merge commit `ec5b54bc`, branch head `ea3fad8b`). The
-  bundle introduced `D-209` through `D-235`, and its record is `docs/handoffs/E4-B1.md`. `D-229`
-  (ADR-0230) splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231) runs them
-  as five protected shard checks. Its owner-run acceptances (the `E4-01` departure checklists, the
-  `E4-05` provider acceptance and the `E4-02` screen-reader walkthrough of `D-226`) are still open
-  and are recorded in the story handoffs. Bundle `E4-B2`, release readiness (`E4-04` release
-  preparation, then `E4-03` performance and reliability), is next on
-  `story/E4-B2-release-readiness`. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which
-  places the anonymous account-conversion entry point in Settings.
+- **Remaining Phase 4:** `E4-03`, then `E4-10`. Bundle `E4-B2` (release readiness) is in flight on
+  `story/E4-B2-release-readiness`; its live checkpoint is `docs/handoffs/E4-B2.md`. `E4-04` closed its
+  engineering scope on 2026-10-27, limited by `D-236` (ADR-0237) and split by `D-258` (ADR-0259): it
+  delivers the per-build-type Firebase selection that fails release builds closed (`D-238`) and the
+  `staging` variant (`D-259`). `E4-03` measures `staging` next. `E4-10`, Production Firebase Cutover,
+  is the last story before MVP closure. Bundle `E4-B1`, the product
+  surface (`E4-01` Settings UI, `E4-05` account conversion host surface, `E4-02` accessibility and
+  localization), merged on 2026-10-23 through pull requests #91 and #92 (merge commits `28354df8` and
+  `ec5b54bc`); it introduced `D-209` through `D-235`, and its record is `docs/handoffs/E4-B1.md`.
+  `D-229` (ADR-0230) splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231)
+  runs them as five protected shard checks. Its owner-run acceptances (the `E4-01` departure
+  checklists, the `E4-05` provider acceptance and the `E4-02` screen-reader walkthrough of `D-226`)
+  are still open and are recorded in the story handoffs. `E4-05` was created on 2026-10-15 by
+  `D-210` (ADR-0211), which places the anonymous account-conversion entry point in Settings.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
   Auth-State Reconciliation).
@@ -298,6 +305,7 @@ build-logic/       convention plugins, an included build
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
 :integration:firebase-analytics  GitLive Firebase Analytics tracker bound by :wiring:firebase (E3-09)
+:integration:firebase-crashlytics GitLive Firebase Crashlytics reporter bound by :wiring:firebase (E4-04)
 :feature:vehicle   Vehicle domain, local repository and shared presentation state holders
 :feature:fuel      Fuel Entry domain, SQLDelight local repository, projections, R-3 consumption and presentation
 :feature:session   device-local settings and anonymous reminder domain plus SQLDelight repositories and the staged session surface
@@ -308,7 +316,6 @@ build-logic/       convention plugins, an included build
 :androidApp        the Android host app and Compose Vehicle and Fuel Entry flows
 ```
 
-`:integration:firebase-crashlytics` does **not** exist yet.
 `:androidApp` additionally depends on `androidx.work:work-runtime` (`D-184`), which reaches neither
 the shared graph nor the iOS composition.
 D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
@@ -324,8 +331,10 @@ complete the remaining integration behavior in place.
 - D-73 automatically removed the first eligible Functions artifacts while the deployed function
   remained active. The exact evidence is in
   `docs/runbooks/development-firebase-cost-controls.md`.
-- No production Firebase project exists. E4-04 owns production identifiers, billing, alerts and
-  release configuration; production MUST NOT inherit the development cutoff.
+- No production Firebase project exists. `E4-10`, the last story before MVP closure (`D-258`),
+  owns production identifiers, billing, alerts and release configuration; production MUST NOT
+  inherit the development cutoff. Until it lands, release builds fail closed (`D-238`) and the only
+  build that talks to a real backend is a `staging` one, against the development project (`D-259`).
 
 ### Creating a module
 
@@ -353,7 +362,7 @@ and `carapp.sqldelight`.
 Every non-instrumented CI job runs the tasks in this command:
 
 ```bash
-./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :integration:firebase-analytics:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :integration:firebase-analytics:iosSimulatorArm64Test -x :integration:firebase-crashlytics:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
 ```
 
 Individually:
@@ -365,7 +374,7 @@ Individually:
 | `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
-| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the five current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths. D-109 also compiles the composition-owned `IosLocaleProvider` source into `:shared` `iosTest`, so this route executes its reachable Foundation locale/currency behavior and pins the fraction-digit premise without a second Firebase Apple dependency path. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the six current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths. D-109 also compiles the composition-owned `IosLocaleProvider` source into `:shared` `iosTest`, so this route executes its reachable Foundation locale/currency behavior and pins the fraction-digit premise without a second Firebase Apple dependency path. |
 | `./gradlew :androidApp:testDebugUnitTest` | Android host-specific unit behavior, including the native `Currency` minor-unit path used by `AndroidLocaleProvider` (`D-109`). |
 | `./gradlew :androidApp:connectedDebugAndroidTest` on the D-84 API 36 emulator | The protected `android-instrumented-tests` job exercises the Compose Vehicle and Fuel Entry flows. |
 
@@ -409,7 +418,9 @@ the host. It is the one iOS-named command here that owes no cleanup.
 ### What is enforced, and what is not
 
 `main` is protected: fifteen required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`, `D-84`). `D-230`, which replaces the single `ios-ui-tests` check of `D-229`, adds the
+(`D-31`, `D-34`, `D-84`), with no required approving review and no administrator enforcement because the
+sole author cannot self-approve (`D-260`). Secret scanning and push protection are enabled since
+2026-10-27. `D-230`, which replaces the single `ios-ui-tests` check of `D-229`, adds the
 five `ios-ui-tests-*` shard checks that `docs/CONTRACTS.md §18` requires; the owner added them to
 branch protection, which lists all fifteen (read through the GitHub API on 2026-10-23).
 Administrator enforcement is off, so the owner can bypass; nobody else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
@@ -633,7 +644,8 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only
-  dependencies live in exact root or `functions/` `package.json` entries plus adjacent lockfiles.
+  dependencies live in exact root, `functions/` or `functions-dev-billing/` `package.json` entries
+  plus adjacent lockfiles.
   Every pin is explained by `docs/versions-matrix.md` and MUST NOT be repeated as a literal in CI.
 - npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
   verification MUST NOT override that policy. A required install script needs a superseding owner
@@ -646,8 +658,10 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - The development project uses the D-66 EUR 10 alerts-only budget and project-local 2nd gen billing
   cutoff. Budgets are notification-only, reporting is delayed, and production MUST NOT use the
   automatic cutoff.
-- The single `functions/` package pins Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime
-  and trigger debt are one TD-01 item with a 2027-10-31 hard deadline.
+- The product `functions/` package and the development-only `functions-dev-billing/` package pin
+  Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime and trigger debt are one TD-01 item
+  with a 2027-10-31 hard deadline. Only `davidruiz-carapp-dev` deploys the `dev-billing` codebase;
+  production deploys `functions:default` alone (`D-247`).
 - Use GitLive 2.6.x, not 3.0 alpha.
 - Use Koin KMP for wiring and constructor injection for implementation classes.
 - Do not call Koin from domain, use cases, repositories or state holder business logic.
@@ -753,7 +767,16 @@ A change is gated when it matches at least one of the following. Gated changes M
 
 ### Gated paths
 
-Enforced by `CODEOWNERS` plus required review, not by prose:
+Requested by `CODEOWNERS`, reviewed by the owner, and **not** enforced by required review (`D-260`):
+
+`davidru85` is the only collaborator and the only merger, and every pull request is authored by that
+account because agents act with the owner's GitHub session, so GitHub forbids self-approval. Required
+approving review is therefore deliberately **off** (`required_approving_review_count = 0`,
+`require_code_owner_reviews = false`, administrator enforcement `false`), while the fifteen required
+checks of §What is enforced, and what is not, still gate every merge. `CODEOWNERS` requests the owner's review automatically; honouring
+it is the process rule, not a platform rule. The residual risk is recorded in `docs/SECURITY.md`.
+
+The paths whose changes are gated:
 
 - `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `AGENTS.md`
 - `docs/adr/**`, `docs/identifiers.md`, `docs/versions-matrix.md`

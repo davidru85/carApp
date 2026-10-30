@@ -116,6 +116,8 @@ internal class AccountDepartureFlow(
     private val analyticsTracker: AnalyticsTracker?,
     private val state: MutableStateFlow<SessionUiState>,
     private val cancelOtherWork: () -> Unit,
+    // `E4-04` (`D-243`): the holder's `§20.3.1` policy, applied by the one conversion below.
+    private val nonFatals: NonFatalReporting,
 ) {
     private var pending: PendingDeparture? = null
     private var job: Job? = null
@@ -612,7 +614,7 @@ internal class AccountDepartureFlow(
         state.value =
             state.value.copy(
                 isBusy = false,
-                message = error.toSessionUiMessage(),
+                message = error.toSessionUiMessage(nonFatals),
                 pendingSyncCount = null,
                 pendingDepartureRetry = null,
             )
@@ -636,7 +638,7 @@ internal class AccountDepartureFlow(
         state.value =
             state.value.copy(
                 isBusy = false,
-                message = error.toSessionUiMessage(),
+                message = error.toSessionUiMessage(nonFatals),
                 pendingSyncCount = null,
                 pendingDepartureRetry = candidate.retry,
             )
@@ -666,7 +668,7 @@ internal class AccountDepartureFlow(
                         .toSessionUiState()
                         .phase,
                 isBusy = false,
-                message = error.toSessionUiMessage(),
+                message = error.toSessionUiMessage(nonFatals),
                 pendingSyncCount = null,
             )
     }

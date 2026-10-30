@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "330616809208",
+    "project_id": "davidruiz-carapp-dev",
+    "storage_bucket": "davidruiz-carapp-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:330616809208:android:fa70311338f5e88e373d0d",
+        "android_client_info": {
+          "package_name": "com.ruizurraca.carapp.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "330616809208-u5iljrf5k4frl5b6lmdak265l3brf2c3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnkuKKrDeXTSgeAYES5lCu0MYO-zYdYaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "330616809208-u5iljrf5k4frl5b6lmdak265l3brf2c3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "330616809208-qfc7lcaqe6vb1g3tn0ok7jkkmn8slkr4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.ruizurraca.carapp.debug"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

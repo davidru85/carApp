@@ -4,6 +4,11 @@
 
 Accepted
 
+Amended by `D-247` (ADR-0248): `firebase.json` declares two codebases, the product
+codebase `default` from `functions/` and the development-only `dev-billing` from
+`functions-dev-billing/`, so the single-codebase clause no longer holds; assertion 22 checks both
+export sets.
+
 ## Context
 
 TD-01 (`docs/TECHNICAL_PLAN.md §13`) permits exactly one Cloud Functions 1st gen function,

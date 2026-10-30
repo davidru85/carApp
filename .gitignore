@@ -31,11 +31,19 @@ iosApp/Local.xcconfig
 *.keystore
 *.jks
 *.p12
+*.p8
 *.mobileprovision
+*.provisionprofile
+keystore.properties
+*service-account*.json
+*service_account*.json
+application_default_credentials.json
 GoogleService-Info.plist
 google-services.json
 !androidApp/src/debug/google-services.json
+!androidApp/src/staging/google-services.json
 !iosApp/Config/Debug/GoogleService-Info-Debug.plist
+!iosApp/Config/Staging/GoogleService-Info-Staging.plist
 .env
 .env.*
 !.env.example
@@ -50,6 +58,7 @@ ui-debug.log
 *.log
 node_modules/
 functions/lib/
+functions-dev-billing/lib/
 gha-creds-*.json
 
 # VS Code MCP config (contains per-developer API keys)

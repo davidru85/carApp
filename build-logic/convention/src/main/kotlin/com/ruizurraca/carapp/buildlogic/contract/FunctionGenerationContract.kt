@@ -4,26 +4,25 @@ import java.io.File
 
 internal data class FunctionGenerationContractInputs(
     val functionSources: Map<String, String>,
+    val devBillingSources: Map<String, String>,
     val firebaseConfig: String,
 )
 
 /**
- * Guards the TD-01 sole-1st-gen exception: only `functions/src/auth/onAnonymousUserDeleted.ts`
- * may depend on `firebase-functions/v1`, the `functions/src/index.ts` export set must match the
- * TD-01 surface exactly, and the deployment configuration must keep a single Node.js 22 codebase
- * (`docs/TECHNICAL_PLAN.md §13`, `D-136`).
+ * Guards the TD-01 sole-1st-gen exception and the `D-{D12}` deployment boundary: only
+ * `functions/src/auth/onAnonymousUserDeleted.ts` may depend on `firebase-functions/v1`; the product
+ * `functions/src/index.ts` export set must match the TD-01 product surface exactly; the
+ * development-only `functions-dev-billing/src/index.ts` must export exactly `stopBilling` and use no
+ * 1st gen API; and `firebase.json` must declare exactly the `default` and `dev-billing` codebases on
+ * Node.js 22 (`docs/TECHNICAL_PLAN.md §13`, `D-136`, `D-{D12}`).
  */
 internal class FunctionGenerationContract private constructor(
     private val inputs: FunctionGenerationContractInputs,
 ) {
     constructor(repoRoot: File) : this(
         FunctionGenerationContractInputs(
-            functionSources = repoRoot.resolve("functions/src").walkTopDown()
-                .filter { it.isFile && it.extension == "ts" }
-                .associate { file ->
-                    repoRoot.resolve("functions/src").toPath().relativize(file.toPath()).toString() to
-                        file.readText()
-                },
+            functionSources = sourcesUnder(repoRoot.resolve("functions/src")),
+            devBillingSources = sourcesUnder(repoRoot.resolve("functions-dev-billing/src")),
             firebaseConfig = repoRoot.resolve("firebase.json").readText(),
         ),
     )
@@ -33,33 +32,43 @@ internal class FunctionGenerationContract private constructor(
     }
 
     fun validate(): AssertionResult {
-        val firstGenModules = inputs.functionSources
-            .filterValues { it.contains("firebase-functions/v1") }
-            .keys
-            .sorted()
-        val exportSet = exportedFunctionNames(
-            inputs.functionSources.getValue("index.ts"),
-        )
+        val firstGenModules = inputs.functionSources.filterValues { it.contains(FIRST_GEN_IMPORT) }.keys.sorted()
+        val devBillingFirstGenModules =
+            inputs.devBillingSources.filterValues { it.contains(FIRST_GEN_IMPORT) }.keys.sorted()
+        val exportSet = exportedFunctionNames(inputs.functionSources[INDEX].orEmpty())
+        val devBillingExportSet = exportedFunctionNames(inputs.devBillingSources[INDEX].orEmpty())
+        val codebases =
+            CODEBASE_ENTRY.findAll(inputs.firebaseConfig).map { it.groupValues[1] to it.groupValues[2] }.toList()
+        val codebaseKeys = CODEBASE_KEY.findAll(inputs.firebaseConfig).count()
+        val runtimes = RUNTIME_ENTRY.findAll(inputs.firebaseConfig).map { it.groupValues[1] }.toList()
 
-        val mismatches = listOfNotNull(
-            "1st gen modules=$firstGenModules".takeIf {
-                firstGenModules != listOf("auth/onAnonymousUserDeleted.ts")
-            },
-            "index export set=$exportSet".takeIf { exportSet != TD01_EXPORT_SURFACE },
-            "multiple firebase.json codebases".takeIf {
-                Regex("\"codebase\"").findAll(inputs.firebaseConfig).count() != 1
-            },
-            "firebase.json runtime".takeIf {
-                !inputs.firebaseConfig.contains("\"runtime\": \"nodejs22\"")
-            },
-        )
+        val mismatches =
+            listOfNotNull(
+                "1st gen modules=$firstGenModules".takeIf {
+                    firstGenModules != listOf("auth/onAnonymousUserDeleted.ts")
+                },
+                "dev-billing 1st gen modules=$devBillingFirstGenModules".takeIf {
+                    devBillingFirstGenModules.isNotEmpty()
+                },
+                "index export set=$exportSet".takeIf { exportSet != TD01_EXPORT_SURFACE },
+                "dev-billing export set=$devBillingExportSet".takeIf {
+                    devBillingExportSet != DEV_BILLING_EXPORT_SURFACE
+                },
+                "firebase.json codebases=$codebases".takeIf {
+                    codebases != EXPECTED_CODEBASES || codebaseKeys != EXPECTED_CODEBASES.size
+                },
+                "firebase.json runtimes=$runtimes".takeIf {
+                    runtimes != List(EXPECTED_CODEBASES.size) { NODE_RUNTIME }
+                },
+            )
 
         return if (mismatches.isEmpty()) {
             AssertionResult(
                 ID,
                 NAME,
                 AssertionResult.Status.PASS,
-                "1st gen allowlist: onAnonymousUserDeleted only; ${exportSet.size} exports",
+                "1st gen allowlist: onAnonymousUserDeleted only; ${exportSet.size} product exports; " +
+                    "stopBilling only in dev-billing",
             )
         } else {
             AssertionResult(ID, NAME, AssertionResult.Status.FAIL, mismatches.joinToString("; "))
@@ -86,14 +95,30 @@ internal class FunctionGenerationContract private constructor(
         private val ALIAS_SEPARATOR = Regex("""\s+as\s+""")
         private val TYPESCRIPT_IDENTIFIER = Regex("""[A-Za-z_$][A-Za-z0-9_$]*""")
         private val EXPORTED_CONST = Regex("""export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)""")
+        private val CODEBASE_ENTRY = Regex(""""source"\s*:\s*"([^"]+)"\s*,\s*"codebase"\s*:\s*"([^"]+)"""")
+        private val CODEBASE_KEY = Regex(""""codebase"""")
+        private val RUNTIME_ENTRY = Regex(""""runtime"\s*:\s*"([^"]+)"""")
+        private const val FIRST_GEN_IMPORT = "firebase-functions/v1"
+        private const val INDEX = "index.ts"
+        private const val NODE_RUNTIME = "nodejs22"
         const val ID = 22
-        const val NAME = "only onAnonymousUserDeleted uses Cloud Functions 1st gen (TD-01)"
-        val TD01_EXPORT_SURFACE = listOf(
-            "deleteAccount",
-            "deleteOrphanedAnonymousAccount",
-            "issueOrphanCleanupTicket",
-            "onAnonymousUserDeleted",
-            "stopBilling",
-        )
+        const val NAME =
+            "only onAnonymousUserDeleted uses Cloud Functions 1st gen " +
+                "and stopBilling ships only from dev-billing"
+        val TD01_EXPORT_SURFACE =
+            listOf(
+                "deleteAccount",
+                "deleteOrphanedAnonymousAccount",
+                "issueOrphanCleanupTicket",
+                "onAnonymousUserDeleted",
+            )
+        val DEV_BILLING_EXPORT_SURFACE = listOf("stopBilling")
+        val EXPECTED_CODEBASES = listOf("functions" to "default", "functions-dev-billing" to "dev-billing")
+
+        private fun sourcesUnder(root: File): Map<String, String> =
+            root
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "ts" }
+                .associate { file -> root.toPath().relativize(file.toPath()).toString() to file.readText() }
     }
 }
