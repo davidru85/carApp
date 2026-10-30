@@ -65,6 +65,133 @@ class PerformanceHarnessContractTest {
         assertTrue(read("iosApp/Benchmark/ConsumptionBenchmarkApp.swift").contains("runConsumptionBenchmark()"))
     }
 
+    @Test
+    fun androidSeedingEntryPointLivesOnlyInTheBenchmarkSourceSet() {
+        val benchmarkManifest = "androidApp/src/benchmark/AndroidManifest.xml"
+        val seedActivity = "androidApp/src/benchmark/java/com/ruizurraca/carapp/BenchmarkSeedActivity.kt"
+
+        assertTrue(exists(benchmarkManifest), "$benchmarkManifest must declare the seeding activity (D-254)")
+        assertTrue(read(benchmarkManifest).contains("android:name=\".BenchmarkSeedActivity\""))
+        assertTrue(exists(seedActivity))
+        assertTrue(read(seedActivity).contains("seedBenchmarkFuelHistory("))
+        listOf("main", "debug", "release", "staging").forEach { sourceSet ->
+            repositoryRoot
+                .resolve("androidApp/src/$sourceSet")
+                .walkTopDown()
+                .filter { file -> file.isFile }
+                .forEach { file ->
+                    val text = file.readText()
+                    assertFalse(text.contains("BenchmarkSeedActivity"), "${file.path} names the seeding entry point")
+                    assertFalse(text.contains("seedBenchmarkFuelHistory"), "${file.path} calls the seeding function")
+                }
+        }
+    }
+
+    @Test
+    fun benchmarkBuildTypeIsStagingPlusItsDeclaredDelta() {
+        val androidBuild = read("androidApp/build.gradle.kts")
+        val benchmarkBlock = androidBuild.substringAfter("create(\"benchmark\") {", "").substringBefore("\n        }")
+
+        assertTrue(
+            benchmarkBlock.contains("initWith(getByName(\"staging\"))"),
+            "the benchmark build type must derive from staging (D-252)",
+        )
+        assertTrue(benchmarkBlock.contains("applicationIdSuffix = \".debug\""))
+        assertTrue(benchmarkBlock.contains("signingConfig = signingConfigs.findByName(\"debug\")"))
+        assertTrue(benchmarkBlock.contains("matchingFallbacks.clear()"))
+        assertTrue(benchmarkBlock.contains("matchingFallbacks += listOf(\"release\")"))
+        assertTrue(read("androidApp/src/benchmark/AndroidManifest.xml").contains("<profileable"))
+        assertEquals(
+            read("androidApp/src/staging/google-services.json"),
+            read("androidApp/src/benchmark/google-services.json"),
+            "the benchmark build uses exactly the staging Firebase registration",
+        )
+        assertEquals(
+            read("androidApp/src/staging/java/com/ruizurraca/carapp/AppCheckProvider.kt"),
+            read("androidApp/src/benchmark/java/com/ruizurraca/carapp/AppCheckProvider.kt"),
+            "the benchmark build uses the staging App Check provider",
+        )
+        assertEquals(
+            setOf("AndroidManifest.xml", "AppCheckProvider.kt", "BenchmarkSeedActivity.kt", "google-services.json"),
+            repositoryRoot
+                .resolve("androidApp/src/benchmark")
+                .walkTopDown()
+                .filter { file -> file.isFile }
+                .map { file -> file.name }
+                .toSet(),
+            "the benchmark source set holds exactly its declared delta from staging",
+        )
+        assertTrue(
+            read(".gitignore").lines().map(String::trim).contains("!androidApp/src/benchmark/google-services.json"),
+        )
+    }
+
+    @Test
+    fun iosSeedingEntryPointIsCompiledOnlyInTheBenchmarkConfiguration() {
+        val support = "iosApp/BenchmarkSupport.swift"
+        val projectSpec = read("iosApp/project.yml")
+
+        assertTrue(exists(support), "$support must hold the iOS seeding entry point (D-254)")
+        val text = read(support)
+        val beforeCondition = text.substringBefore("#if CARAPP_BENCHMARK")
+        assertTrue(text.contains("-CARAPP_BENCHMARK_SEED"))
+        assertFalse(beforeCondition.contains("-CARAPP_BENCHMARK_SEED"))
+        assertFalse(beforeCondition.contains("VehicleFormViewModel"))
+        repositoryRoot
+            .resolve("iosApp")
+            .walkTopDown()
+            // Generated output and the device-only test runner (which passes the argument) are not app code.
+            .onEnter { directory ->
+                directory.name != "build" && directory.name != "PerformanceUITests" &&
+                    !directory.name.endsWith(".xcodeproj")
+            }.filter { file -> file.isFile && file.extension == "swift" && file.name != "BenchmarkSupport.swift" }
+            .forEach { file ->
+                assertFalse(file.readText().contains("CARAPP_BENCHMARK_SEED"), "${file.path} reads the seed argument")
+            }
+        assertTrue(
+            projectSpec.contains("  Benchmark: release"),
+            "iosApp/project.yml must declare the Benchmark configuration",
+        )
+        val benchmarkSettings = configBlock(projectSpec, "Benchmark")
+        assertTrue(benchmarkSettings.contains("CARAPP_BENCHMARK"))
+        assertFalse(
+            projectSpec.replace(benchmarkSettings, "").contains("CARAPP_BENCHMARK"),
+            "only the Benchmark settings block of the carApp target defines CARAPP_BENCHMARK (D-254)",
+        )
+    }
+
+    /** The 10-space-indented settings under the first 8-space `<name>:` key (the `carApp` target's configs). */
+    private fun configBlock(
+        projectSpec: String,
+        name: String,
+    ): String =
+        projectSpec
+            .substringAfter("\n        $name:\n", missingDelimiterValue = "")
+            .lines()
+            .takeWhile { line -> line.startsWith("          ") }
+            .joinToString("\n")
+
+    @Test
+    fun seedingPlanIsIdenticalOnBothHosts() {
+        val kotlin = read("shared/src/commonMain/kotlin/com/ruizurraca/carapp/BenchmarkSeeding.kt")
+        val swift = read("iosApp/BenchmarkSupport.swift")
+
+        listOf(
+            "\"Benchmark vehicle\"",
+            "1_000",
+            "10_000",
+            "1_577_836_800_000",
+            "86_400_000",
+            "500",
+            "10",
+        ).forEach { literal ->
+            assertTrue(kotlin.contains(literal), "BenchmarkSeeding.kt lost $literal")
+            assertTrue(swift.contains(literal), "BenchmarkSupport.swift does not mirror $literal")
+        }
+        assertTrue(kotlin.contains("40_000L") && swift.contains("\"40.000\""), "litres differ between hosts")
+        assertTrue(kotlin.contains("1_500L") && swift.contains("\"1.500\""), "price differs between hosts")
+    }
+
     private companion object {
         const val CONSUMPTION_ENTRY =
             "feature/fuel/src/iosArm64DeviceBenchmark/kotlin/com/ruizurraca/carapp/feature/fuel/domain/" +
