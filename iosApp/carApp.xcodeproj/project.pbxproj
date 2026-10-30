@@ -36,6 +36,7 @@
 		71B2BC3A80BE759D783D438F /* OnboardingRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */; };
 		737F8ED02EEEA6E056D88B9B /* SpanishLocalizationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5038ED1C5D4BBCA00643D958 /* SpanishLocalizationUITests.swift */; };
 		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
+		78284755252D6E27919923A6 /* LaunchMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = C28A0B7197B8E29F0C7392AE /* LaunchMeasurement.swift */; };
 		7A8C0BFB2CA7B961BC325003 /* AccessibilityUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484183FFD6157C43730C9581 /* AccessibilityUITestSupport.swift */; };
 		7E1F85D8F28148A304ECE46F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */; };
 		81891678FB5F8D9F25C4776B /* ConsumptionBenchmarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A945678340604071393AC3C /* ConsumptionBenchmarkApp.swift */; };
@@ -67,6 +68,7 @@
 		CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */; };
 		CFABAA31B66085D6DBBD92EA /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA444957D2C856A4395A3F80 /* AppVersion.swift */; };
 		D19C2E053761C52C87350EF4 /* DeparturePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */; };
+		D282E9E3998DCD9ACC7BF142 /* LaunchMeasurementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D001191213D680E8E0E3912 /* LaunchMeasurementTests.swift */; };
 		D6F4294ED8BCE033BAF904C4 /* DepartureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E4C62537076BFF979E5662 /* DepartureView.swift */; };
 		DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386580F3F32E7C04067DEE4E /* NativeSignIn.swift */; };
 		E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */; };
@@ -126,6 +128,7 @@
 		2990EC393011D730A1640108 /* SettingsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentationTests.swift; sourceTree = "<group>"; };
 		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
+		2D001191213D680E8E0E3912 /* LaunchMeasurementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchMeasurementTests.swift; sourceTree = "<group>"; };
 		2D997286223049D1A5F7AA30 /* carAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryCalendarDay.swift; sourceTree = "<group>"; };
 		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
@@ -177,6 +180,7 @@
 		B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePromptPresenter.swift; sourceTree = "<group>"; };
 		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
 		BA444957D2C856A4395A3F80 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		C28A0B7197B8E29F0C7392AE /* LaunchMeasurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchMeasurement.swift; sourceTree = "<group>"; };
 		C5E4C62537076BFF979E5662 /* DepartureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartureView.swift; sourceTree = "<group>"; };
 		CA8936EA6B865D6F2691C75E /* Firebase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Firebase.xcconfig; sourceTree = "<group>"; };
 		D17DE65C2560700392905BAC /* Firebase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Firebase.xcconfig; sourceTree = "<group>"; };
@@ -299,6 +303,7 @@
 				979D67C50BB47615E2A81B98 /* AppVersionTests.swift */,
 				96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */,
 				EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */,
+				2D001191213D680E8E0E3912 /* LaunchMeasurementTests.swift */,
 				70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */,
 				6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */,
 				5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */,
@@ -348,6 +353,7 @@
 				76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */,
 				2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */,
 				8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */,
+				C28A0B7197B8E29F0C7392AE /* LaunchMeasurement.swift */,
 				386580F3F32E7C04067DEE4E /* NativeSignIn.swift */,
 				33485CD8468B0FE42AC9A0DE /* Onboarding.swift */,
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
@@ -634,6 +640,7 @@
 				03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */,
 				4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */,
 				15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */,
+				D282E9E3998DCD9ACC7BF142 /* LaunchMeasurementTests.swift in Sources */,
 				F31BB6BAD712492DE2273FD9 /* NativeSignInCoordinatorTests.swift in Sources */,
 				93C089A2C96E7E5816107AC5 /* NativeSignInFailureMappingTests.swift in Sources */,
 				71B2BC3A80BE759D783D438F /* OnboardingRouteTests.swift in Sources */,
@@ -664,6 +671,7 @@
 				CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */,
 				0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */,
 				1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */,
+				78284755252D6E27919923A6 /* LaunchMeasurement.swift in Sources */,
 				DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */,
 				0114D2546E157F273C216787 /* Onboarding.swift in Sources */,
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,

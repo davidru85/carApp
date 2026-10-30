@@ -54,6 +54,7 @@ targets:
       - path: SyncStatusVisual.swift
       - path: SyncStatusIndicatorView.swift
       - path: BenchmarkSupport.swift
+      - path: LaunchMeasurement.swift
       - path: AccessibilitySupport.swift
       - path: AccountConversionSurface.swift
       - path: AppVersion.swift
