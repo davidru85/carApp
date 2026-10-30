@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0114D2546E157F273C216787 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33485CD8468B0FE42AC9A0DE /* Onboarding.swift */; };
 		03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */; };
+		074D70C825CDDA41C08160B7 /* ConsumptionBenchmark.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD26BEB77520E687440C9B86 /* ConsumptionBenchmark.framework */; };
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
 		0EF433FA8D4B3A25B59529C5 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 2C051F04E1443C61E2A5DE8B /* FirebaseCrashlytics */; };
 		108BBE054E138D58DB52BCDC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF7A56E87D9090EED34A1AB /* SettingsView.swift */; };
@@ -36,12 +37,14 @@
 		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
 		7A8C0BFB2CA7B961BC325003 /* AccessibilityUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484183FFD6157C43730C9581 /* AccessibilityUITestSupport.swift */; };
 		7E1F85D8F28148A304ECE46F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */; };
+		81891678FB5F8D9F25C4776B /* ConsumptionBenchmarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A945678340604071393AC3C /* ConsumptionBenchmarkApp.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		841CAEB3DAF4FA600E08CD23 /* DeparturePromptPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */; };
 		89A249C0252F022EC21E57BF /* AccountConversionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6797DC5AF1C5B90BB3CBA115 /* AccountConversionUITests.swift */; };
 		8B465AAA8C9F7D79D03DB1B0 /* AccountConversionSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F78BB5293C4523936DBAD88 /* AccountConversionSurface.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */; };
+		91AC251C60B3A1FBF43ECB00 /* ConsumptionBenchmark.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FD26BEB77520E687440C9B86 /* ConsumptionBenchmark.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		920755EF8BDC39E70A00581B /* SyncStatusVisual.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */; };
 		93C089A2C96E7E5816107AC5 /* NativeSignInFailureMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */; };
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
@@ -95,11 +98,26 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		680A0D3528C829CB4F07A223 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				91AC251C60B3A1FBF43ECB00 /* ConsumptionBenchmark.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		0046B86E946AAC2C64B7BBD1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
 		0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Staging.plist"; sourceTree = "<group>"; };
+		13677EB163BA55FAE43164CE /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionSurfaceTests.swift; sourceTree = "<group>"; };
 		1E05A71AB193F5A40C420087 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -125,12 +143,14 @@
 		54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisualTests.swift; sourceTree = "<group>"; };
 		5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePresentation.swift; sourceTree = "<group>"; };
 		586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		5A945678340604071393AC3C /* ConsumptionBenchmarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsumptionBenchmarkApp.swift; sourceTree = "<group>"; };
 		633650E394377F53C8FBECE4 /* SettingsFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsFlowUITests.swift; sourceTree = "<group>"; };
 		6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInFailureMappingTests.swift; sourceTree = "<group>"; };
 		6797DC5AF1C5B90BB3CBA115 /* AccountConversionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionUITests.swift; sourceTree = "<group>"; };
 		6DF7A56E87D9090EED34A1AB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInCoordinatorTests.swift; sourceTree = "<group>"; };
 		76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		76F20D79C53218DD355DE19F /* ConsumptionBenchmarkApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ConsumptionBenchmarkApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderCopyTests.swift; sourceTree = "<group>"; };
 		8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowUITests.swift; sourceTree = "<group>"; };
 		87243F51351B46DEF5827671 /* SettingsPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentation.swift; sourceTree = "<group>"; };
@@ -163,6 +183,7 @@
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTracking.swift; sourceTree = "<group>"; };
 		FC316E44376B17230A771C6A /* AccessibilitySupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilitySupport.swift; sourceTree = "<group>"; };
+		FD26BEB77520E687440C9B86 /* ConsumptionBenchmark.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ConsumptionBenchmark.framework; path = ../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework/ConsumptionBenchmark.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -189,12 +210,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3C91E42CC2455A5457D38569 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				074D70C825CDDA41C08160B7 /* ConsumptionBenchmark.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		22A277641E77C9E7433CBE1E /* iosApp */ = {
 			isa = PBXGroup;
 			children = (
+				13677EB163BA55FAE43164CE /* Signing.xcconfig */,
 				76D6203141B99DECA8D14A86 /* Localizable.strings */,
 			);
 			name = iosApp;
@@ -217,6 +247,7 @@
 				F7BD4918D057DEA4C8FB450F /* carApp.app */,
 				4B75BD49AED901E7C93582F7 /* carAppTests.xctest */,
 				2D997286223049D1A5F7AA30 /* carAppUITests.xctest */,
+				76F20D79C53218DD355DE19F /* ConsumptionBenchmarkApp.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -237,6 +268,14 @@
 				88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */,
 			);
 			path = UITests;
+			sourceTree = "<group>";
+		};
+		B4EC17990310A3F837ED1C6D /* Benchmark */ = {
+			isa = PBXGroup;
+			children = (
+				5A945678340604071393AC3C /* ConsumptionBenchmarkApp.swift */,
+			);
+			path = Benchmark;
 			sourceTree = "<group>";
 		};
 		C974A63804B699BA28605A23 /* Staging */ = {
@@ -270,6 +309,14 @@
 				3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */,
 			);
 			path = Tests;
+			sourceTree = "<group>";
+		};
+		CCED53CEB55E73F654639F9F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FD26BEB77520E687440C9B86 /* ConsumptionBenchmark.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		D38BE3D0B3754E83C0B8B345 /* Release */ = {
@@ -314,12 +361,14 @@
 				8B4DDF68481A819B505F8816 /* ViewModels.swift */,
 				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
 				586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */,
+				B4EC17990310A3F837ED1C6D /* Benchmark */,
 				2850FA255307524833517781 /* Debug */,
 				22A277641E77C9E7433CBE1E /* iosApp */,
 				D38BE3D0B3754E83C0B8B345 /* Release */,
 				C974A63804B699BA28605A23 /* Staging */,
 				C9FE68B9523949AB829ECCA0 /* Tests */,
 				45E5C76700F0706EA075BF34 /* UITests */,
+				CCED53CEB55E73F654639F9F /* Frameworks */,
 				39881192AFE2CF4DD842531A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -364,6 +413,26 @@
 			productName = carAppUITests;
 			productReference = 2D997286223049D1A5F7AA30 /* carAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		5842CDC017F5B1CF8E8C8274 /* ConsumptionBenchmarkApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3B782567F71F3CD07E820325 /* Build configuration list for PBXNativeTarget "ConsumptionBenchmarkApp" */;
+			buildPhases = (
+				8BB43E7DFF7EF20AC3E357FC /* Build ConsumptionBenchmark framework */,
+				47403F47B412B8A41CC383EC /* Sources */,
+				3C91E42CC2455A5457D38569 /* Frameworks */,
+				680A0D3528C829CB4F07A223 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ConsumptionBenchmarkApp;
+			packageProductDependencies = (
+			);
+			productName = ConsumptionBenchmarkApp;
+			productReference = 76F20D79C53218DD355DE19F /* ConsumptionBenchmarkApp.app */;
+			productType = "com.apple.product-type.application";
 		};
 		61D239EC09A12F8A35BAA5D5 /* carApp */ = {
 			isa = PBXNativeTarget;
@@ -410,6 +479,9 @@
 					5694684097D198AE1BCA7DD4 = {
 						TestTargetID = 61D239EC09A12F8A35BAA5D5;
 					};
+					5842CDC017F5B1CF8E8C8274 = {
+						ProvisioningStyle = Automatic;
+					};
 					61D239EC09A12F8A35BAA5D5 = {
 						ProvisioningStyle = Automatic;
 					};
@@ -437,6 +509,7 @@
 				61D239EC09A12F8A35BAA5D5 /* carApp */,
 				3FC8C97CE364F5F4625D607B /* carAppTests */,
 				5694684097D198AE1BCA7DD4 /* carAppUITests */,
+				5842CDC017F5B1CF8E8C8274 /* ConsumptionBenchmarkApp */,
 			);
 		};
 /* End PBXProject section */
@@ -518,9 +591,36 @@
 			shellPath = /bin/sh;
 			shellScript = "if [ \"${CONFIGURATION}\" != \"Release\" ]; then\n  echo \"Skipping Crashlytics symbol upload for ${CONFIGURATION}.\"\n  exit 0\nfi\ndsym=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\nif [ ! -d \"$dsym\" ]; then\n  echo \"warning: no dSYM at $dsym; Crashlytics reports for this build will be unreadable\" >&2\n  exit 0\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
 		};
+		8BB43E7DFF7EF20AC3E357FC /* Build ConsumptionBenchmark framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build ConsumptionBenchmark framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd \"$SRCROOT/..\"\n./gradlew :feature:fuel:linkConsumptionBenchmarkReleaseFrameworkIosArm64\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		47403F47B412B8A41CC383EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81891678FB5F8D9F25C4776B /* ConsumptionBenchmarkApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4BF4973DFA58D3BA3F889F91 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -856,6 +956,59 @@
 			};
 			name = Debug;
 		};
+		5834C711652A78400BE7B801 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited) $(SRCROOT)/../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework",
+					"\"../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.consumptionbenchmark;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		79E7A2EBF7451A79D3E90065 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited) $(SRCROOT)/../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework",
+					"\"../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.consumptionbenchmark;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Staging;
+		};
 		A37BE7CBC6DE88E1185D92EE /* Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -936,6 +1089,33 @@
 			};
 			name = Staging;
 		};
+		C37A8E2E7ED1C05824E02AE2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited) $(SRCROOT)/../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework",
+					"\"../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.consumptionbenchmark;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		DA1CF6562527F00C8516B7D0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1007,6 +1187,16 @@
 				DA1CF6562527F00C8516B7D0 /* Debug */,
 				22699B17D703D61F9E4FD8D7 /* Release */,
 				3F89445EC86B67D62A40353C /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3B782567F71F3CD07E820325 /* Build configuration list for PBXNativeTarget "ConsumptionBenchmarkApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5834C711652A78400BE7B801 /* Debug */,
+				C37A8E2E7ED1C05824E02AE2 /* Release */,
+				79E7A2EBF7451A79D3E90065 /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

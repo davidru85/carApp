@@ -222,6 +222,35 @@ targets:
       configs:
         Release:
           EXCLUDED_SOURCE_FILE_NAMES: CarAppKeychainPersistenceUITests.swift
+  ConsumptionBenchmarkApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Benchmark/ConsumptionBenchmarkApp.swift
+    dependencies:
+      - framework: ../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework/ConsumptionBenchmark.framework
+        embed: true
+    preBuildScripts:
+      - name: Build ConsumptionBenchmark framework
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :feature:fuel:linkConsumptionBenchmarkReleaseFrameworkIosArm64
+    # Only Release is built (its scheme runs Release); Signing.xcconfig brings the owner's untracked team.
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.consumptionbenchmark
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        SUPPORTED_PLATFORMS: iphoneos
+        SKIP_INSTALL: YES
+        CODE_SIGN_STYLE: Automatic
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework
 schemes:
   carApp:
     build:
@@ -239,4 +268,10 @@ schemes:
       environmentVariables:
         CARAPP_IOS_APP_CHECK_DEBUG_TOKEN: $(CARAPP_XCUITEST_APP_CHECK_DEBUG_TOKEN)
     archive:
+      config: Release
+  ConsumptionBenchmarkApp:
+    build:
+      targets:
+        ConsumptionBenchmarkApp: [run]
+    run:
       config: Release
