@@ -60,6 +60,7 @@ struct VehicleListView: View {
                     .padding(24)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color(UIColor.systemBackground))
+                    .onAppear { LaunchMeasurement.shared.finishAtFirstContent() }
                 case .resolved:
                     EmptyView()
                 }
@@ -104,6 +105,7 @@ struct VehicleListView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
                     .listRowBackground(Color.clear)
+                    .onAppear { LaunchMeasurement.shared.finishAtFirstContent() }
                 } else {
                     ForEach(viewModel.state.vehicles, id: \.id) { vehicle in
                         NavigationLink(value: VehicleDetailRoute(vehicleId: vehicle.id)) {
@@ -122,6 +124,8 @@ struct VehicleListView: View {
                             .padding(.vertical, 4)
                         }
                         .accessibilityIdentifier("vehicle_row_\(vehicle.id)")
+                        // `E4-03` (`D-251`): a returning user's first vehicle row is the first content.
+                        .onAppear { LaunchMeasurement.shared.finishAtFirstContent() }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 pendingDeleteVehicleId = vehicle.id

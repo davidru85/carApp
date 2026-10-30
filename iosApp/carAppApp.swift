@@ -12,6 +12,8 @@ struct carAppApp: App {
     private let backgroundDuration = SceneBackgroundDuration()
 
     init() {
+        // `E4-03` (`D-251`): must start before the first scene becomes active.
+        LaunchMeasurement.shared.begin()
         configureAppCheck()
         configureFirebase()
         let graph = createSwiftAppGraph(isDebugBuild: isDebugBuild)
