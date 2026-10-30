@@ -40,5 +40,10 @@ final class LaunchMeasurement {
         }
     }
 
-    func finishAtFirstContent() {}
+    /// Ends the task at the first content the user sees. Later calls, and calls before `begin()`, do nothing.
+    func finishAtFirstContent() {
+        guard phase == .measuring else { return }
+        phase = .finished
+        try? finish(Self.firstContentTaskId)
+    }
 }
