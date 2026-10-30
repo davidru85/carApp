@@ -210,6 +210,34 @@ class PerformanceHarnessContractTest {
         )
     }
 
+    @Test
+    fun benchmarkModuleMeasuresTheBenchmarkVariantOfTheApp() {
+        assertTrue(
+            read("settings.gradle.kts").contains("include(\":benchmark\")"),
+            "settings.gradle.kts must include :benchmark (D-252)",
+        )
+        assertTrue(exists("benchmark/build.gradle.kts"))
+        val build = read("benchmark/build.gradle.kts")
+        assertTrue(build.contains("id(\"carapp.android.benchmark\")"))
+        assertTrue(build.contains("targetProjectPath = \":androidApp\""))
+        assertTrue(build.contains("experimentalProperties[\"android.experimental.self-instrumenting\"] = true"))
+        assertTrue(build.contains("create(\"benchmark\")"))
+        assertFalse(build.contains("project("), "the benchmark module depends on no project module")
+    }
+
+    @Test
+    fun macrobenchmarksWaitForTheSeededVehicleOfTheBenchmarkApplication() {
+        val targets = "benchmark/src/main/java/com/ruizurraca/carapp/benchmark/BenchmarkTargets.kt"
+
+        assertTrue(exists(targets), "$targets must name the measured application (D-252)")
+        assertTrue(read(targets).contains("const val TARGET_PACKAGE = \"com.ruizurraca.carapp.debug\""))
+        assertTrue(read(targets).contains("const val BENCHMARK_VEHICLE_NAME = \"Benchmark vehicle\""))
+        assertTrue(
+            read("shared/src/commonMain/kotlin/com/ruizurraca/carapp/BenchmarkSeeding.kt")
+                .contains("const val BENCHMARK_VEHICLE_NAME: String = \"Benchmark vehicle\""),
+        )
+    }
+
     private companion object {
         const val ANDROID_VEHICLE_LIST = "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
         const val CONSUMPTION_ENTRY =
