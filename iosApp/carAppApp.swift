@@ -22,6 +22,7 @@ struct carAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: model, graph: graph)
+                .benchmarkSeedingIfRequested(graph: graph)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }
@@ -85,7 +86,8 @@ func firebaseConfigurationResourceName(configuration: String) -> String {
     switch configuration {
     case "Debug":
         "GoogleService-Info-Debug"
-    case "Staging":
+    // `E4-03` (`D-253`): Benchmark is the measured derivative of Staging, so it loads the Staging plist.
+    case "Staging", "Benchmark":
         "GoogleService-Info-Staging"
     default:
         "GoogleService-Info"

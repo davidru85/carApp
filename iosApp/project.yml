@@ -9,6 +9,9 @@ configs:
   Release: release
   # `D-259`: release settings with the development project, for local verification and `E4-03`.
   Staging: release
+  # `E4-03` (`D-253`, `D-254`): Staging plus the benchmark compilation condition, for on-device
+  # measurement only. It is never archived and never distributed.
+  Benchmark: release
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -50,6 +53,7 @@ targets:
       - path: AnonymousReminderView.swift
       - path: SyncStatusVisual.swift
       - path: SyncStatusIndicatorView.swift
+      - path: BenchmarkSupport.swift
       - path: AccessibilitySupport.swift
       - path: AccountConversionSurface.swift
       - path: AppVersion.swift
@@ -116,7 +120,7 @@ targets:
             Debug)
               plist="$SRCROOT/Config/Debug/GoogleService-Info-Debug.plist"
               ;;
-            Staging)
+            Staging|Benchmark)
               plist="$SRCROOT/Config/Staging/GoogleService-Info-Staging.plist"
               ;;
             Release)
@@ -169,6 +173,7 @@ targets:
       Debug: Config/Debug/Firebase.xcconfig
       Release: Config/Release/Firebase.xcconfig
       Staging: Config/Staging/Firebase.xcconfig
+      Benchmark: Config/Staging/Firebase.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
@@ -186,6 +191,11 @@ targets:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
           EXCLUDED_SOURCE_FILE_NAMES: "GoogleService-Info-Debug.plist GoogleService-Info.plist"
           KOTLIN_FRAMEWORK_BUILD_TYPE: release
+        Benchmark:
+          PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
+          EXCLUDED_SOURCE_FILE_NAMES: "GoogleService-Info-Debug.plist GoogleService-Info.plist"
+          KOTLIN_FRAMEWORK_BUILD_TYPE: release
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) CARAPP_BENCHMARK"
   carAppTests:
     type: bundle.unit-test
     platform: iOS

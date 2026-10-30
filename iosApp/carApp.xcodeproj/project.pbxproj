@@ -17,6 +17,7 @@
 		179631DB8D4F9DD784FE79F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E05A71AB193F5A40C420087 /* Assets.xcassets */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
+		29C7F9300CE654CB9E554501 /* BenchmarkSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F72ABE554C9911649CF94D5 /* BenchmarkSupport.swift */; };
 		2DDBDA982FA76D8AC51AF581 /* AccessibilityAuditUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F9DAF64B167B2A1383D82E /* AccessibilityAuditUITests.swift */; };
 		33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */; };
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
@@ -159,6 +160,7 @@
 		8CA750BBA90A4B95A0D90785 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
 		8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryFormView.swift; sourceTree = "<group>"; };
+		8F72ABE554C9911649CF94D5 /* BenchmarkSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchmarkSupport.swift; sourceTree = "<group>"; };
 		93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarAppKeychainPersistenceUITests.swift; sourceTree = "<group>"; };
 		950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
 		95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisual.swift; sourceTree = "<group>"; };
@@ -337,6 +339,7 @@
 				15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */,
 				BA444957D2C856A4395A3F80 /* AppVersion.swift */,
 				1E05A71AB193F5A40C420087 /* Assets.xcassets */,
+				8F72ABE554C9911649CF94D5 /* BenchmarkSupport.swift */,
 				2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */,
 				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
 				5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */,
@@ -565,7 +568,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n  Debug)\n    plist=\"$SRCROOT/Config/Debug/GoogleService-Info-Debug.plist\"\n    ;;\n  Staging)\n    plist=\"$SRCROOT/Config/Staging/GoogleService-Info-Staging.plist\"\n    ;;\n  Release)\n    plist=\"$SRCROOT/Config/Release/GoogleService-Info.plist\"\n    ;;\n  *)\n    echo \"error: unknown configuration $CONFIGURATION\" >&2\n    exit 1\n    ;;\nesac\nif [ -z \"${GOOGLE_REVERSED_CLIENT_ID:-}\" ]; then\n  echo \"error: GOOGLE_REVERSED_CLIENT_ID is empty for $CONFIGURATION; its Firebase.xcconfig must supply the reversed client ID of $plist\" >&2\n  exit 1\nfi\nif [ ! -f \"$plist\" ]; then\n  echo \"error: $CONFIGURATION needs $plist, which does not exist yet (E4-10 supplies the Release one)\" >&2\n  exit 1\nfi\nconfigured=\"$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' \"$plist\")\"\nif [ \"$configured\" != \"$GOOGLE_REVERSED_CLIENT_ID\" ]; then\n  echo \"error: $CONFIGURATION Google URL scheme $GOOGLE_REVERSED_CLIENT_ID does not match $plist ($configured)\" >&2\n  exit 1\nfi\n";
+			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n  Debug)\n    plist=\"$SRCROOT/Config/Debug/GoogleService-Info-Debug.plist\"\n    ;;\n  Staging|Benchmark)\n    plist=\"$SRCROOT/Config/Staging/GoogleService-Info-Staging.plist\"\n    ;;\n  Release)\n    plist=\"$SRCROOT/Config/Release/GoogleService-Info.plist\"\n    ;;\n  *)\n    echo \"error: unknown configuration $CONFIGURATION\" >&2\n    exit 1\n    ;;\nesac\nif [ -z \"${GOOGLE_REVERSED_CLIENT_ID:-}\" ]; then\n  echo \"error: GOOGLE_REVERSED_CLIENT_ID is empty for $CONFIGURATION; its Firebase.xcconfig must supply the reversed client ID of $plist\" >&2\n  exit 1\nfi\nif [ ! -f \"$plist\" ]; then\n  echo \"error: $CONFIGURATION needs $plist, which does not exist yet (E4-10 supplies the Release one)\" >&2\n  exit 1\nfi\nconfigured=\"$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' \"$plist\")\"\nif [ \"$configured\" != \"$GOOGLE_REVERSED_CLIENT_ID\" ]; then\n  echo \"error: $CONFIGURATION Google URL scheme $GOOGLE_REVERSED_CLIENT_ID does not match $plist ($configured)\" >&2\n  exit 1\nfi\n";
 		};
 		8B2B4B39614F592E5E509FDE /* Upload Crashlytics symbols */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -653,6 +656,7 @@
 				E40D8982412D833C47095BAF /* AnonymousReminderView.swift in Sources */,
 				C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */,
 				CFABAA31B66085D6DBBD92EA /* AppVersion.swift in Sources */,
+				29C7F9300CE654CB9E554501 /* BenchmarkSupport.swift in Sources */,
 				8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */,
 				D19C2E053761C52C87350EF4 /* DeparturePresentation.swift in Sources */,
 				841CAEB3DAF4FA600E08CD23 /* DeparturePromptPresenter.swift in Sources */,
@@ -851,6 +855,54 @@
 			};
 			name = Debug;
 		};
+		1A96D55E82B1DBBA792E3322 /* Benchmark */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D17DE65C2560700392905BAC /* Firebase.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Debug.plist GoogleService-Info.plist";
+				INFOPLIST_FILE = Info.plist;
+				KOTLIN_FRAMEWORK_BUILD_TYPE = release;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.debug;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) CARAPP_BENCHMARK";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Benchmark;
+		};
+		1AA7C031B049E17D62D732BA /* Benchmark */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited) $(SRCROOT)/../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework",
+					"\"../feature/fuel/build/bin/iosArm64/ConsumptionBenchmarkReleaseFramework\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.consumptionbenchmark;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Benchmark;
+		};
 		1DEE23B0D0816D111AB5066B /* Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1009,6 +1061,48 @@
 			};
 			name = Staging;
 		};
+		892144EE026184E783983E40 /* Benchmark */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.uitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Benchmark;
+		};
+		8C0AEE556366E387420A7B43 /* Benchmark */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.tests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/carApp.app/carApp";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Benchmark;
+		};
 		A37BE7CBC6DE88E1185D92EE /* Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1088,6 +1182,65 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Staging;
+		};
+		BE05BB990F1B5318F167FEB5 /* Benchmark */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Benchmark;
 		};
 		C37A8E2E7ED1C05824E02AE2 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -1184,52 +1337,57 @@
 		1D3588A3E6824B80409A24B0 /* Build configuration list for PBXNativeTarget "carAppUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				892144EE026184E783983E40 /* Benchmark */,
 				DA1CF6562527F00C8516B7D0 /* Debug */,
 				22699B17D703D61F9E4FD8D7 /* Release */,
 				3F89445EC86B67D62A40353C /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Benchmark;
 		};
 		3B782567F71F3CD07E820325 /* Build configuration list for PBXNativeTarget "ConsumptionBenchmarkApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				1AA7C031B049E17D62D732BA /* Benchmark */,
 				5834C711652A78400BE7B801 /* Debug */,
 				C37A8E2E7ED1C05824E02AE2 /* Release */,
 				79E7A2EBF7451A79D3E90065 /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Benchmark;
 		};
 		602D83EE0073F69545A82E1F /* Build configuration list for PBXNativeTarget "carAppTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				8C0AEE556366E387420A7B43 /* Benchmark */,
 				EDE85C62437804C2C3CF5CD5 /* Debug */,
 				336F533D7A8848A8901515BC /* Release */,
 				1DEE23B0D0816D111AB5066B /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Benchmark;
 		};
 		A341E26390F9E8DF3E134391 /* Build configuration list for PBXNativeTarget "carApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				1A96D55E82B1DBBA792E3322 /* Benchmark */,
 				40B51EC700B19C4FCB697F92 /* Debug */,
 				FB442A824F2183F823E95EE9 /* Release */,
 				ADAA1B00C7F1E7109E913F0D /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Benchmark;
 		};
 		AD83A9D78271D1C38CABC5E3 /* Build configuration list for PBXProject "carApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				BE05BB990F1B5318F167FEB5 /* Benchmark */,
 				1A2B2D793F3ED373678F9DF0 /* Debug */,
 				174E1FDA848B95D7D2059842 /* Release */,
 				A37BE7CBC6DE88E1185D92EE /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Benchmark;
 		};
 /* End XCConfigurationList section */
 
