@@ -318,6 +318,7 @@ build-logic/       convention plugins, an included build
 :wiring:firebase   staged Firebase provider composition contract
 :composition:ios   sole Shared framework producer and iOS composition root
 :androidApp        the Android host app and Compose Vehicle and Fuel Entry flows
+:benchmark         Macrobenchmark test module for the androidApp benchmark build type (E4-03, D-252)
 ```
 
 `:androidApp` additionally depends on `androidx.work:work-runtime` (`D-184`), which reaches neither

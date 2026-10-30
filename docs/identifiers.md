@@ -10,6 +10,7 @@
 |-------|--------|
 | Application and bundle identifiers | Accepted |
 | iOS UI-test bundle identifier | Accepted — test-only and non-distributed |
+| iOS performance UI-test and D-80 benchmark app bundle identifiers | Accepted — test-only and non-distributed (owner, 2026-10-24) |
 | Development Firebase project ID | Accepted |
 | Production Firebase project ID | Chosen by the owner (`davidruiz-carapp`) under the reserved `D-237`; not yet recorded as decided: `E4-10` records it after creation proves it available (`D-32`) |
 | Firestore location | Accepted |
@@ -23,6 +24,9 @@
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
 | iOS UI-test bundle identifier | `com.ruizurraca.carapp.uitests` | D-74 test-only XCUITest runner; never embedded, archived or distributed. |
+| iOS performance UI-test bundle identifier | `com.ruizurraca.carapp.perfuitests` | `D-253` device-only XCUITest runner of `carAppPerformanceUITests`; test-only, never archived or distributed. |
+| iOS D-80 benchmark app bundle identifier | `com.ruizurraca.carapp.consumptionbenchmark` | `D-255` non-shipping `ConsumptionBenchmarkApp`; never archived or distributed; no Firebase registration. |
+| Benchmark build identity | Android `com.ruizurraca.carapp.debug`, iOS `com.ruizurraca.carapp.debug` | `D-252`/`D-253`: the benchmark derivatives of `staging` / `Staging` (`D-259`) reuse the development identity and its Firebase registration; they are never distributed. |
 | iOS background sync task identifier | `com.ruizurraca.carapp.sync` | `D-181`/`D-187` single `BGTaskScheduler` identifier of `docs/CONTRACTS.md §9.1`. Declared once as `SYNC_TASK_IDENTIFIER` in `composition/ios/src/iosMain/.../scheduling/IosSyncScheduling.kt` and once in `iosApp/Info.plist` under `BGTaskSchedulerPermittedIdentifiers`; `IosCompositionContractTest` asserts the two agree. It is a scheduler identifier, not a bundle identifier, so it is shared by the Debug and Release bundle identifiers. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | Android build namespace, per module | Derived — see "Module Android namespaces" below | AGP 9 requires every module with an Android target to declare a unique namespace. The value is derived from the module path, so it is never invented. |
@@ -45,6 +49,7 @@ modules MUST NOT share one. The value is **derived, not chosen**:
 | `:core:model` | `com.ruizurraca.carapp.core.model` |
 | `:feature:fuel` | `com.ruizurraca.carapp.feature.fuel` |
 | `:integration:firebase-auth` | `com.ruizurraca.carapp.integration.firebaseauth` |
+| `:benchmark` | `com.ruizurraca.carapp.benchmark` (also the test APK's application ID; test-only) |
 
 Two consequences, both deliberate:
 
