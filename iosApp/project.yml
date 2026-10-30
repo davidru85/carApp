@@ -233,6 +233,26 @@ targets:
       configs:
         Release:
           EXCLUDED_SOURCE_FILE_NAMES: CarAppKeychainPersistenceUITests.swift
+  carAppPerformanceUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: PerformanceUITests
+    dependencies:
+      - target: carApp
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+      Benchmark: Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.perfuitests
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        TEST_TARGET_NAME: carApp
+        SUPPORTED_PLATFORMS: iphoneos
+        CODE_SIGN_STYLE: Automatic
   ConsumptionBenchmarkApp:
     type: application
     platform: iOS
@@ -286,3 +306,17 @@ schemes:
         ConsumptionBenchmarkApp: [run]
     run:
       config: Release
+  carAppPerformance:
+    build:
+      targets:
+        carApp: [run, test, profile]
+        carAppPerformanceUITests: [test]
+    run:
+      config: Benchmark
+    test:
+      config: Benchmark
+      debugEnabled: false
+      targets:
+        - carAppPerformanceUITests
+    profile:
+      config: Benchmark

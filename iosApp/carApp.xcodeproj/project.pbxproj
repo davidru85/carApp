@@ -18,6 +18,7 @@
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
 		29C7F9300CE654CB9E554501 /* BenchmarkSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F72ABE554C9911649CF94D5 /* BenchmarkSupport.swift */; };
+		2A1D867E8CB39CFB2EEC6E85 /* ListScrollPerformanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5746F0AFBDC455CF5BFDCF /* ListScrollPerformanceUITests.swift */; };
 		2DDBDA982FA76D8AC51AF581 /* AccessibilityAuditUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F9DAF64B167B2A1383D82E /* AccessibilityAuditUITests.swift */; };
 		33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */; };
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
@@ -39,6 +40,8 @@
 		78284755252D6E27919923A6 /* LaunchMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = C28A0B7197B8E29F0C7392AE /* LaunchMeasurement.swift */; };
 		7A8C0BFB2CA7B961BC325003 /* AccessibilityUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484183FFD6157C43730C9581 /* AccessibilityUITestSupport.swift */; };
 		7E1F85D8F28148A304ECE46F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0D67F0FE6B015DED6829D43A /* GoogleService-Info-Staging.plist */; };
+		7E64F91262C9F878E87A7104 /* LaunchPerformanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3530E3FB7AC0F818F6DED6 /* LaunchPerformanceUITests.swift */; };
+		7FAD1CD0AC1AC7973F95B43F /* BenchmarkSeedingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B05293B87DD016DB7B9B3DC3 /* BenchmarkSeedingUITests.swift */; };
 		81891678FB5F8D9F25C4776B /* ConsumptionBenchmarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A945678340604071393AC3C /* ConsumptionBenchmarkApp.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		841CAEB3DAF4FA600E08CD23 /* DeparturePromptPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */; };
@@ -81,6 +84,7 @@
 		F832F62E1DCDA93481252412 /* AppVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979D67C50BB47615E2A81B98 /* AppVersionTests.swift */; };
 		F852EA19B6E4BBA331227BFC /* SettingsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */; };
 		F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */; };
+		F9C55DD424D40305F6318F0E /* PerformanceUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F73EE19567AE30025D978E /* PerformanceUITestSupport.swift */; };
 		FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */; };
 /* End PBXBuildFile section */
 
@@ -93,6 +97,13 @@
 			remoteInfo = carApp;
 		};
 		764ACFF0F4A7A38EEDF9487C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FB5E915613CCB05F145A42B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 61D239EC09A12F8A35BAA5D5;
+			remoteInfo = carApp;
+		};
+		E284AFF8805B408655FCD029 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4FB5E915613CCB05F145A42B /* Project object */;
 			proxyType = 1;
@@ -126,6 +137,7 @@
 		1E05A71AB193F5A40C420087 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
 		2990EC393011D730A1640108 /* SettingsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentationTests.swift; sourceTree = "<group>"; };
+		2A5746F0AFBDC455CF5BFDCF /* ListScrollPerformanceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListScrollPerformanceUITests.swift; sourceTree = "<group>"; };
 		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
 		2D001191213D680E8E0E3912 /* LaunchMeasurementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchMeasurementTests.swift; sourceTree = "<group>"; };
@@ -155,6 +167,7 @@
 		70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInCoordinatorTests.swift; sourceTree = "<group>"; };
 		76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
 		76F20D79C53218DD355DE19F /* ConsumptionBenchmarkApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ConsumptionBenchmarkApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		832632443696C292C93ACBB3 /* carAppPerformanceUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppPerformanceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderCopyTests.swift; sourceTree = "<group>"; };
 		8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowUITests.swift; sourceTree = "<group>"; };
 		87243F51351B46DEF5827671 /* SettingsPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentation.swift; sourceTree = "<group>"; };
@@ -169,13 +182,16 @@
 		95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisual.swift; sourceTree = "<group>"; };
 		96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayTests.swift; sourceTree = "<group>"; };
 		979D67C50BB47615E2A81B98 /* AppVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionTests.swift; sourceTree = "<group>"; };
+		98F73EE19567AE30025D978E /* PerformanceUITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceUITestSupport.swift; sourceTree = "<group>"; };
 		98F9DAF64B167B2A1383D82E /* AccessibilityAuditUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditUITests.swift; sourceTree = "<group>"; };
 		9BF7D473CE0D10A2A16535D3 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A3B2F9259C71EB48056AE737 /* LargeContentSizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeContentSizeUITests.swift; sourceTree = "<group>"; };
 		A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWaitPolicyTests.swift; sourceTree = "<group>"; };
+		AB3530E3FB7AC0F818F6DED6 /* LaunchPerformanceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPerformanceUITests.swift; sourceTree = "<group>"; };
 		AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWait.swift; sourceTree = "<group>"; };
 		AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTrackingTests.swift; sourceTree = "<group>"; };
+		B05293B87DD016DB7B9B3DC3 /* BenchmarkSeedingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchmarkSeedingUITests.swift; sourceTree = "<group>"; };
 		B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModelTests.swift; sourceTree = "<group>"; };
 		B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePromptPresenter.swift; sourceTree = "<group>"; };
 		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
@@ -251,6 +267,7 @@
 			isa = PBXGroup;
 			children = (
 				F7BD4918D057DEA4C8FB450F /* carApp.app */,
+				832632443696C292C93ACBB3 /* carAppPerformanceUITests.xctest */,
 				4B75BD49AED901E7C93582F7 /* carAppTests.xctest */,
 				2D997286223049D1A5F7AA30 /* carAppUITests.xctest */,
 				76F20D79C53218DD355DE19F /* ConsumptionBenchmarkApp.app */,
@@ -335,6 +352,17 @@
 			path = Config/Release;
 			sourceTree = "<group>";
 		};
+		DC1AC19C77FA5EDF20C8EFBF /* PerformanceUITests */ = {
+			isa = PBXGroup;
+			children = (
+				B05293B87DD016DB7B9B3DC3 /* BenchmarkSeedingUITests.swift */,
+				AB3530E3FB7AC0F818F6DED6 /* LaunchPerformanceUITests.swift */,
+				2A5746F0AFBDC455CF5BFDCF /* ListScrollPerformanceUITests.swift */,
+				98F73EE19567AE30025D978E /* PerformanceUITestSupport.swift */,
+			);
+			path = PerformanceUITests;
+			sourceTree = "<group>";
+		};
 		E3D19A4D38694A47DC344CE6 = {
 			isa = PBXGroup;
 			children = (
@@ -373,6 +401,7 @@
 				B4EC17990310A3F837ED1C6D /* Benchmark */,
 				2850FA255307524833517781 /* Debug */,
 				22A277641E77C9E7433CBE1E /* iosApp */,
+				DC1AC19C77FA5EDF20C8EFBF /* PerformanceUITests */,
 				D38BE3D0B3754E83C0B8B345 /* Release */,
 				C974A63804B699BA28605A23 /* Staging */,
 				C9FE68B9523949AB829ECCA0 /* Tests */,
@@ -473,6 +502,24 @@
 			productReference = F7BD4918D057DEA4C8FB450F /* carApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9710737E374EA1251AEDB7F1 /* carAppPerformanceUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9EBD554EEC524C81E806CE62 /* Build configuration list for PBXNativeTarget "carAppPerformanceUITests" */;
+			buildPhases = (
+				1C120D3A1AB65555604C76B8 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				45CD8C3A57D79F99E282FFA6 /* PBXTargetDependency */,
+			);
+			name = carAppPerformanceUITests;
+			packageProductDependencies = (
+			);
+			productName = carAppPerformanceUITests;
+			productReference = 832632443696C292C93ACBB3 /* carAppPerformanceUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -493,6 +540,10 @@
 					};
 					61D239EC09A12F8A35BAA5D5 = {
 						ProvisioningStyle = Automatic;
+					};
+					9710737E374EA1251AEDB7F1 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 61D239EC09A12F8A35BAA5D5;
 					};
 				};
 			};
@@ -518,6 +569,7 @@
 				61D239EC09A12F8A35BAA5D5 /* carApp */,
 				3FC8C97CE364F5F4625D607B /* carAppTests */,
 				5694684097D198AE1BCA7DD4 /* carAppUITests */,
+				9710737E374EA1251AEDB7F1 /* carAppPerformanceUITests */,
 				5842CDC017F5B1CF8E8C8274 /* ConsumptionBenchmarkApp */,
 			);
 		};
@@ -622,6 +674,17 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1C120D3A1AB65555604C76B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7FAD1CD0AC1AC7973F95B43F /* BenchmarkSeedingUITests.swift in Sources */,
+				7E64F91262C9F878E87A7104 /* LaunchPerformanceUITests.swift in Sources */,
+				2A1D867E8CB39CFB2EEC6E85 /* ListScrollPerformanceUITests.swift in Sources */,
+				F9C55DD424D40305F6318F0E /* PerformanceUITestSupport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		47403F47B412B8A41CC383EC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -723,6 +786,11 @@
 			target = 61D239EC09A12F8A35BAA5D5 /* carApp */;
 			targetProxy = 60E811793E62CC34C67D64DC /* PBXContainerItemProxy */;
 		};
+		45CD8C3A57D79F99E282FFA6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 61D239EC09A12F8A35BAA5D5 /* carApp */;
+			targetProxy = E284AFF8805B408655FCD029 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -738,6 +806,28 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		1135A2C00830DA22BB377688 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.perfuitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Release;
+		};
 		174E1FDA848B95D7D2059842 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1111,6 +1201,28 @@
 			};
 			name = Benchmark;
 		};
+		8C755D27FD531D772C9E1DDB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.perfuitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Debug;
+		};
 		A37BE7CBC6DE88E1185D92EE /* Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1250,6 +1362,28 @@
 			};
 			name = Benchmark;
 		};
+		C26B5B05DE94BCBB583D7A5D /* Benchmark */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.perfuitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Benchmark;
+		};
 		C37A8E2E7ED1C05824E02AE2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
@@ -1276,6 +1410,27 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		CBB27982107AD2ACB9D466E2 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.perfuitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Staging;
 		};
 		DA1CF6562527F00C8516B7D0 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1371,6 +1526,17 @@
 				EDE85C62437804C2C3CF5CD5 /* Debug */,
 				336F533D7A8848A8901515BC /* Release */,
 				1DEE23B0D0816D111AB5066B /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Benchmark;
+		};
+		9EBD554EEC524C81E806CE62 /* Build configuration list for PBXNativeTarget "carAppPerformanceUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C26B5B05DE94BCBB583D7A5D /* Benchmark */,
+				8C755D27FD531D772C9E1DDB /* Debug */,
+				1135A2C00830DA22BB377688 /* Release */,
+				CBB27982107AD2ACB9D466E2 /* Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Benchmark;
