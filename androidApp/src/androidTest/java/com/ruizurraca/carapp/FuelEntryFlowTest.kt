@@ -26,8 +26,10 @@ import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class FuelEntryFlowTest {
-    @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun moneyFieldsPreserveIncrementalEditingAndLiveDerivationAcrossRecreation() {

@@ -137,4 +137,9 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4.accessibility)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
+    // `E4-03` (`D-263`, ADR-0264): the debug app carries LeakCanary itself, so its resources and its
+    // `MainProcessAppWatcherInstaller` provider reach the application process, where the leak rule runs.
+    // Neither `staging` nor `release` carries it, and the instrumentation artifact stays test-only.
+    debugImplementation(libs.leakcanary.android)
+    androidTestImplementation(libs.leakcanary.android.instrumentation)
 }

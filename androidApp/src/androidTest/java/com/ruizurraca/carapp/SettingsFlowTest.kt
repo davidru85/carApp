@@ -25,8 +25,10 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class SettingsFlowTest {
-    @get:Rule
     val composeRule = createEmptyComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Before
     fun startFromAFreshInstall() {

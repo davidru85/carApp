@@ -284,7 +284,15 @@ class PerformanceHarnessContractTest {
             )
         }
         val leakCanaryLines = read("androidApp/build.gradle.kts").lines().filter { line -> line.contains("leakcanary") }
-        assertEquals(listOf("    androidTestImplementation(libs.leakcanary.android.instrumentation)"), leakCanaryLines)
+        assertEquals(
+            listOf(
+                "    debugImplementation(libs.leakcanary.android)",
+                "    androidTestImplementation(libs.leakcanary.android.instrumentation)",
+            ),
+            leakCanaryLines,
+            "LeakCanary reaches the application process through debugImplementation and stays test-only " +
+                "otherwise (D-263)",
+        )
     }
 
     private companion object {

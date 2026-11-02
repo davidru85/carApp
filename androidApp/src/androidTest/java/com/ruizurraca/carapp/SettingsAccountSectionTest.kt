@@ -15,8 +15,10 @@ import org.junit.Test
  * owner deletes local data (`docs/CONTRACTS.md §11.5`), and every row only requests its intent.
  */
 class SettingsAccountSectionTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun aPermanentSessionShowsSignOutAndDeleteAccountButNoLocalDataRow() {

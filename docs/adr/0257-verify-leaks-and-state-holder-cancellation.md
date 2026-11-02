@@ -25,6 +25,10 @@ leak tooling existed. `docs/CONTRACTS.md §14` states that `close()` cancels the
 The selected option is **A**.
 
 - `com.squareup.leakcanary:leakcanary-android-instrumentation` 2.14, `androidTestImplementation` only.
+  Amended by `D-263` (ADR-0264) on 2026-11-02: `:androidApp` also declares
+  `com.squareup.leakcanary:leakcanary-android` 2.14 as `debugImplementation`, because the
+  instrumentation artifact alone leaves LeakCanary's resources and its `AppWatcher` installer provider
+  in the test APK, where the application process cannot reach them.
   Every Compose instrumented test class (24 on `bf6c8e21`) wraps its Compose rule in `leakDetecting(...)`:
   a rule chain that installs `AppWatcher` on the main thread when it is not installed (the app-module test
   APK's content providers never start in the app process) and then applies `DetectLeaksAfterTestSuccess`

@@ -16,8 +16,10 @@ import org.junit.runner.RunWith
 /** `E4-02`: at a 200% device font scale the vehicle list keeps its add action and the Settings entry. */
 @RunWith(AndroidJUnit4::class)
 class VehicleListSystemFontScaleTest {
-    @get:Rule
     val composeRule = createEmptyComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @After
     fun restoreSystemFontScale() {

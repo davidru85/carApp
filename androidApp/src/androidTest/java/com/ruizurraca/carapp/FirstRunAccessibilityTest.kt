@@ -17,8 +17,10 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @SdkSuppress(minSdkVersion = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 class FirstRunAccessibilityTest {
-    @get:Rule
     val composeRule = createEmptyComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun firstRunScreensPassAccessibilityChecks() {

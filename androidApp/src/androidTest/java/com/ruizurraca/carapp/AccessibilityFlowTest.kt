@@ -24,8 +24,10 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @SdkSuppress(minSdkVersion = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 class AccessibilityFlowTest {
-    @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Before
     fun enableChecks() {

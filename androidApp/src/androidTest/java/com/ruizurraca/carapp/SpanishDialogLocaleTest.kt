@@ -23,7 +23,7 @@ class SpanishDialogLocaleTest {
     private val composeRule = createComposeRule()
 
     @get:Rule
-    val rules: RuleChain = RuleChain.outerRule(SpanishAppLocaleRule()).around(composeRule)
+    val leakDetection = leakDetecting(RuleChain.outerRule(SpanishAppLocaleRule()).around(composeRule))
 
     @Test
     fun conversionConfirmationRendersSpanishCopy() {

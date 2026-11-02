@@ -31,8 +31,10 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class VehicleCreationTest {
-    @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun createsVehicleAndRoutesToEmptyDetailWithTheDefaultFuelType() {
