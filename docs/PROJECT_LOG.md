@@ -38,6 +38,40 @@
 
 ## Entries
 
+### 2026-11-02 — E4-03 implemented; the LeakCanary packaging defect found and fixed (D-263)
+
+- **Type:** decision and progress
+- **Story / Decision:** `E4-03` / `D-251` to `D-256`, `D-263`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B2-release-readiness`)
+- **What changed:** `E4-03` is implemented on `story/E4-B2-release-readiness` up to head `bc884be0`:
+  `D-251` to `D-256` with ADR-0252 to ADR-0257 and their four mirrors, the `staging` wording of R-4, the
+  five state-holder cancellation proofs, the single `D-80` threshold predicate, the `ConsumptionBenchmark`
+  framework and the non-shipping `ConsumptionBenchmarkApp`, the benchmark-only seeding over the graph's
+  repositories, the extended launch-hook rule, the `benchmark` Android build type and `Benchmark` iOS
+  configuration, the first-content markers on both hosts, the `:benchmark` Macrobenchmark module, the
+  device-only iOS performance target, leak detection in all 24 Compose instrumented classes, the eight iOS
+  deallocation tests and the measurement runbook. `D-263` (ADR-0264) fixes the leak tooling: the
+  instrumentation artifact alone left LeakCanary's resources and its `AppWatcher` installer provider in the
+  test APK, so `AppWatcher.manualInstall` threw `Resources$NotFoundException` and 153 of 154 instrumented
+  tests failed; `leakcanary-android` now goes on the debug classpath and the suite is green.
+- **Why:** the story had no execution path for its criteria and `E1-05`'s `D-80` device item was open; the
+  leak criterion could not be enforced with the arrangement `D-256` originally chose.
+- **Documents touched:** ADR-0252 to ADR-0257, ADR-0263, ADR-0264, ADR-0210, ADR-0257 (amendment) and the
+  four decision mirrors; `docs/CONTRACTS.md §1.1`; `docs/SPECIFICATION.md §11`, `§12`;
+  `docs/TECHNICAL_PLAN.md §2` to `§4`; `AGENTS.md`; `README.md`; `docs/identifiers.md`;
+  `docs/versions-matrix.md`; `docs/SECURITY.md`; `docs/CONTRIBUTING.md`; `docs/BACKLOG.md`;
+  `docs/runbooks/performance-measurement.md`; `docs/handoffs/E4-03.md`; `docs/handoffs/E4-B2.md`.
+- **Verification:** the complete `AGENTS.md` command with every guard task enabled is `BUILD SUCCESSFUL`
+  (712 tasks, Xcode not involved); both `provider-decoupling` commands pass; the instrumented suite on
+  `emulator-5554` (API 36) is `tests=154, failures=0, errors=0, skipped=0`; the leak mutation fails with
+  `NoLeakAssertionFailedError`; the consumption benchmark prints `medianNanos=3576354`; the three
+  Kotlin/Native links, `assembleStaging`, `assembleBenchmark` and `:benchmark:assembleBenchmark` pass; both
+  release builds fail closed (`D-238`); the golden header is identical; `contractCheck` reports 262
+  decisions and 262 ADRs with no `[FAIL]` or `[PENDING]`.
+- **Follow-ups / risks:** no measured figure exists yet. O15 and O16 (the owner's `staging` device session)
+  gate O17 and O18, O19 is requested, and the story records, the `E1-05` closure update and the bundle
+  closure follow them. The iOS UI-test shards run only in CI (`D-230`).
+
 ### 2026-10-30 — Pull request #94 merged; E4-B2 continues through a second pull request (D-262)
 
 - **Type:** decision
