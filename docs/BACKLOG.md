@@ -1449,8 +1449,8 @@ Acceptance criteria:
 ### E4-04 - Release Preparation - M
 
 Status: engineering scope delivered on 2026-10-27 and merged on 2026-10-30 through pull request #94
-(merge commit `bf6c8e21`); first story of bundle `E4-B2` (`D-209`, ADR-0210). Two criteria wait
-for the owner-run `staging` device session (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
+(merge commit `bf6c8e21`); first story of bundle `E4-B2` (`D-209`, ADR-0210). Its last two criteria
+passed in the `staging` device session of 2026-11-03 (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
 2026-10-24: its store-only work moved to `E4-09`. The production Firebase cutover moved to `E4-10` by
 `D-258` (ADR-0259) on 2026-10-27, so this story closes with the fail-closed mechanism of `D-238` and the
 `staging` variant of `D-259`.

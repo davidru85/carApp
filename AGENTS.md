@@ -277,7 +277,7 @@ review.
   `bf6c8e21`), limited by `D-236` (ADR-0237) and split by `D-258` (ADR-0259): it delivers the
   per-build-type Firebase selection that fails release builds closed (`D-238`) and the `staging`
   variant (`D-259`); its owner-run `staging` device session (O15 and O16 in `docs/handoffs/E4-B2.md`)
-  is still open. `E4-03` measures `staging` next and reaches `main` through a second bundle pull
+  passed on 2026-11-03. `E4-03` measures `staging` next and reaches `main` through a second bundle pull
   request (`D-262`, ADR-0263). `E4-10`, Production Firebase Cutover,
   is the last story before MVP closure. Bundle `E4-B1`, the product
   surface (`E4-01` Settings UI, `E4-05` account conversion host surface, `E4-02` accessibility and
