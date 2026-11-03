@@ -24,12 +24,18 @@ A frame is over 32 ms when its lateness `L` satisfies `L > (floor(32 / T) - 1) *
 
 1. Use the reference devices: Pixel 6a on Android 16 (API 36) and iPhone 12 on iOS 26. If you use another
    device, run everything anyway and record its model, OS and refresh rate (`docs/versions-matrix.md`).
+   An Android device that is not rooted needs Android 14 (API 34) or later. Below API 34 Macrobenchmark
+   resets compilation by reinstalling the app, which deletes the seeded history before A6 and A7; below
+   API 31 it reports no `frameOverrunMs`; and on API 28 it reported no `timeToFullDisplayMs` (dry run on a
+   OnePlus 3 with Android 9 on 2026-11-03, O17 in `docs/handoffs/E4-B2.md`).
 2. Open a terminal in a checkout of `story/E4-B2-release-readiness` at its head (the agent's worktree
    `.worktrees/carApp-E4-B2` is one; run `git pull` there first). Run every command below from that
    checkout's root. Create the output folder (ignored by git):
    `mkdir -p build/perf/<YYYY-MM-DD>/android build/perf/<YYYY-MM-DD>/ios`.
 3. Charge each device above 50%, close every other app, fix the screen brightness, disable battery saver,
-   and leave the device idle for 2 minutes before each measured block.
+   and leave the device idle for 2 minutes before each measured block. On Android, keep the screen on for
+   the whole session (Developer options, "Stay awake", with the device charging), because A5 waits up to 5
+   minutes without a touch; turn it off again after A8.
 4. **The benchmark builds reuse the development identity** (`com.ruizurraca.carapp.debug`). Installing one
    replaces the debug or staging app and its data on that device. If that app is signed in, open it, sign
    out or delete its local data first: on iOS a Firebase session survives an app reinstall.
