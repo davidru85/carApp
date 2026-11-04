@@ -169,7 +169,17 @@ refresh rate (60 Hz for iPhone 12; 120 Hz for ProMotion models).
 **I1 — Fresh install.** On the iPhone, if `carApp` (debug) is installed and signed in, open it, sign out or
 delete local data. Then remove it: `xcrun devicectl device uninstall app --device <UDID> com.ruizurraca.carapp.debug`.
 
-**I2 — Go offline.** Control Center: airplane mode on, Wi-Fi off. Keep the cable connected.
+**I2 — Start every step online and let the test take it offline (`D-264`).** iOS 27 verifies every
+developer-signed install online at its first launch, and each `xcodebuild … test` below reinstalls the
+test runner and `carApp`, so a step started in airplane mode fails with `The application could not be
+launched because the Developer App Certificate is not trusted`. Start each of I3, I4, I6 and I7 with
+airplane mode off and Wi-Fi on, and keep the cable connected. Each test launches `carApp` once, closes it,
+prints `PERF: turn airplane mode on and Wi-Fi off now` and waits up to 5 minutes. When that line appears,
+or `carApp` has opened and closed once on the iPhone, turn airplane mode on and Wi-Fi off in Control
+Center and leave the iPhone untouched: the test then waits the 2 idle minutes of §1 by itself (I3, I6, I7)
+and measures offline. After each step, turn airplane mode off and Wi-Fi on again. If "Unable to Verify
+App" appears, the iPhone was offline too early: tap Cancel, go online and repeat the step, because every
+launch is refused while that alert is on screen.
 
 **I3 — Signed-out install to the welcome screen (second figure).**
 ```bash
@@ -184,27 +194,31 @@ grep -E 'measured \[' "$I/welcome.log" | sed -E 's/.*values: \[([^]]*)\].*/\1/' 
   | sort -n | awk '{v[NR]=$1} END {print "n=" NR, "median=" (v[int((NR+1)/2)] + v[int(NR/2)+1]) / 2}'
 ```
 Expected: `** TEST SUCCEEDED **`, a `measured [Duration (AppLaunch), s]` line with ten values, `n=10`.
+`The device never went offline (D-264)`: airplane mode was not turned on within 5 minutes; repeat the step.
 
-**I4 — Seed 1,000 entries (still offline).**
+**I4 — Seed 1,000 entries (online at the start, offline once the test asks, as in I2).**
 ```bash
 xcodebuild -project iosApp/carApp.xcodeproj -scheme carAppPerformance -configuration Benchmark \
   -destination "id=<UDID>" -derivedDataPath iosApp/build/perf \
   -only-testing:carAppPerformanceUITests/BenchmarkSeedingUITests/testSeedsTheBenchmarkFuelHistoryWhileOffline \
   test | tee "$I/seed.log"
 ```
-Expected: `** TEST SUCCEEDED **`. A failure naming `benchmark_seed_refused` with `ONLINE`: repeat I2. With
-`NOT_LOCAL_OWNER`: repeat from I1.
+Expected: `** TEST SUCCEEDED **`. The verification launch passes no seed argument, so only the launch after
+the iPhone is offline seeds. A failure naming `benchmark_seed_refused` with `ONLINE`: Wi-Fi or mobile data
+was still on; repeat the step. With `NOT_LOCAL_OWNER`: repeat from I1.
 
 **I5 — Adopt the history once (online).** Airplane mode off, Wi-Fi on. Open `carApp` from the home screen
 and wait (up to 5 minutes) until the list shows "Benchmark vehicle" and the backup status shows its idle
 state. If the welcome screen stays after 60 seconds, stop and report. Then force-quit the app (swipe it
-away), and turn airplane mode on and Wi-Fi off.
+away) and stay online: I6 starts online (I2).
 
 **I6 — Returning user to the populated vehicle list (gate).** Same command as I3 with
 `-only-testing:carAppPerformanceUITests/LaunchPerformanceUITests/testReturningUserLaunchToPopulatedVehicleList`,
 result bundle `"$I/returning.xcresult"`, log `"$I/returning.log"`, and the same `grep`/`awk` lines on that log.
+Start it online and go offline when the test asks (I2). Its verification launch runs online, so the app may
+run one sync cycle before the iPhone goes offline; that launch is not measured.
 
-**I7 — Fling across 1,000 entries.**
+**I7 — Fling across 1,000 entries (online at the start, offline once the test asks, as in I2).**
 ```bash
 xcodebuild -project iosApp/carApp.xcodeproj -scheme carAppPerformance -configuration Benchmark \
   -destination "id=<UDID>" -derivedDataPath iosApp/build/perf \
@@ -219,7 +233,9 @@ Send every `measured [` line verbatim. At 60 Hz the gate holds when every value 
 **I7b — Instruments "Animation Hitches" (only when I7 sends you here).** In Xcode (the version
 `xcodebuild -version` printed) open `iosApp/carApp.xcodeproj`, choose the scheme `carAppPerformance` and the
 iPhone, then Product > Profile
-(it builds the `Benchmark` configuration). In the template chooser pick "Animation Hitches" and press Record.
+(it builds the `Benchmark` configuration). In the template chooser pick "Animation Hitches". On iOS 27 the
+install needs one launch online first (`D-264`): press Record while online, press Stop as soon as the app
+shows, turn airplane mode on and Wi-Fi off, wait 2 minutes, and press Record again.
 On the iPhone open "Benchmark vehicle" and flick upward fast 30 times, until the end of the list. Press Stop.
 Select the "Hitches" track; in the detail pane at the bottom show the list of hitches and sort it by
 duration. Count the hitches whose duration is greater than `(floor(32 / T) - 1) * T` ms. Repeat 5 recordings.
@@ -241,7 +257,9 @@ xcodebuild -project iosApp/carApp.xcodeproj -scheme ConsumptionBenchmarkApp -con
 **D2 — Install.**
 `xcrun devicectl device install app --device <UDID> iosApp/build/d80/Build/Products/Release-iphoneos/ConsumptionBenchmarkApp.app`
 
-**D3 — Run without a debugger.** Leave the iPhone idle for 2 minutes, then open `ConsumptionBenchmarkApp`
+**D3 — Run without a debugger.** `D-80` needs no network, but on iOS 27 the first launch after D2 does, to
+verify the install (`D-264`): if the iPhone is in airplane mode, open the app once online first and close it.
+Leave the iPhone idle for 2 minutes, then open `ConsumptionBenchmarkApp`
 from the home screen. A spinner shows while the benchmark runs; then a number appears: the median in
 nanoseconds of 20 measured runs after 5 warm-ups. Take a screenshot. Wait 30 seconds, tap the play button,
 record the second number; repeat once more. The first number is the `D-80` figure; the other two show
