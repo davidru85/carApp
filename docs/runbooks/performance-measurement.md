@@ -12,8 +12,8 @@
 
 | Figure | Android | iOS | Gate |
 |--------|---------|-----|------|
-| Cold start, returning user, to the populated vehicle list | §2 A6 | §3 I6 | median of 10 < 2 s |
-| Cold start, signed-out install, to the welcome screen (second figure) | §2 A3 | §3 I3 | recorded; median of 10 < 2 s |
+| Cold start, returning user, to the populated vehicle list | §2 A6 | §3 I6 | median of at least 10 runs < 2 s (`D-265`) |
+| Cold start, signed-out install, to the welcome screen (second figure) | §2 A3 | §3 I3 | recorded; median of at least 10 runs < 2 s (`D-265`) |
 | Fling across 1,000 entries, frames over 32 ms | §2 A7 | §3 I7 | 0 |
 | Consumption of 1,000 entries, median of 20 after 5 warm-ups (`D-80`) | CI (JVM) | §4 | < 100,000,000 ns |
 
@@ -164,7 +164,11 @@ Send back: the A0 values, the three `jq` outputs, the A4 log line, the A5 and A8
 ## 3. iOS
 
 **I0 — Identify the device.** `xcrun devicectl list devices`. Record the UDID, model, iOS version and the
-refresh rate (60 Hz for iPhone 12; 120 Hz for ProMotion models).
+refresh rate (60 Hz for iPhone 12; 120 Hz for ProMotion models). With the iPhone connected, open Device
+Hub (Xcode 27: Xcode > Open Developer Tool > Device Hub, the successor of "Devices and Simulators"),
+select the iPhone and keep the app open for the whole session. Then `xcrun xctrace list devices` must list
+the iPhone under `== Devices ==`, not under `== Devices Offline ==`: while it is offline the launch metric
+records no value and the launch tests still pass (`D-265`).
 
 **I1 — Fresh install.** On the iPhone, if `carApp` (debug) is installed and signed in, open it, sign out or
 delete local data. Then remove it: `xcrun devicectl device uninstall app --device <UDID> com.ruizurraca.carapp.debug`.
@@ -193,7 +197,11 @@ grep -E 'measured \[' "$I/welcome.log"
 grep -E 'measured \[' "$I/welcome.log" | sed -E 's/.*values: \[([^]]*)\].*/\1/' | tr ',' '\n' \
   | sort -n | awk '{v[NR]=$1} END {print "n=" NR, "median=" (v[int((NR+1)/2)] + v[int(NR/2)+1]) / 2}'
 ```
-Expected: `** TEST SUCCEEDED **`, a `measured [Duration (AppLaunch), s]` line with ten values, `n=10`.
+Expected: `** TEST SUCCEEDED **` and a `measured [Duration (AppLaunch), s]` line; the `awk` line prints `n=`,
+the number of values the run recorded out of 25 iterations, and their median. The figure needs `n` of at
+least 10 (`D-265`); with fewer, repeat the step and never pool runs. XCTest notes each lost iteration as
+`Received unexpected number of metrics: 0 in iteration with index <n>` and still passes. No `measured`
+line at all: check `xcrun xctrace list devices` (I0).
 `The device never went offline (D-264)`: airplane mode was not turned on within 5 minutes; repeat the step.
 
 **I4 — Seed 1,000 entries (online at the start, offline once the test asks, as in I2).**
@@ -214,7 +222,8 @@ away) and stay online: I6 starts online (I2).
 
 **I6 — Returning user to the populated vehicle list (gate).** Same command as I3 with
 `-only-testing:carAppPerformanceUITests/LaunchPerformanceUITests/testReturningUserLaunchToPopulatedVehicleList`,
-result bundle `"$I/returning.xcresult"`, log `"$I/returning.log"`, and the same `grep`/`awk` lines on that log.
+result bundle `"$I/returning.xcresult"`, log `"$I/returning.log"`, and the same `grep`/`awk` lines on that log;
+the figure needs `n` of at least 10, as in I3.
 Start it online and go offline when the test asks (I2). Its verification launch runs online, so the app may
 run one sync cycle before the iPhone goes offline; that launch is not measured.
 
