@@ -26,7 +26,9 @@ Firebase plist and keeps the plist choice free of compilation conditions.
 
 - **Cold start: A.** `XCTApplicationLaunchMetric(waitUntilResponsive: false)` ends when the app has
   drawn its first frame and finished every MetricKit extended launch task; `D-251`'s task ends at first
-  content, so the metric is exact. 10 iterations.
+  content, so the metric is exact. 10 iterations. Amended by `D-265` (ADR-0266) on 2026-11-04: 25
+  iterations, and the figure is the median of every value one run records, which must be at least 10,
+  because the launch metric drops iterations on the iOS 27 substitute device.
 - **Fling: A on iOS 26 or later at 60 Hz, B otherwise.** `XCTHitchMetric(application:)` counts
   hitches. At 60 Hz every hitch keeps the previous frame on screen for at least 33.3 ms, so a hitch
   count of zero is exactly "0 frames over 32 ms". On a device below iOS 26, or with another refresh

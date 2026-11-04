@@ -269,5 +269,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-262 | [ADR-0263](0263-deliver-bundle-e4-b2-through-two-pull-requests.md) | Deliver bundle E4-B2 through two pull requests. | Accepted |
 | D-263 | [ADR-0264](0264-put-leakcanary-in-the-debug-app-build.md) | Put LeakCanary in the debug app build, not only in the test APK. | Accepted |
 | D-264 | [ADR-0265](0265-verify-each-ios-benchmark-install-online-before-measuring-offline.md) | Verify each iOS benchmark install online before measuring offline. | Accepted |
+| D-265 | [ADR-0266](0266-take-the-ios-cold-start-median-over-at-least-ten-recorded-launches.md) | Take the iOS cold-start median over at least ten recorded launches. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

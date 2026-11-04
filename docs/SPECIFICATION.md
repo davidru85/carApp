@@ -446,7 +446,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Area | Requirement |
 |------|-------------|
 | Platforms | Android `minSdk 26`, iOS 16+; Kotlin/Native targets `iosArm64` and `iosSimulatorArm64`. `iosX64` is not supported (`D-37`). |
-| Performance | Cold start to first content under 2 s, median of 10 runs on the reference devices in the `staging` build type (`D-259`), a release-optimized build that runs release code against the development project. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
+| Performance | Cold start to first content under 2 s, median of at least 10 measured runs (`D-265`) on the reference devices in the `staging` build type (`D-259`), a release-optimized build that runs release code against the development project. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
 | Offline | 100% of MVP functionality usable without network, including first launch. |
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
@@ -755,6 +755,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-262 | E4-B2 delivery | Bundle `E4-B2` is delivered through two pull requests: #94 (`E4-04`) and a second one (`E4-03` and the bundle closure). | Accepted |
 | D-263 | Android leak detection packaging | LeakCanary is a debug dependency of `:androidApp` and an instrumentation dependency of its tests; no release or staging artifact carries it. | Accepted |
 | D-264 | iOS benchmark install verification | Each iOS performance test launches the app once online so that iOS verifies the install, then measures offline after the device goes offline and the idle period. | Accepted |
+| D-265 | iOS cold-start sample | The iOS cold-start figure is the median of at least 10 recorded launches out of 25 iterations in one run. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
