@@ -4,7 +4,8 @@ import XCTest
 ///
 /// `XCTApplicationLaunchMetric(waitUntilResponsive: false)` ends when the first frame is drawn and every
 /// MetricKit extended launch task has finished; the app finishes its only task at first content. The
-/// waits inside the blocks only keep each iteration alive until then.
+/// waits inside the blocks only keep each iteration alive until then. Each test first has its install
+/// verified online and waits for the device to go offline and idle (`D-264`).
 final class LaunchPerformanceUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -13,6 +14,7 @@ final class LaunchPerformanceUITests: XCTestCase {
     /// The gate: a returning user's populated vehicle list (seeded and adopted history, offline).
     func testReturningUserLaunchToPopulatedVehicleList() throws {
         let app = XCUIApplication()
+        app.verifyOnlineThenWaitForOffline(idle: PerformancePlan.idleBeforeMeasuring)
         app.launch()
         XCTAssertTrue(
             app.staticTexts[PerformancePlan.vehicleName].waitForExistence(timeout: PerformancePlan.contentTimeout),
@@ -31,6 +33,7 @@ final class LaunchPerformanceUITests: XCTestCase {
     /// The second figure: the welcome screen of a signed-out install. Run it before seeding.
     func testSignedOutLaunchToWelcomeScreen() throws {
         let app = XCUIApplication()
+        app.verifyOnlineThenWaitForOffline(idle: PerformancePlan.idleBeforeMeasuring)
         app.launch()
         XCTAssertTrue(
             app.buttons["welcome_guest"].waitForExistence(timeout: PerformancePlan.contentTimeout),

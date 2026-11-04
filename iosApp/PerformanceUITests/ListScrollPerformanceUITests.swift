@@ -15,6 +15,7 @@ final class ListScrollPerformanceUITests: XCTestCase {
             throw XCTSkip("XCTHitchMetric needs iOS 26; use the Instruments procedure of the runbook")
         }
         let app = XCUIApplication()
+        app.verifyOnlineThenWaitForOffline(idle: PerformancePlan.idleBeforeMeasuring)
         app.launch()
         let vehicle = app.staticTexts[PerformancePlan.vehicleName]
         XCTAssertTrue(vehicle.waitForExistence(timeout: PerformancePlan.contentTimeout), "Seed and adopt the history first")

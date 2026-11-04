@@ -1,6 +1,7 @@
 import XCTest
 
-/// `E4-03` (`D-254`): runs the iOS seeding entry point. Owner-run on the device, in airplane mode.
+/// `E4-03` (`D-254`): runs the iOS seeding entry point. Owner-run on the device: the install is verified
+/// online without the seed argument, then the seeding runs in airplane mode (`D-264`).
 final class BenchmarkSeedingUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -8,6 +9,7 @@ final class BenchmarkSeedingUITests: XCTestCase {
 
     func testSeedsTheBenchmarkFuelHistoryWhileOffline() throws {
         let app = XCUIApplication()
+        app.verifyOnlineThenWaitForOffline(idle: 0)
         app.launchArguments += [PerformancePlan.seedArgument]
         app.launch()
         addTeardownBlock { app.terminate() }
