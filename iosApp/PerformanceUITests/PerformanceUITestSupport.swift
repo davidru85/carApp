@@ -29,22 +29,41 @@ extension XCUIApplication {
     /// online, so that iOS verifies the install, then waits until the owner switches the device offline
     /// and, when `idle` is positive, for that many seconds.
     func verifyOnlineThenWaitForOffline(idle: TimeInterval) {
+        verifyInstallOnline()
+        print("PERF: turn airplane mode on and Wi-Fi off now")
+        XCTAssertTrue(
+            DeviceNetwork.wait(online: false, timeout: PerformancePlan.offlineTimeout),
+            "The device never went offline (D-264)"
+        )
+        waitIdle(idle)
+    }
+
+    /// `D-266`: on iOS 27 the hitch metric records no value while the device is offline, so the fling is
+    /// measured online. Launches the app once online, so that iOS verifies the install, waits `idle`
+    /// seconds and checks that the device is still online.
+    func verifyOnlineThenIdle(idle: TimeInterval) {
+        verifyInstallOnline()
+        waitIdle(idle)
+        XCTAssertTrue(
+            DeviceNetwork.wait(online: true, timeout: PerformancePlan.contentTimeout),
+            "Stay online: the fling is measured online (D-266)"
+        )
+    }
+
+    private func verifyInstallOnline() {
         XCTAssertTrue(
             DeviceNetwork.wait(online: true, timeout: PerformancePlan.contentTimeout),
             "Start the step online: iOS verifies the new install at its first launch (D-264)"
         )
         launch()
         terminate()
-        print("PERF: turn airplane mode on and Wi-Fi off now")
-        XCTAssertTrue(
-            DeviceNetwork.wait(online: false, timeout: PerformancePlan.offlineTimeout),
-            "The device never went offline (D-264)"
-        )
-        if idle > 0 {
-            let idlePeriod = XCTestExpectation(description: "idle before measuring")
-            idlePeriod.isInverted = true
-            _ = XCTWaiter().wait(for: [idlePeriod], timeout: idle)
-        }
+    }
+
+    private func waitIdle(_ idle: TimeInterval) {
+        guard idle > 0 else { return }
+        let idlePeriod = XCTestExpectation(description: "idle before measuring")
+        idlePeriod.isInverted = true
+        _ = XCTWaiter().wait(for: [idlePeriod], timeout: idle)
     }
 }
 

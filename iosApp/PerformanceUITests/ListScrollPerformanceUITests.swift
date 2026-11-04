@@ -3,8 +3,8 @@ import XCTest
 /// `E4-03` (`D-253`): hitches during a scripted fling across the 1,000-entry list.
 ///
 /// At 60 Hz every hitch keeps the previous frame on screen for at least 33.3 ms, so a hitch count of zero
-/// is exactly "0 frames over 32 ms". Each iteration flings to the end and back; only the downward
-/// flings are measured.
+/// is exactly "0 frames over 32 ms". Each iteration flings to the end and back; only the flings toward
+/// the end are measured. The test measures online (`D-266`): offline, the iOS 27 hitch metric records no value.
 final class ListScrollPerformanceUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -15,7 +15,7 @@ final class ListScrollPerformanceUITests: XCTestCase {
             throw XCTSkip("XCTHitchMetric needs iOS 26; use the Instruments procedure of the runbook")
         }
         let app = XCUIApplication()
-        app.verifyOnlineThenWaitForOffline(idle: PerformancePlan.idleBeforeMeasuring)
+        app.verifyOnlineThenIdle(idle: PerformancePlan.idleBeforeMeasuring)
         app.launch()
         let vehicle = app.staticTexts[PerformancePlan.vehicleName]
         XCTAssertTrue(vehicle.waitForExistence(timeout: PerformancePlan.contentTimeout), "Seed and adopt the history first")
