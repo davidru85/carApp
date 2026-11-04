@@ -276,6 +276,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-261 | iOS Firebase plist names | Unique plist name per configuration; each configuration excludes the others | Accepted | Keeps development configuration out of Release. See ADR-0262. |
 | D-262 | E4-B2 delivery | Two pull requests from one branch: #94 (`E4-04`), then `E4-03` and the closure | Accepted | Pull request #94 merged before `E4-03` started. See ADR-0263. |
 | D-263 | Android leak detection packaging | `debugImplementation` of `leakcanary-android` plus `androidTestImplementation` of its instrumentation artifact | Accepted | The instrumentation artifact alone cannot install `AppWatcher` in the application process. See ADR-0264. |
+| D-264 | iOS benchmark install verification | One online verification launch per test, then the offline measurement of `D-253` | Accepted | iOS 27 verifies every developer-signed install online at its first launch. See ADR-0265. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

@@ -45,6 +45,10 @@ Firebase plist and keeps the plist choice free of compilation conditions.
   identifier `com.ruizurraca.carapp.perfuitests`, decided by the owner) and a scheme `carAppPerformance`
   whose test, run and profile actions use `Benchmark`. The `carApp` scheme and the simulator CI jobs are
   unchanged.
+- Amended by `D-264` (ADR-0265) on 2026-11-04: every test first launches `carApp` once while the device is
+  online, because iOS 27 verifies each developer-signed install online at its first launch and
+  `xcodebuild test` reinstalls the runner and `carApp` at every invocation; it then waits until the device
+  is offline and, before a measured block, for the idle period, and measures as above.
 
 ## Consequences
 
