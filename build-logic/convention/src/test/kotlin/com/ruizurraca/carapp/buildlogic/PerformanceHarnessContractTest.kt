@@ -296,12 +296,16 @@ class PerformanceHarnessContractTest {
         assertEquals(4, launchingTests.size, "the four performance tests launch carApp")
         launchingTests.forEach { body ->
             val name = body.substringBefore("(")
-            val verification = body.indexOf("app.verifyOnlineThenWaitForOffline(idle: ")
+            val verification =
+                listOf("app.verifyOnlineThenWaitForOffline(idle: ", "app.verifyOnlineThenIdle(idle: ")
+                    .map(body::indexOf)
+                    .filter { it >= 0 }
+                    .minOrNull() ?: -1
             assertTrue(verification >= 0, "test$name must verify its install online first (D-264)")
             assertTrue(verification < body.indexOf("app.launch()"), "test$name verifies before any other launch (D-264)")
             if (body.contains("measure(")) {
                 assertTrue(
-                    body.contains("app.verifyOnlineThenWaitForOffline(idle: PerformancePlan.idleBeforeMeasuring)"),
+                    body.contains("(idle: PerformancePlan.idleBeforeMeasuring)"),
                     "test$name must idle before its measured block (D-264)",
                 )
             }
@@ -312,6 +316,33 @@ class PerformanceHarnessContractTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun iosFlingIsMeasuredOnlineAndColdStartOffline() {
+        val support = read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift")
+        val onlineHelper = support.substringAfter("func verifyOnlineThenIdle(idle: TimeInterval)", missingDelimiterValue = "")
+        assertTrue(onlineHelper.isNotEmpty(), "PerformanceUITestSupport.swift must declare the D-266 online helper")
+        assertTrue(
+            onlineHelper.substringBefore("\n    }\n").contains("DeviceNetwork.wait(online: true"),
+            "the online helper checks the device is still online after the idle period (D-266)",
+        )
+
+        val fling = read("iosApp/PerformanceUITests/ListScrollPerformanceUITests.swift")
+        assertTrue(
+            fling.contains("app.verifyOnlineThenIdle(idle: PerformancePlan.idleBeforeMeasuring)"),
+            "the fling is measured online: offline, the iOS 27 hitch metric records no value (D-266)",
+        )
+        assertFalse(fling.contains("verifyOnlineThenWaitForOffline"), "the fling never asks for airplane mode (D-266)")
+
+        val launchTests = read("iosApp/PerformanceUITests/LaunchPerformanceUITests.swift")
+        assertEquals(
+            2,
+            Regex("""app\.verifyOnlineThenWaitForOffline\(idle: PerformancePlan\.idleBeforeMeasuring\)""")
+                .findAll(launchTests)
+                .count(),
+            "both iOS cold starts are still measured offline (D-264)",
+        )
     }
 
     @Test
