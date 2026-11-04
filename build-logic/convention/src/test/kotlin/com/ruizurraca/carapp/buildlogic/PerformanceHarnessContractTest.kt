@@ -261,6 +261,20 @@ class PerformanceHarnessContractTest {
     }
 
     @Test
+    fun iosColdStartRunsEnoughIterationsForTenRecordedLaunches() {
+        assertTrue(
+            read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift").contains("static let coldStartIterations = 25"),
+            "the iOS cold start runs 25 iterations so that one run records at least 10 launches (D-265)",
+        )
+        val launchTests = read("iosApp/PerformanceUITests/LaunchPerformanceUITests.swift")
+        assertEquals(
+            2,
+            Regex("""options\.iterationCount = PerformancePlan\.coldStartIterations""").findAll(launchTests).count(),
+            "both iOS launch tests use the D-265 iteration count",
+        )
+    }
+
+    @Test
     fun iosPerformanceTestsVerifyEachInstallOnlineBeforeMeasuringOffline() {
         val support = read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift")
         assertTrue(
