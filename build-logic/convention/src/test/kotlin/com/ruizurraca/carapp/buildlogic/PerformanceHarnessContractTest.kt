@@ -261,6 +261,46 @@ class PerformanceHarnessContractTest {
     }
 
     @Test
+    fun iosPerformanceTestsVerifyEachInstallOnlineBeforeMeasuringOffline() {
+        val support = read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift")
+        assertTrue(
+            support.contains("func verifyOnlineThenWaitForOffline(idle: TimeInterval)"),
+            "PerformanceUITestSupport.swift must declare the D-264 verification helper",
+        )
+        assertTrue(
+            support.contains("NWPathMonitor()") && support.contains("path.status == .satisfied"),
+            "online must mean a satisfied default NWPathMonitor path, the IosConnectivityObserver criterion (D-264)",
+        )
+
+        val launchingTests =
+            repositoryRoot
+                .resolve("iosApp/PerformanceUITests")
+                .listFiles { file -> file.name.endsWith("UITests.swift") }
+                .orEmpty()
+                .flatMap { file -> file.readText().split("\n    func test").drop(1) }
+                .filter { body -> body.contains("app.launch()") }
+        assertEquals(4, launchingTests.size, "the four performance tests launch carApp")
+        launchingTests.forEach { body ->
+            val name = body.substringBefore("(")
+            val verification = body.indexOf("app.verifyOnlineThenWaitForOffline(idle: ")
+            assertTrue(verification >= 0, "test$name must verify its install online first (D-264)")
+            assertTrue(verification < body.indexOf("app.launch()"), "test$name verifies before any other launch (D-264)")
+            if (body.contains("measure(")) {
+                assertTrue(
+                    body.contains("app.verifyOnlineThenWaitForOffline(idle: PerformancePlan.idleBeforeMeasuring)"),
+                    "test$name must idle before its measured block (D-264)",
+                )
+            }
+            if (body.contains("PerformancePlan.seedArgument")) {
+                assertTrue(
+                    verification < body.indexOf("PerformancePlan.seedArgument"),
+                    "test$name must not seed from its verification launch (D-264)",
+                )
+            }
+        }
+    }
+
+    @Test
     fun everyComposeInstrumentedTestDetectsLeaks() {
         val composeRuleFactory = Regex("""create(Android|Empty)?ComposeRule""")
         val composeTests =
