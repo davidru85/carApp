@@ -1,6 +1,7 @@
 import XCTest
 
-/// `E4-03` (`D-251`, `D-253`): cold start to first content on the device, 10 iterations.
+/// `E4-03` (`D-251`, `D-253`): cold start to first content on the device, 25 iterations of which at least
+/// 10 must record a value (`D-265`).
 ///
 /// `XCTApplicationLaunchMetric(waitUntilResponsive: false)` ends when the first frame is drawn and every
 /// MetricKit extended launch task has finished; the app finishes its only task at first content. The

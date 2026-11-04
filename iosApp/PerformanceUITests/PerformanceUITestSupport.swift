@@ -8,7 +8,8 @@ enum PerformancePlan {
     static let seedArgument = "-CARAPP_BENCHMARK_SEED"
     static let seedTimeout: TimeInterval = 900
     static let contentTimeout: TimeInterval = 30
-    static let coldStartIterations = 10
+    /// `D-265`: the launch metric drops iterations on iOS 27, so a run of 25 must record at least 10 values.
+    static let coldStartIterations = 25
     static let scrollIterations = 5
     static let flingsPerIteration = 30
     /// `D-264`: how long a test waits for the owner to switch the device offline.
