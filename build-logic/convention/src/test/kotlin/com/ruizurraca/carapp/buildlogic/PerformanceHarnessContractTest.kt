@@ -346,6 +346,23 @@ class PerformanceHarnessContractTest {
     }
 
     @Test
+    fun iosFlingKeepsEachMeasuredBlockShort() {
+        val block =
+            read("iosApp/PerformanceUITests/ListScrollPerformanceUITests.swift")
+                .substringAfter("measure(metrics: [XCTHitchMetric(application: app)]", missingDelimiterValue = "")
+                .substringBefore("\n        }\n")
+        assertTrue(block.contains("stopMeasuring()"), "the fling stops measuring after its upward flings (D-253)")
+        assertFalse(
+            block.contains("swipeDown"),
+            "a block that flings back to the top lasts about 175 s and loses every hitch value on iOS 27 (D-266)",
+        )
+        assertTrue(
+            block.substringAfter("stopMeasuring()").contains("app.navigationBars.buttons.element(boundBy: 0).tap()"),
+            "each block returns to the top by reopening the vehicle (D-266)",
+        )
+    }
+
+    @Test
     fun everyComposeInstrumentedTestDetectsLeaks() {
         val composeRuleFactory = Regex("""create(Android|Empty)?ComposeRule""")
         val composeTests =
