@@ -3,8 +3,9 @@ import XCTest
 /// `E4-03` (`D-253`): hitches during a scripted fling across the 1,000-entry list.
 ///
 /// At 60 Hz every hitch keeps the previous frame on screen for at least 33.3 ms, so a hitch count of zero
-/// is exactly "0 frames over 32 ms". Each iteration flings to the end and back; only the flings toward
-/// the end are measured. The test measures online (`D-266`): offline, the iOS 27 hitch metric records no value.
+/// is exactly "0 frames over 32 ms". Each iteration measures the flings to the end, then reopens the vehicle
+/// to return to the top: on iOS 27 a block that also flings back (about 175 s) records no hitch value
+/// (`D-266`). The test measures online (`D-266`).
 final class ListScrollPerformanceUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -31,9 +32,10 @@ final class ListScrollPerformanceUITests: XCTestCase {
                 list.swipeUp(velocity: .fast)
             }
             stopMeasuring()
-            for _ in 0..<PerformancePlan.flingsPerIteration {
-                list.swipeDown(velocity: .fast)
-            }
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            _ = app.buttons["add_vehicle"].waitForExistence(timeout: PerformancePlan.contentTimeout)
+            vehicle.tap()
+            _ = list.waitForExistence(timeout: PerformancePlan.contentTimeout)
         }
         app.terminate()
     }
