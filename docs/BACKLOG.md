@@ -1705,6 +1705,30 @@ Acceptance criteria:
 
 Depends on: E4-01, E4-05, E4-02.
 
+### E5-09 - Android Leak Check Flags a Framework Retention - S
+
+Status: Deferred / Post-MVP. Created on 2026-11-05 by the `E4-B2` record closure, under the owner's instruction
+of 2026-11-05 to postpone test work the MVP does not need (`D-267`, ADR-0268).
+
+In the push run of `main` at `3943868d` (run `42120336218`),
+`AccessibilityFlowTest.fuelEntryListWithIndicatorsPassesAccessibilityChecks` failed with a
+`NoLeakAssertionFailedError` from the `D-256` leak check, signature
+`0deaf2c5b3220cbfbb07a298157ac2a688e8c24b`. The path runs from the main `MessageQueue` through a delayed
+`Message`, due 2,861 ms after the heap dump, to `com.android.internal.jank.FrameTracker`, then
+`InteractionJankMonitor$Configuration.mContext`, `DecorContext` and `PhoneWindow` to the destroyed
+`MainActivity`. No other application object is on it. The same tree passed on the pull request head (run
+`42101225471`), and this is the only such failure in the nine completed CI runs since the leak check landed.
+Until this story lands, a failure with this signature is this known retention, and any other leak path stays a
+finding to investigate.
+
+Acceptance criteria:
+
+- A failure with this retention no longer fails `android-instrumented-tests`, through the narrowest mechanism
+  the story's intake selects.
+- A test proves that an activity retained by application code still fails a Compose instrumented test.
+
+Depends on: E4-03.
+
 ## Follow-Ups Outside the Phase Milestones
 
 Goal: hold work that was created **after** its phase closed, so that a closed milestone stays
@@ -2650,5 +2674,6 @@ proof after E3-04.
 | E5-06 iOS benchmark seeder loses entries | 5 (Post-MVP) | S | — |
 | E5-07 Local owner cold start routing | 5 (Post-MVP) | S | — |
 | E5-08 Owner-run acceptances of bundle E4-B1 | 5 (Post-MVP) | S | — |
+| E5-09 Android leak check flags a framework retention | 5 (Post-MVP) | S | — |
 
 Human review gates are defined canonically in `AGENTS.md`. The column above is a convenience index, not a second source.
