@@ -331,7 +331,7 @@ class PerformanceHarnessContractTest {
         val fling = read("iosApp/PerformanceUITests/ListScrollPerformanceUITests.swift")
         assertTrue(
             fling.contains("app.verifyOnlineThenIdle(idle: PerformancePlan.idleBeforeMeasuring)"),
-            "the fling is measured online: offline, the iOS 27 hitch metric records no value (D-266)",
+            "the fling is measured online, so that its five runs need no airplane-mode switch (D-266)",
         )
         assertFalse(fling.contains("verifyOnlineThenWaitForOffline"), "the fling never asks for airplane mode (D-266)")
 
@@ -346,20 +346,32 @@ class PerformanceHarnessContractTest {
     }
 
     @Test
-    fun iosFlingKeepsEachMeasuredBlockShort() {
+    fun iosFlingMeasuresOneBlockOfThirtyFlingsPerRun() {
+        assertTrue(
+            read("iosApp/PerformanceUITests/PerformanceUITestSupport.swift").contains("static let flingBlocksPerRun = 1"),
+            "the iOS 27 hitch metric stops recording after about 60 full-list flings in one run, so a run measures one block (D-266)",
+        )
+        val fling = read("iosApp/PerformanceUITests/ListScrollPerformanceUITests.swift")
+        assertTrue(
+            fling.contains("options.iterationCount = PerformancePlan.flingBlocksPerRun"),
+            "the fling measures one block per run (D-266)",
+        )
         val block =
-            read("iosApp/PerformanceUITests/ListScrollPerformanceUITests.swift")
-                .substringAfter("measure(metrics: [XCTHitchMetric(application: app)]", missingDelimiterValue = "")
+            fling
+                .substringAfter("measure(metrics: [XCTHitchMetric(application: app), XCTClockMetric()]", missingDelimiterValue = "")
                 .substringBefore("\n        }\n")
-        assertTrue(block.contains("stopMeasuring()"), "the fling stops measuring after its upward flings (D-253)")
-        assertFalse(
-            block.contains("swipeDown"),
-            "a block that flings back to the top lasts about 175 s and loses every hitch value on iOS 27 (D-266)",
+        assertTrue(block.isNotEmpty(), "the block also records its duration, which shows that the measured block flings (D-266)")
+        val warmUp = block.substringBefore("} else {", missingDelimiterValue = "")
+        assertTrue(
+            warmUp.contains("if warmUp {") && !warmUp.contains("swipeUp"),
+            "XCTest discards its first invocation, which never flings (D-266)",
         )
         assertTrue(
-            block.substringAfter("stopMeasuring()").contains("app.navigationBars.buttons.element(boundBy: 0).tap()"),
-            "each block returns to the top by reopening the vehicle (D-266)",
+            block.substringAfter("} else {").contains("list.swipeUp(velocity: .fast)"),
+            "the measured invocation flings to the end of the list (D-253)",
         )
+        assertTrue(block.contains("stopMeasuring()"), "the fling stops measuring after its upward flings (D-253)")
+        assertFalse(block.contains("swipeDown"), "the run never flings back to the top (D-266)")
     }
 
     @Test
