@@ -334,8 +334,9 @@ Acceptance criteria:
 
 ### E1-05 - Consumption Calculation R-3 - M
 
-Status: implementation completed on 2026-08-28. The optimized real-iPhone measurement remains an
-explicit D-80 item in E4-03; E1-05 does not claim that device evidence.
+Status: implementation completed on 2026-08-28. The optimized real-iPhone measurement was run in E4-03 on
+2026-11-04 (`D-80`, `D-255`); a dated closure update at the top of `docs/handoffs/E1-05.md` records
+the device, the OS, the date and the median.
 
 Implement the pure `CalculateConsumption` use case.
 
@@ -2584,7 +2585,7 @@ proof after E3-04.
 | E1-02 Vehicle domain (completed) | 1 | S | — |
 | E1-03 Vehicle data (completed) | 1 | M | — |
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
-| E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
+| E1-05 Consumption calculation (completed; D-80 device evidence recorded in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data (completed) | 1 | M | — |
 | E1-07 Android UI vehicles (completed) | 1 | M | — |
 | E1-08 Android UI fuel entries (completed) | 1 | L | — |

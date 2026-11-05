@@ -38,6 +38,45 @@
 
 ## Entries
 
+### 2026-11-05 — E4-03 performance and reliability hardening (bundle E4-B2)
+
+- **Type:** story
+- **Story / Decision:** `E4-03` / `D-251` to `D-256`, `D-263` to `D-268`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B2-release-readiness`)
+- **What changed:** a `:benchmark` Macrobenchmark module over a `benchmark` build type derived from
+  `staging` (`D-252`), a `Benchmark` iOS configuration derived from `Staging` with a device-only
+  performance target (`D-253`, `D-264` to `D-266`), benchmark-only seeding of 1,000 fuel entries guarded by
+  the extended launch-hook rule (`D-254`), first-content markers on both hosts (`D-251`), the non-shipping
+  `ConsumptionBenchmarkApp` for `D-80` with the `iosArm64` test now asserting `< 100 ms` (`D-255`),
+  LeakCanary in every Compose instrumented test, iOS deallocation tests and `Job`-cancellation tests
+  for five state holders (`D-256`, `D-263`). The measured-configuration wording now names `staging`
+  (`D-259`) wherever it repeats. Measured on the iPhone 13 mini, iOS 27.0.1, a substitute device, on
+  2026-11-04 and 2026-11-05: cold start to the populated vehicle list 518.46 ms (gate < 2,000 ms); 0 hitches
+  in each of five fling runs (gate 0), both on 997 seeded entries (`D-268`). **Android has no gate figure:**
+  `D-267` moves the physical-device measurement to the post-MVP story `E5-05`, and the only Android figure is
+  an indicative 250.26 ms signed-out cold start from an emulator. The D-80 iPhone median is 9641292 ns
+  (< 100,000,000 ns) on the iPhone 13 mini, iOS 27.0.1, on 2026-11-04, recorded by a dated closure update at
+  the top of `docs/handoffs/E1-05.md` (the original Pending row is preserved); this closes the D-80 item left
+  open by the 2026-08-28 E1-05 entry. No hypothesis of Group K was implicated.
+- **Why:** `E4-03` had no execution path for its criteria, and the `E1-05` `D-80` device result was open.
+  On 2026-11-05 the owner limited the remaining test work to what is essential and postponed the rest to a
+  phase after the MVP, because test effort had exceeded the plan.
+- **Documents touched:** ADR-0252 to ADR-0257, ADR-0264 to ADR-0269 and the four decision mirrors; ADR-0210,
+  ADR-0227; `docs/SPECIFICATION.md §11`; `docs/CONTRACTS.md §1.1`; `docs/TECHNICAL_PLAN.md §3`, `§4`;
+  `AGENTS.md`; `docs/identifiers.md`; `docs/versions-matrix.md`; `docs/SECURITY.md`;
+  `docs/runbooks/performance-measurement.md`; `docs/BACKLOG.md`; `docs/handoffs/E1-05.md`;
+  `docs/handoffs/E4-03.md`; `docs/handoffs/E4-B2.md`.
+- **Verification:** the RED and GREEN commits are in `docs/handoffs/E4-03.md` §Verification Run. The complete
+  `AGENTS.md` command, the consumption benchmark, the iosArm64 links, the instrumented run under the leak
+  chain on emulator-5554, the xcodebuild run and the empty golden-header diff last ran locally on head
+  `78e088dd`. Only the harness guard and `iosApp/PerformanceUITests/` changed outside the documents since then.
+  By the owner's instruction they were not repeated locally on the final head, where the fifteen required
+  checks of pull request #95 are the authority.
+- **Follow-ups / risks:** the MVP closes with the Android targets unverified on hardware (`E5-05`); the iOS
+  seeder loses entries and does not read its count back (`E5-06`); a local owner sees the welcome screen at an
+  offline cold start, not yet classified as a defect (`E5-07`); the `E4-B1` owner-run acceptances are postponed
+  (`E5-08`). This completes bundle `E4-B2`; `E4-10` is the last story before MVP closure.
+
 ### 2026-11-02 — E4-03 implemented; the LeakCanary packaging defect found and fixed (D-263)
 
 - **Type:** decision and progress
