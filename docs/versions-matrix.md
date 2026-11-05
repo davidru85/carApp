@@ -159,7 +159,7 @@ If a reference device is unavailable, the measurement is still run and the actua
 | Target | Android | iOS | Gate readout |
 |--------|---------|-----|--------------|
 | Cold start | Macrobenchmark `StartupTimingMetric`, `StartupMode.COLD`, `CompilationMode.None()`, 10 iterations, in `:benchmark` against the `benchmark` build type derived from `staging` (`D-252`) | `XCTApplicationLaunchMetric(waitUntilResponsive: false)`, 25 iterations of which at least 10 must record a value (`D-265`), in `carAppPerformanceUITests` over the `Benchmark` configuration derived from `Staging` (`D-253`) | Median of `timeToFullDisplayMs` (Android) or of the recorded launch durations, at least 10 (iOS). Both end at the first-content marker: `ReportDrawn()` on Android, the MetricKit extended launch task on iOS (`D-251`). |
-| Smoothness | Macrobenchmark `FrameTimingMetric`, 5 iterations, fling to the end of the list | `XCTHitchMetric`, 5 iterations of 30 fast swipes (iOS 26 or later); Instruments "Animation Hitches" otherwise | Count of frames over 32 ms over all iterations. |
+| Smoothness | Macrobenchmark `FrameTimingMetric`, 5 iterations, fling to the end of the list | `XCTHitchMetric`, 5 runs of one block of 30 fast swipes, measured online (`D-266`) (iOS 26 or later); Instruments "Animation Hitches" otherwise | Count of frames over 32 ms over all iterations (iOS: over all runs). |
 | Consumption | `:feature:fuel:consumptionBenchmark` (JVM, CI) | `ConsumptionBenchmarkApp` on the iPhone (`D-255`) | Median of 20 after 5 warm-ups, through `exceedsConsumptionThreshold`. |
 
 **Frames over 32 ms.** For a display whose refresh interval is `T = 1000 / refreshHz` ms, a frame is over
@@ -169,7 +169,8 @@ frame, so the Android count is the number of positive `frameOverrunMs` values an
 hitch count. `frameDurationCpuMs > 32` is reported as a diagnostic only.
 
 **Data and state.** Measurements run on the seeded history of `D-254` (one vehicle, 1,000 entries),
-adopted once into a development anonymous identity (`D-251`), with the device offline. The procedure
+adopted once into a development anonymous identity (`D-251`), with the device offline, except the iOS
+fling, which is measured online (`D-266`). The procedure
 is `docs/runbooks/performance-measurement.md`; the Xcode that ran each iOS measurement is recorded with
 its figures.
 

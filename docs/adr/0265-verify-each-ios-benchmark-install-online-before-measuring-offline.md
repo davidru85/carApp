@@ -58,6 +58,9 @@ The selected option is **A**.
   and launch arguments of `D-253` and `D-254`.
 - The runbook §3 starts each step online and tells the owner to switch the iPhone offline when the log
   prints the line, or when `carApp` has opened and closed once, and to go back online after the step.
+- Amended by `D-266` (ADR-0267) on 2026-11-05: `testFlingAcrossOneThousandFuelEntries` calls
+  `verifyOnlineThenIdle(idle:)` instead and measures online, one block per run over five runs; both cold
+  starts and the seeding keep this helper.
 
 ## Consequences
 

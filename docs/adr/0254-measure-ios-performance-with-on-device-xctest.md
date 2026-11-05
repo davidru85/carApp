@@ -50,7 +50,10 @@ Firebase plist and keeps the plist choice free of compilation conditions.
 - Amended by `D-264` (ADR-0265) on 2026-11-04: every test first launches `carApp` once while the device is
   online, because iOS 27 verifies each developer-signed install online at its first launch and
   `xcodebuild test` reinstalls the runner and `carApp` at every invocation; it then waits until the device
-  is offline and, before a measured block, for the idle period, and measures as above.
+  is offline and, before a measured block, for the idle period, and measures as above. Amended by `D-266`
+  (ADR-0267) on 2026-11-05: the fling measures one block of 30 swipes per run, over five runs, because the
+  iOS 27 hitch metric stops recording once about 60 full-list flings have accumulated in one run, and the
+  fling stays online after its verification launch and idle period.
 
 ## Consequences
 

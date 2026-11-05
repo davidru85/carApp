@@ -177,11 +177,12 @@ delete local data. Then remove it: `xcrun devicectl device uninstall app --devic
 developer-signed install online at its first launch, and each `xcodebuild … test` below reinstalls the
 test runner and `carApp`, so a step started in airplane mode fails with `The application could not be
 launched because the Developer App Certificate is not trusted`. Start each of I3, I4, I6 and I7 with
-airplane mode off and Wi-Fi on, and keep the cable connected. Each test launches `carApp` once, closes it,
-prints `PERF: turn airplane mode on and Wi-Fi off now` and waits up to 5 minutes. When that line appears,
-or `carApp` has opened and closed once on the iPhone, turn airplane mode on and Wi-Fi off in Control
-Center and leave the iPhone untouched: the test then waits the 2 idle minutes of §1 by itself (I3, I6, I7)
-and measures offline. After each step, turn airplane mode off and Wi-Fi on again. If "Unable to Verify
+airplane mode off and Wi-Fi on, and keep the cable connected. In I3, I4 and I6 the test launches `carApp`
+once, closes it, prints `PERF: turn airplane mode on and Wi-Fi off now` and waits up to 5 minutes. When
+that line appears, or `carApp` has opened and closed once on the iPhone, turn airplane mode on and Wi-Fi
+off in Control Center and leave the iPhone untouched: the test then waits the 2 idle minutes of §1 by
+itself (I3, I6) and measures offline. After each step, turn airplane mode off and Wi-Fi on again. I7 never
+asks for airplane mode: it stays online from start to end (`D-266`). If "Unable to Verify
 App" appears, the iPhone was offline too early: tap Cancel, go online and repeat the step, because every
 launch is refused while that alert is on screen.
 
@@ -227,17 +228,32 @@ the figure needs `n` of at least 10, as in I3.
 Start it online and go offline when the test asks (I2). Its verification launch runs online, so the app may
 run one sync cycle before the iPhone goes offline; that launch is not measured.
 
-**I7 — Fling across 1,000 entries (online at the start, offline once the test asks, as in I2).**
+**I7 — Fling across 1,000 entries (five runs, online from start to end, `D-266`).** Before the loop,
+turn on Do Not Disturb in Control Center (Focus), leaving airplane mode off and Wi-Fi on: online, other
+apps' notification banners otherwise cover the list during the measured flings. Turn it off after I7.
 ```bash
-xcodebuild -project iosApp/carApp.xcodeproj -scheme carAppPerformance -configuration Benchmark \
-  -destination "id=<UDID>" -derivedDataPath iosApp/build/perf \
-  -resultBundlePath "$I/fling.xcresult" \
-  -only-testing:carAppPerformanceUITests/ListScrollPerformanceUITests/testFlingAcrossOneThousandFuelEntries \
-  test | tee "$I/fling.log"
-grep -E 'measured \[' "$I/fling.log"
+for n in 1 2 3 4 5; do
+  xcodebuild -project iosApp/carApp.xcodeproj -scheme carAppPerformance -configuration Benchmark \
+    -destination "id=<UDID>" -derivedDataPath iosApp/build/perf \
+    -resultBundlePath "$I/fling-$n.xcresult" \
+    -only-testing:carAppPerformanceUITests/ListScrollPerformanceUITests/testFlingAcrossOneThousandFuelEntries \
+    test | tee "$I/fling-$n.log"
+  grep -E 'measured \[(Number of Hitches|Clock Monotonic Time)' "$I/fling-$n.log"
+  grep -q 'measured \[Number of Hitches' "$I/fling-$n.log" || break
+done
 ```
-Send every `measured [` line verbatim. At 60 Hz the gate holds when every value of the hitch-count line is
-`0`. If the test was skipped (iOS older than 26) or the device is not 60 Hz and the count is not zero, run I7b.
+On iOS 27 the hitch metric stops recording once about 60 full-list flings have accumulated in one run, so
+each run measures one block of 30 flings toward the end of the list, after an unmeasured first invocation
+that does not fling, and the loop repeats the run five times (`D-266`). Each run takes about 5 minutes: it
+reinstalls, verifies the install, waits the 2 idle minutes and measures. Keep airplane mode off and the
+iPhone unlocked and untouched for the whole loop; a run fails with `Stay online: the fling is measured
+online (D-266)` if the iPhone went offline. Each run prints a `Number of Hitches (debug)` line and a
+`Clock Monotonic Time` line, each with one value. The clock value is about 85 s; a value near 0 means the
+recorded invocation did not fling: stop and report. The loop stops at a run with no hitch line, which the
+runner explains with `Code=4097` for `MetricMeasurementHelper`: report it and run I7b. Send every printed
+line verbatim. At 60 Hz the gate holds when each of the five hitch counts is `0`; a non-zero count is
+checked for overlapping network work before it is reported as a failure. If the test was skipped (iOS
+older than 26) or the device is not 60 Hz and a count is not zero, run I7b.
 
 **I7b — Instruments "Animation Hitches" (only when I7 sends you here).** In Xcode (the version
 `xcodebuild -version` printed) open `iosApp/carApp.xcodeproj`, choose the scheme `carAppPerformance` and the

@@ -756,6 +756,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-263 | Android leak detection packaging | LeakCanary is a debug dependency of `:androidApp` and an instrumentation dependency of its tests; no release or staging artifact carries it. | Accepted |
 | D-264 | iOS benchmark install verification | Each iOS performance test launches the app once online so that iOS verifies the install, then measures offline after the device goes offline and the idle period. | Accepted |
 | D-265 | iOS cold-start sample | The iOS cold-start figure is the median of at least 10 recorded launches out of 25 iterations in one run. | Accepted |
+| D-266 | iOS fling runs and network state | The iOS fling measures one block of 30 flings per run, over five runs, online; the iOS cold starts and the seeding stay offline. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
