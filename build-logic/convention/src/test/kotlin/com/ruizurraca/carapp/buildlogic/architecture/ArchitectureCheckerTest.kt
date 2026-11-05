@@ -98,7 +98,7 @@ class ArchitectureCheckerTest {
         listOf(
             ":core:model", ":core:common", ":core:sync", ":core:database", ":core:auth",
             ":core:analytics", ":core:testing", ":core:crash", ":integration:*", ":shared",
-            ":shared:testing", ":wiring:firebase", ":composition:ios",
+            ":shared:testing", ":wiring:firebase", ":composition:ios", ":benchmark",
         ).forEach { area ->
             assertTrue(area in areas, "docs/TECHNICAL_PLAN.md §4 has no row for $area; parsed: $areas")
         }
@@ -152,6 +152,15 @@ class ArchitectureCheckerTest {
                 projectDependencies = setOf(":shared", ":wiring:firebase"),
             ),
         )
+    }
+
+    @Test
+    fun benchmarkModuleMayDependOnlyOnTheMeasuredApplication() {
+        assertRejected(
+            module(":benchmark", projectDependencies = setOf(":shared")),
+            "forbidden-module-dependency",
+        )
+        assertAccepted(module(":benchmark", projectDependencies = setOf(":androidApp")))
     }
 
     @Test

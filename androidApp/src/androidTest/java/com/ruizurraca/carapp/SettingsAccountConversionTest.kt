@@ -26,8 +26,10 @@ import org.junit.Test
  * beside Settings, so these tests mount both.
  */
 class SettingsAccountConversionTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun theSettingsScreenOffersLinkingToAnAnonymousSession() {

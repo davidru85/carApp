@@ -83,6 +83,16 @@ android {
             signingConfig = signingConfigs.findByName("debug")
             matchingFallbacks += listOf("release")
         }
+        // `E4-03` (`D-252`, ADR-0253; R-1): `staging` (`D-259`) plus the measurement delta. Its own manifest
+        // makes it profileable and adds the benchmark-only seeding activity (`D-254`); its Firebase
+        // configuration and App Check provider are byte copies of the staging ones. It is never distributed.
+        create("benchmark") {
+            initWith(getByName("staging"))
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.findByName("debug")
+            matchingFallbacks.clear()
+            matchingFallbacks += listOf("release")
+        }
     }
 }
 
@@ -127,4 +137,9 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4.accessibility)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
+    // `E4-03` (`D-263`, ADR-0264): the debug app carries LeakCanary itself, so its resources and its
+    // `MainProcessAppWatcherInstaller` provider reach the application process, where the leak rule runs.
+    // Neither `staging` nor `release` carries it, and the instrumentation artifact stays test-only.
+    debugImplementation(libs.leakcanary.android)
+    androidTestImplementation(libs.leakcanary.android.instrumentation)
 }

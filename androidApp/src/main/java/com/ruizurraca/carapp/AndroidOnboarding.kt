@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp
 
 import android.app.Activity
+import androidx.activity.compose.ReportDrawn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -249,6 +250,8 @@ internal fun WelcomeScreen(
     onGoogle: () -> Unit,
     onContinueWithoutAccount: () -> Unit,
 ) {
+    // `E4-03` (`D-251`): the welcome screen is the first content of a signed-out cold start.
+    ReportDrawn()
     // `E4-02`: the box keeps the welcome centred while it fits; the column scrolls once a 200% font
     // scale makes the copy and both actions taller than the screen.
     Box(

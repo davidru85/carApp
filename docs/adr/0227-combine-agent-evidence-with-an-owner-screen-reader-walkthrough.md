@@ -6,6 +6,9 @@ Accepted
 
 The owner selected option C on 2026-10-16.
 
+Amended by `D-267` (ADR-0268) on 2026-11-05: the owner-run device walkthrough moves to the post-MVP story
+`E5-08`.
+
 ## Context
 
 `E4-02` requires TalkBack and VoiceOver to work on F-1 to F-3, Settings, the departure screens and

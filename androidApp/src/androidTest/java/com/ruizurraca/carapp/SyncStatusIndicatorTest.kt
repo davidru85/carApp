@@ -27,8 +27,10 @@ import org.junit.Test
  * test rule accepts a single `setContent` per test.
  */
 class SyncStatusIndicatorTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun aFailedStatusOffersTheManualRetry() {

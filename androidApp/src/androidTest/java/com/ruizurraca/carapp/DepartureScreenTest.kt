@@ -20,8 +20,10 @@ import org.junit.Test
  * `retryDeparture()` action once a step failed; and no retry when nothing is retained.
  */
 class DepartureScreenTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun aRunningDepartureShowsProgressAndNoRetry() {

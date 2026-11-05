@@ -255,10 +255,23 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-248 | [ADR-0249](0249-keep-e4-04-release-build-evidence-local.md) | Keep `E4-04` release-build evidence local. | Accepted |
 | D-249 | [ADR-0250](0250-production-app-check-uses-the-off-play-play-integrity-profile.md) | Use the off-Play Play Integrity profile in production until `E4-09`. | Accepted |
 | D-250 | [ADR-0251](0251-release-version-scheme.md) | Release version scheme `1.0.0` / `1`. | Accepted |
+| D-251 | [ADR-0252](0252-gate-cold-start-on-the-returning-user-vehicle-list.md) | Gate cold start on a returning user's populated vehicle list, with production first-content markers. | Accepted |
+| D-252 | [ADR-0253](0253-measure-android-performance-with-macrobenchmark.md) | Measure Android performance with Macrobenchmark in `:benchmark`. | Accepted |
+| D-253 | [ADR-0254](0254-measure-ios-performance-with-on-device-xctest.md) | Measure iOS performance with on-device XCTest over a `Benchmark` configuration. | Accepted |
+| D-254 | [ADR-0255](0255-seed-benchmark-data-through-a-benchmark-only-entry-point.md) | Seed benchmark data through a benchmark-only entry point. | Accepted |
+| D-255 | [ADR-0256](0256-run-the-d80-benchmark-in-a-non-shipping-iphone-app.md) | Run the D-80 benchmark in a non-shipping iPhone app. | Accepted |
+| D-256 | [ADR-0257](0257-verify-leaks-and-state-holder-cancellation.md) | Verify leaks and state-holder cancellation. | Accepted |
 | D-257 | [ADR-0258](0258-read-android-release-signing-from-an-out-of-repository-properties-file.md) | Read Android release signing from an out-of-repository properties file. | Accepted |
 | D-258 | [ADR-0259](0259-move-the-production-firebase-cutover-to-story-e4-10.md) | Move the production Firebase cutover to story `E4-10`. | Accepted |
 | D-259 | [ADR-0260](0260-add-a-staging-variant-that-runs-release-code-against-development.md) | Add a `staging` variant that runs release code against development. | Accepted |
 | D-260 | [ADR-0261](0261-do-not-require-review-on-gated-paths-and-document-it.md) | Do not require review on gated paths, and document it. | Accepted |
 | D-261 | [ADR-0262](0262-give-each-ios-configuration-its-own-firebase-plist-name.md) | Give each iOS configuration its own Firebase plist name. | Accepted |
+| D-262 | [ADR-0263](0263-deliver-bundle-e4-b2-through-two-pull-requests.md) | Deliver bundle E4-B2 through two pull requests. | Accepted |
+| D-263 | [ADR-0264](0264-put-leakcanary-in-the-debug-app-build.md) | Put LeakCanary in the debug app build, not only in the test APK. | Accepted |
+| D-264 | [ADR-0265](0265-verify-each-ios-benchmark-install-online-before-measuring-offline.md) | Verify each iOS benchmark install online before measuring offline. | Accepted |
+| D-265 | [ADR-0266](0266-take-the-ios-cold-start-median-over-at-least-ten-recorded-launches.md) | Take the iOS cold-start median over at least ten recorded launches. | Accepted |
+| D-266 | [ADR-0267](0267-measure-the-ios-fling-online-one-block-per-run.md) | Measure the iOS fling online, one block per run. | Accepted |
+| D-267 | [ADR-0268](0268-move-android-performance-verification-after-the-mvp.md) | Move Android performance verification after the MVP. | Accepted |
+| D-268 | [ADR-0269](0269-keep-the-ios-figures-measured-on-997-seeded-entries.md) | Keep the iOS figures measured on 997 seeded entries. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

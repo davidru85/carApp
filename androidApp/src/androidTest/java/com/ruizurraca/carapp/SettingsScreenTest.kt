@@ -30,8 +30,10 @@ import org.junit.Test
  * are covered by `SettingsAccountSectionTest`.
  */
 class SettingsScreenTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun theUnitRowsAreVisibleAndOfferNoClickAction() {

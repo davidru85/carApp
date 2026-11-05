@@ -44,6 +44,7 @@ gradle/libs.versions.toml
 :wiring:firebase
 :composition:ios
 :androidApp
+:benchmark
 iosApp/
 firestore/
 ```

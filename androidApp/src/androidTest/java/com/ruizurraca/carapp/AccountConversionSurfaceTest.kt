@@ -30,8 +30,10 @@ import org.junit.Test
  * `setContent` per test.
  */
 class AccountConversionSurfaceTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun anAnonymousSessionSeesTheLinkAccountRow() {

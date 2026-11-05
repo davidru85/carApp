@@ -42,6 +42,7 @@ GoogleService-Info.plist
 google-services.json
 !androidApp/src/debug/google-services.json
 !androidApp/src/staging/google-services.json
+!androidApp/src/benchmark/google-services.json
 !iosApp/Config/Debug/GoogleService-Info-Debug.plist
 !iosApp/Config/Staging/GoogleService-Info-Staging.plist
 .env

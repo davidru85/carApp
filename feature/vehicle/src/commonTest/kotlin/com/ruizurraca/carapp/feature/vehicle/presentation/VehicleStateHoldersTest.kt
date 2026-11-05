@@ -21,6 +21,7 @@ import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -581,6 +582,55 @@ class VehicleStateHoldersTest {
             assertEquals(1, holder.state.value.vehicles.size)
             assertEquals(null, holder.state.value.message)
             holder.close()
+        }
+
+    /** `E4-03` (`D-256`), `docs/CONTRACTS.md §14`: `close()` cancels the work this holder owns. */
+    @Test
+    fun listHolderCloseCancelsEveryCoroutineItStarted() =
+        runTest {
+            val callerJob = Job()
+            val holder =
+                VehicleListStateHolder(
+                    scope = CoroutineScope(callerJob + UnconfinedTestDispatcher(testScheduler)),
+                    repository = FakeVehicleRepository(),
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+            assertTrue(
+                callerJob.children.any { child -> child.isActive },
+                "precondition: the holder runs work under the caller's job",
+            )
+
+            holder.close()
+            advanceUntilIdle()
+
+            assertTrue(
+                callerJob.children.none { child -> child.isActive },
+                "close() must cancel every coroutine the vehicle list holder started",
+            )
+            callerJob.cancel()
+        }
+
+    @Test
+    fun listHolderCloseLeavesTheCallerScopeActive() =
+        runTest {
+            val callerJob = Job()
+            val holder =
+                VehicleListStateHolder(
+                    scope = CoroutineScope(callerJob + UnconfinedTestDispatcher(testScheduler)),
+                    repository = FakeVehicleRepository(),
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
+                )
+
+            holder.close()
+
+            assertTrue(callerJob.isActive, "close() releases the holder, never the scope its caller owns")
+            callerJob.cancel()
         }
 
     private fun TestScope.ownerScopedListHolder(

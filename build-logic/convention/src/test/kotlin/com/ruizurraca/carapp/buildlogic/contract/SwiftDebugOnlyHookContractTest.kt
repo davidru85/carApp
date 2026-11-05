@@ -100,7 +100,91 @@ class SwiftDebugOnlyHookContractTest {
         assertEquals(emptyList(), SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)))
     }
 
-    private fun applicationSources(): Map<String, String> =
+    @Test
+fun aLaunchArgumentReadOutsideAnyGuardIsRejected() {
+    val source =
+        """
+        let seeding = ProcessInfo.processInfo.arguments.contains("-SEED")
+        """.trimIndent()
+
+    assertEquals(
+        listOf("$FIXTURE_PATH:1 reads the launch arguments outside #if DEBUG or #if CARAPP_BENCHMARK"),
+        SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)),
+    )
+}
+
+@Test
+fun aLaunchArgumentReadInsideBenchmarkIsAccepted() {
+    val source =
+        """
+        #if CARAPP_BENCHMARK
+        let seeding = ProcessInfo.processInfo.arguments.contains("-SEED")
+        #endif
+        """.trimIndent()
+
+    assertEquals(emptyList(), SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)))
+}
+
+@Test
+fun aLaunchArgumentReadInsideDebugIsAccepted() {
+    val source =
+        """
+        #if DEBUG
+        let seeding = ProcessInfo.processInfo.arguments.contains("-SEED")
+        #endif
+        """.trimIndent()
+
+    assertEquals(emptyList(), SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)))
+}
+
+@Test
+fun aLaunchArgumentReadInTheElseBranchOfBenchmarkIsRejected() {
+    val source =
+        """
+        #if CARAPP_BENCHMARK
+        let seeding = false
+        #else
+        let seeding = ProcessInfo.processInfo.arguments.contains("-SEED")
+        #endif
+        """.trimIndent()
+
+    assertEquals(
+        listOf("$FIXTURE_PATH:4 reads the launch arguments outside #if DEBUG or #if CARAPP_BENCHMARK"),
+        SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)),
+    )
+}
+
+@Test
+fun aDisjunctionWithBenchmarkDoesNotGuardALaunchArgumentRead() {
+    val source =
+        """
+        #if CARAPP_BENCHMARK || targetEnvironment(simulator)
+        let seeding = ProcessInfo.processInfo.arguments.contains("-SEED")
+        #endif
+        """.trimIndent()
+
+    assertEquals(
+        listOf("$FIXTURE_PATH:2 reads the launch arguments outside #if DEBUG or #if CARAPP_BENCHMARK"),
+        SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)),
+    )
+}
+
+@Test
+fun theBenchmarkConditionDoesNotGuardALaunchEnvironmentRead() {
+    val source =
+        """
+        #if CARAPP_BENCHMARK
+        let forced = ProcessInfo.processInfo.environment["HOOK"] == "1"
+        #endif
+        """.trimIndent()
+
+    assertEquals(
+        listOf("$FIXTURE_PATH:2 reads the launch environment outside #if DEBUG"),
+        SwiftDebugOnlyHookRule.violations(mapOf(FIXTURE_PATH to source)),
+    )
+}
+
+private fun applicationSources(): Map<String, String> =
         repositoryRoot
             .resolve("iosApp")
             .listFiles()

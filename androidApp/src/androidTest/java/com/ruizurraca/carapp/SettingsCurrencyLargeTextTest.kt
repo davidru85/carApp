@@ -41,8 +41,10 @@ import org.junit.Test
  * to stay on one line.
  */
 class SettingsCurrencyLargeTextTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun theSpanishUsdCurrencyLabelStaysOnOneLineOnTheReferenceDevice() {

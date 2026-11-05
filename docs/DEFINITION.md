@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses and one active device per account. Users can create vehicles, log refueling events, review history, calculate real consumption, keep their data available offline, and back it up for recovery on a new device.
 
-Phases 0 and 1 are complete and Phase 2 is open: `E1-01` through `E1-13`, `E3-06`, `E3-01`, `E0-07`, `E2-01` and `E2-02` have delivered the SQLDelight database, complete local Vehicle and Fuel Entry repositories, Fuel Entry validation, reviewed full-to-full consumption, executable provider decoupling, reviewed Firestore rules, the native walking skeleton, both native Vehicle and Fuel Entry flows, device-local settings, the provider-free auth contracts with their auth-backed owner context, and the Firebase Auth credential exchange. `E2-03`, the F-1 onboarding flow, merged on 2026-09-06 through pull request #54; `E2-06`, local owner adoption, merged on 2026-09-06 through pull request #55. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
+Phases 0 to 3 are complete and Phase 4 is in progress: bundle `E4-B1` delivered the Settings screen, the account conversion surface, accessibility and localization; bundle `E4-B2` delivered engineering release readiness, crash reporting and a `staging` variant (`E4-04`, merged) and performance hardening (`E4-03`, awaiting the owner's review, with its Android device measurement moved after the MVP by `D-267`). `E4-10`, the production Firebase cutover, is the last story before MVP closure, and the store-submission prerequisites `E4-06`, `E2-10`, `E4-09` and `E5-05` remain before any App Store or Google Play release. See `AGENTS.md` §Repository State.
 
 ## 2. MVP Objective
 
@@ -92,10 +92,10 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 |-------|--------|------|------|
 | 0 | Complete | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every implemented architecture rule has a failing fixture proving it fires |
 | 1 (opening) | Complete | `:core:database` and the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth | The local/remote Vehicle path works under the same retained anonymous session on both native hosts; the Swift-facing surface constraints hold. Permanent-account cross-device recovery moves to E3-12 |
-| 1 | Complete | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | Local repositories and both native Vehicle and Fuel Entry flows are complete; real-iPhone performance evidence remains explicit for E4-03 under D-80 |
-| 2 | Open; E2-01, E2-02, E2-03 and E2-06 complete; E2-07 next | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Partial; E3-01 and E3-06 complete | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof, E3-13 outbox `entityType` single-source centralization | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
-| 4 | Planned | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
+| 1 | Complete | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | Local repositories and both native Vehicle and Fuel Entry flows are complete; the D-80 real-iPhone consumption evidence was recorded by E4-03 |
+| 2 | Complete | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
+| 3 | Complete | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof, E3-13 outbox `entityType` single-source centralization | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
+| 4 | In progress; E4-01, E4-05, E4-02 and E4-04 merged, E4-03 awaiting review in PR #95, E4-10 last | Settings UI, account conversion, accessibility, i18n, performance, engineering release readiness, production cutover | Release builds run against the production project after E4-10; store-submission prerequisites remain before any store release |
 
 ## 10. Risks
 

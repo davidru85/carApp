@@ -12,6 +12,8 @@ struct carAppApp: App {
     private let backgroundDuration = SceneBackgroundDuration()
 
     init() {
+        // `E4-03` (`D-251`): must start before the first scene becomes active.
+        LaunchMeasurement.shared.begin()
         configureAppCheck()
         configureFirebase()
         let graph = createSwiftAppGraph(isDebugBuild: isDebugBuild)
@@ -22,6 +24,7 @@ struct carAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: model, graph: graph)
+                .benchmarkSeedingIfRequested(graph: graph)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }
@@ -85,7 +88,8 @@ func firebaseConfigurationResourceName(configuration: String) -> String {
     switch configuration {
     case "Debug":
         "GoogleService-Info-Debug"
-    case "Staging":
+    // `E4-03` (`D-253`): Benchmark is the measured derivative of Staging, so it loads the Staging plist.
+    case "Staging", "Benchmark":
         "GoogleService-Info-Staging"
     default:
         "GoogleService-Info"

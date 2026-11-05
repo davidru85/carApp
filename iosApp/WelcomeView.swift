@@ -72,5 +72,6 @@ struct WelcomeView: View {
             }
         }
         .padding(24)
+        .onAppear { LaunchMeasurement.shared.finishAtFirstContent() }
     }
 }

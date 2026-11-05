@@ -309,6 +309,8 @@ class SettingsStateHolderTest {
                 holderJobs.single().isActive,
                 "close() cancels the holder's job, and a second close is a no-op",
             )
+            // `E4-03` (`D-256`), `docs/CONTRACTS.md §14`: close() releases the holder, never the caller's scope.
+            assertTrue(parent.isActive, "close() releases the holder, never the scope its caller owns")
             parent.cancel()
         }
 

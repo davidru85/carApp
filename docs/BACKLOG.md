@@ -334,8 +334,9 @@ Acceptance criteria:
 
 ### E1-05 - Consumption Calculation R-3 - M
 
-Status: implementation completed on 2026-08-28. The optimized real-iPhone measurement remains an
-explicit D-80 item in E4-03; E1-05 does not claim that device evidence.
+Status: implementation completed on 2026-08-28. The optimized real-iPhone measurement was run in E4-03 on
+2026-11-04 (`D-80`, `D-255`); a dated closure update at the top of `docs/handoffs/E1-05.md` records
+the device, the OS, the date and the median.
 
 Implement the pure `CalculateConsumption` use case.
 
@@ -1432,8 +1433,9 @@ Acceptance criteria:
 
 ### E4-03 - Performance and Reliability Hardening - M
 
-Status: scheduled, second story of bundle `E4-B2` (`D-209`, ADR-0210), after `E4-04`.
-`E4-B2` starts now that bundle `E4-B1` has merged (2026-10-23). `E4-04` runs first. Since `D-258`
+Status: implemented as the second story of bundle `E4-B2` (`D-209`, ADR-0210), awaiting the owner's
+gated review in the bundle's second pull request, #95 (`D-262`, ADR-0263). `E4-04` merged first, through
+pull request #94 on 2026-10-30. Since `D-258`
 (ADR-0259) moved the production configuration to `E4-10`, this story measures the `staging` build type of
 `D-259` (ADR-0260), which runs release code and settings against the development project.
 
@@ -1442,14 +1444,16 @@ Measure and fix MVP performance.
 Acceptance criteria:
 
 - Cold start, list smoothness and consumption targets are met, measured exactly as defined in `docs/versions-matrix.md` on the reference devices.
+  `D-267` (ADR-0268) moves the Android device measurement to `E5-05`, and `D-268` (ADR-0269) records the iOS
+  figures on 997 seeded entries.
 - Run and record the D-80 optimized consumption benchmark on a real iPhone, filling the device and date left open by E1-05.
 - No memory leaks in critical flows; state holder scopes are cancelled.
 
 ### E4-04 - Release Preparation - M
 
-Status: engineering scope delivered on 2026-10-27 and under the owner's review in pull request #94;
-first story of bundle `E4-B2` (`D-209`, ADR-0210), on `story/E4-B2-release-readiness`. Two criteria wait
-for the owner-run `staging` device session (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
+Status: engineering scope delivered on 2026-10-27 and merged on 2026-10-30 through pull request #94
+(merge commit `bf6c8e21`); first story of bundle `E4-B2` (`D-209`, ADR-0210). Its last two criteria
+passed in the `staging` device session of 2026-11-03 (O15 and O16 in `docs/handoffs/E4-B2.md`). Limited to engineering release readiness by `D-236` (ADR-0237) on
 2026-10-24: its store-only work moved to `E4-09`. The production Firebase cutover moved to `E4-10` by
 `D-258` (ADR-0259) on 2026-10-27, so this story closes with the fail-closed mechanism of `D-238` and the
 `staging` variant of `D-259`.
@@ -1627,6 +1631,79 @@ Acceptance criteria:
 Depends on: E2-05.
 
 Human review required.
+
+### E5-05 - Android Physical-Device Performance Gate - S
+
+Status: Deferred / Post-MVP (`D-267`, ADR-0268). It MUST be done before any App Store or Google Play
+submission.
+
+`E4-03` closed with no Android gate figure: its only Android figure is an indicative A3 from an emulator.
+
+Acceptance criteria:
+
+- `docs/runbooks/performance-measurement.md` §2 runs unchanged, A0 to A8, on a physical Android device with
+  Android 14 (API 34) or later: the Pixel 6a reference device, or a substitute recorded under the rule of
+  `docs/versions-matrix.md`. No Macrobenchmark error is suppressed.
+- A5 adopts the seeded history into an anonymous development identity (`D-251`), so A6 measures the adopted
+  returning user.
+- The A3 and A6 medians are under 2 s and A7 counts 0 frames over 32 ms; the figures, the device, the build
+  head and the date are recorded in the story handoff and in `docs/PROJECT_LOG.md`.
+
+Readiness: its intake needs the owner to name the physical device. The A6 and A7 procedures have never
+completed on an Android device, so this story may need harness fixes.
+
+Depends on: E4-03.
+
+### E5-06 - iOS Benchmark Seeder Loses Entries - S
+
+Status: Deferred / Post-MVP (`D-268`, ADR-0269).
+
+On the iPhone 13 mini the iOS seeding reported `benchmark_seed_done` with 1,000, but a read-only database
+copy held 997 fuel entries. `BenchmarkSeeding` in `iosApp/BenchmarkSupport.swift` saves each entry through a
+new `FuelEntryFormViewModel`, takes the save callback as success, and reports the planned count without
+reading it back.
+
+Acceptance criteria:
+
+- The cause of the lost entries is reproduced by a failing test and fixed.
+- The iOS seeding reads the fuel-entry count of the seeded vehicle back from the database and reports
+  `benchmark_seed_failed` unless it equals `BenchmarkPlan.fuelEntryCount`.
+- The shared seeder used by Android is checked for the same gap, and it gains a read-back if its writes can
+  be lost.
+- The seeding UI test asserts the read-back count.
+- No measurement is repeated (`D-268`).
+
+Depends on: E4-03.
+
+### E5-07 - Local Owner Cold Start Routing - S
+
+Status: Deferred / Post-MVP (`D-267`, ADR-0268). Not yet classified as a defect.
+
+During `E4-03` O17, a local owner with vehicles saw the welcome screen at every offline cold start on the
+Android emulator, and `Continue without an account` then showed the list with the rows intact.
+`SessionPhase.LOCAL` exists only in the published state of one process, and `SignedOut` routes to `WELCOME`.
+`docs/SPECIFICATION.md` F-1 step 5 routes a user with vehicles to the vehicle list once the authentication
+state is determined.
+
+Acceptance criteria:
+
+- The behaviour is reproduced on both hosts and compared with F-1 and `D-124`.
+- The owner decides whether it is a defect. If it is, the routing is fixed test first, without creating an
+  account for a device that has neither the explicit choice nor rows (`D-124`).
+
+Depends on: E2-06.
+
+### E5-08 - Owner-Run Acceptances of Bundle E4-B1 - S
+
+Status: Deferred / Post-MVP (`D-267`, ADR-0268).
+
+Acceptance criteria:
+
+- The owner runs and records the `E4-01` departure checklists, the `E4-05` provider acceptance and the
+  `E4-02` screen-reader walkthrough of `D-226`, as their story handoffs describe them.
+- Each failure found becomes its own story.
+
+Depends on: E4-01, E4-05, E4-02.
 
 ## Follow-Ups Outside the Phase Milestones
 
@@ -2465,7 +2542,8 @@ touch the same statements, and `E3-B2` runs `E3-15 -> E3-16` after `E3-B1` merge
 decides `D-149` and `D-150`; both conditions were met on 2026-10-15. Inside a bundle every story keeps its own ready check, handoff, TDD cycle
 and project-log entry.
 
-`D-209` (ADR-0210) delivers Phase 4 as two consecutive bundles, each through one pull request:
+`D-209` (ADR-0210) delivers Phase 4 as two consecutive bundles, each through one pull request, except
+that `D-262` (ADR-0263) delivers `E4-B2` through two:
 `E4-B1` runs `E4-01 -> E4-05 -> E4-02` on `story/E4-B1-product-surface`, because `E4-05` adds its
 row to the Settings screen that `E4-01` builds and `E4-02` audits every screen, both of them
 included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after `E4-B1` merges.
@@ -2507,7 +2585,7 @@ proof after E3-04.
 | E1-02 Vehicle domain (completed) | 1 | S | — |
 | E1-03 Vehicle data (completed) | 1 | M | — |
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
-| E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
+| E1-05 Consumption calculation (completed; D-80 device evidence recorded in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data (completed) | 1 | M | — |
 | E1-07 Android UI vehicles (completed) | 1 | M | — |
 | E1-08 Android UI fuel entries (completed) | 1 | L | — |
@@ -2554,8 +2632,8 @@ proof after E3-04.
 | E4-01 Settings UI (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | L | — |
 | E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
 | E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
-| E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
-| E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`) | 4 | M | — |
+| E4-03 Performance hardening (bundle `E4-B2`, implemented, PR #95) | 4 | M | — |
+| E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`, merged in PR #94) | 4 | M | — |
 | E4-10 Production Firebase cutover (last story before MVP closure, `D-258`) | 4 | M | Yes |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
 | E4-09 Store submission readiness (postponed, low priority) | follow-up | M | Yes |
@@ -2568,5 +2646,9 @@ proof after E3-04.
 | E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
 | E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |
 | E5-04 Departure evaluation auth-state reconciliation | 5 (Post-MVP) | S | Yes |
+| E5-05 Android physical-device performance gate | 5 (Post-MVP) | S | — |
+| E5-06 iOS benchmark seeder loses entries | 5 (Post-MVP) | S | — |
+| E5-07 Local owner cold start routing | 5 (Post-MVP) | S | — |
+| E5-08 Owner-run acceptances of bundle E4-B1 | 5 (Post-MVP) | S | — |
 
 Human review gates are defined canonically in `AGENTS.md`. The column above is a convenience index, not a second source.

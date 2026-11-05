@@ -37,8 +37,10 @@ import org.junit.Test
  * beside it regardless.
  */
 class AccountConversionRootPromptTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun aCollisionDeliveredAfterLeavingSettingsIsConfirmedByTheRoot() {

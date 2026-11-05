@@ -263,11 +263,24 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-248 | Release build evidence | Local only | Accepted | No new required check. See ADR-0249. |
 | D-249 | Production App Check profile | Off-Play Play Integrity until `E4-09` | Accepted | Applied by `E4-10`. See ADR-0250. |
 | D-250 | Release version scheme | `1.0.0` / `1`, integer build number per upload | Accepted | Gradle and iOS build settings. See ADR-0251. |
+| D-251 | Cold-start first content | Populated vehicle list of a returning user; welcome screen as second figure; production markers on both hosts; returning-user state by offline seeding plus one online adoption (R-a) | Accepted | Measures what a returning user waits for. See ADR-0252. |
+| D-252 | Android performance tooling | Macrobenchmark 1.5.0 + UiAutomator 2.4.0 in `:benchmark`; `benchmark` build type derived from `staging` | Accepted | Scripted cold start and frame lateness on release code. See ADR-0253. |
+| D-253 | iOS performance tooling | Device-only XCTest launch and hitch metrics over the `Benchmark` configuration derived from `Staging` | Accepted | Exact on iOS 26 at 60 Hz; Instruments otherwise. See ADR-0254. |
+| D-254 | Benchmark data seeding | Benchmark-only entry points over `seedBenchmarkFuelHistory` / the existing view models | Accepted | Real write path, nothing enqueued while seeding; the hook rule covers launch arguments. See ADR-0255. |
+| D-255 | D-80 real-iPhone execution | `ConsumptionBenchmark` framework from a `deviceBenchmark` compilation, `ConsumptionBenchmarkApp` target | Accepted | Records the open `E1-05` device result in a dated closure update. See ADR-0256. |
+| D-256 | Leak and cancellation verification | LeakCanary rule chain, iOS deallocation tests, holder cancellation tests | Accepted | Executes `docs/CONTRACTS.md §14` `close()` semantics. See ADR-0257. |
 | D-257 | Android release signing | Out-of-repository properties file via a Gradle property | Accepted | Unsigned and silent when absent; rejects in-repository paths. See ADR-0258. |
 | D-258 | Production Firebase cutover | Story `E4-10`, last before MVP closure | Accepted | `E4-04` keeps the mechanism and `staging`. See ADR-0259. |
 | D-259 | `staging` variant | Release code and settings, `.debug` identity, development configuration | Accepted | `E4-03` measures it. See ADR-0260. |
 | D-260 | Review enforcement | Off; documentation corrected; secret scanning on | Accepted | Sole author cannot self-approve. See ADR-0261. |
 | D-261 | iOS Firebase plist names | Unique plist name per configuration; each configuration excludes the others | Accepted | Keeps development configuration out of Release. See ADR-0262. |
+| D-262 | E4-B2 delivery | Two pull requests from one branch: #94 (`E4-04`), then `E4-03` and the closure | Accepted | Pull request #94 merged before `E4-03` started. See ADR-0263. |
+| D-263 | Android leak detection packaging | `debugImplementation` of `leakcanary-android` plus `androidTestImplementation` of its instrumentation artifact | Accepted | The instrumentation artifact alone cannot install `AppWatcher` in the application process. See ADR-0264. |
+| D-264 | iOS benchmark install verification | One online verification launch per test, then the offline measurement of `D-253` | Accepted | iOS 27 verifies every developer-signed install online at its first launch. See ADR-0265. |
+| D-265 | iOS cold-start sample | 25 iterations, median of every recorded value, at least 10 per run | Accepted | The launch metric drops iterations on the iOS 27 substitute device. See ADR-0266. |
+| D-266 | iOS fling runs and network state | One measured block of 30 flings per run, five runs, measured online | Accepted | Runs with 60 full-list flings lost every hitch value on the iOS 27 substitute device. See ADR-0267. |
+| D-267 | Android performance verification after the MVP | No Android gate figure in `E4-03`; physical-device measurement in post-MVP `E5-05`; the emulator's A3 is indicative | Accepted | App Check rejects the emulator and a local owner returns to the welcome screen at every cold start. See ADR-0268. |
+| D-268 | iOS figures on 997 seeded entries | Keep the O18 figures; fix the iOS seeder in post-MVP `E5-06`; no re-measurement | Accepted | The iOS seeding reported 1,000 while the database held 997. See ADR-0269. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -304,6 +317,7 @@ gradle/libs.versions.toml       single source of dependency versions
 :wiring:firebase                composition root that names Firebase integrations
 :composition:ios                sole Shared framework producer and iOS composition root
 :androidApp                     Android host app
+:benchmark                      Macrobenchmark com.android.test module for the androidApp benchmark build type (E4-03)
 iosApp/                         SwiftUI host app
 firestore/                      rules and indexes
 ```
@@ -332,6 +346,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
 | `:wiring:firebase` | `:integration:*`, `:shared` graph, Koin | product logic |
 | `:composition:ios` | `:shared`, `:wiring:firebase`, `:feature:vehicle`, `:feature:fuel`, `:core:common` | product logic, direct `:integration:*`, a second framework runtime, any other feature or core module |
+| `:benchmark` | `:androidApp` as the measured application (`targetProjectPath`), Macrobenchmark, UiAutomator, AndroidX Test | `:shared`, `:shared:testing`, `:core:*`, `:feature:*`, `:integration:*`, `:wiring:*`, Firebase, GitLive, Koin, SQLDelight, product logic |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
@@ -339,7 +354,7 @@ Feature `data` cannot depend on `:core:auth`, so the current owner reaches repos
 
 "Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash` and one for `:core:testing` (a platform API used in the `commonMain` public surface, not in a permitted `expect`/`actual` test double).
 
-The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must provide generic fakes for every `AppGraphDependencies` abstraction; it remains forbidden from reaching `:shared`, integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure. `:shared:testing` performs the application-specific composition and exposes it to consumer `commonTest` source sets (`D-56`).
+The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must provide generic fakes for every `AppGraphDependencies` abstraction; it remains forbidden from reaching `:shared`, integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure. `:shared:testing` performs the application-specific composition and exposes it to consumer `commonTest` source sets (`D-56`). `:benchmark` (`E4-03`, `D-252`) is a test-only Android module whose row allows nothing but the application it measures.
 
 "Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 
@@ -662,8 +677,8 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: complete through E1-13. D-80 leaves the manual optimized real-iPhone consumption
-measurement explicit for E4-03.
+Status: complete through E1-13. E4-03 recorded the D-80 optimized real-iPhone consumption
+measurement on 2026-11-04.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 
@@ -686,7 +701,7 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 ### Phase 4 - MVP Hardening
 
-Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is in flight, with `E4-04` limited to engineering release readiness by `D-236`; `D-258` moved the production Firebase cutover to `E4-10`, the last story before MVP closure.
+Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` is delivered through two pull requests (`D-262`): `E4-04`, limited to engineering release readiness by `D-236`, merged on 2026-10-30 through pull request #94, and `E4-03` is implemented and awaits the owner's gated review in pull request #95, with its Android device measurement moved after the MVP by `D-267`; `D-258` moved the production Firebase cutover to `E4-10`, the last story before MVP closure, so Phase 4 completes with `E4-10`.
 
 Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration. Store-submission requirements are outside the phase: `E4-06`, `E2-10` and `E4-09` (`D-236`).
 

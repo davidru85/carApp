@@ -61,7 +61,8 @@ git worktree add .worktrees/carApp-<slug> -b <type>/<slug> origin/main
 - Commit messages, code comments, ADRs and all repository artifacts are written in technical English. Conversation with the project owner may happen in Spanish.
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.
   The only exceptions are the two Phase 3 bundles of `D-205` (ADR-0206) and the two Phase 4 bundles
-  of `D-209` (ADR-0210): each bundle is delivered through one pull request, and every story inside it
+  of `D-209` (ADR-0210): each bundle is delivered through one pull request (`E4-B2` through two, by
+  `D-262`, ADR-0263), and every story inside it
   keeps its own handoff, TDD cycle, commit scope and project-log entry.
 - **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** The owner is the only
   author this history records; agents commit on their behalf and never under a placeholder identity.

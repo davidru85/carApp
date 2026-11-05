@@ -17,8 +17,10 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class FirstVehicleOnboardingTest {
-    @get:Rule
     val composeRule = createEmptyComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun firstVehicleCreationOffersNoBackAffordanceAndRoutesToTheCreatedVehicleDetail() {

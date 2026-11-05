@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.ReportDrawn
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -767,6 +768,8 @@ private fun VehicleListContent(
             }
 
             else -> {
+                // `E4-03` (`D-251`): a returning user's populated list is the cold start's first content.
+                ReportDrawn()
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.vehicles, key = VehicleListItemUi::id) { vehicle ->
                         Column(

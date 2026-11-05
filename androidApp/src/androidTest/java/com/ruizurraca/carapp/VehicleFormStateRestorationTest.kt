@@ -30,8 +30,10 @@ import org.junit.Rule
 import org.junit.Test
 
 class VehicleFormStateRestorationTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun restoredDraftIsRepublishedIntoAFreshHolderBeforeSave() {

@@ -15,8 +15,18 @@ class FirebaseConfigurationTest {
         const val ANDROID_STAGING_CONFIG = "androidApp/src/staging/google-services.json"
         const val IOS_DEBUG_CONFIG = "iosApp/Config/Debug/GoogleService-Info-Debug.plist"
         const val IOS_STAGING_CONFIG = "iosApp/Config/Staging/GoogleService-Info-Staging.plist"
+
+        // `E4-03` (`D-252`): the benchmark build type measures staging, so it carries a byte copy of the
+        // staging configuration; `PerformanceHarnessContractTest` pins the copy.
+        const val ANDROID_BENCHMARK_CONFIG = "androidApp/src/benchmark/google-services.json"
         val ALLOWED_DEVELOPMENT_CONFIG_PATHS =
-            listOf(ANDROID_DEBUG_CONFIG, ANDROID_STAGING_CONFIG, IOS_DEBUG_CONFIG, IOS_STAGING_CONFIG)
+            listOf(
+                ANDROID_DEBUG_CONFIG,
+                ANDROID_STAGING_CONFIG,
+                ANDROID_BENCHMARK_CONFIG,
+                IOS_DEBUG_CONFIG,
+                IOS_STAGING_CONFIG,
+            )
         val RELEASE_CONFIG_PATHS =
             listOf(
                 "androidApp/src/release/google-services.json",
@@ -209,6 +219,8 @@ class FirebaseConfigurationTest {
                 "Debug" to "GoogleService-Info-Debug.plist",
                 "Staging" to "GoogleService-Info-Staging.plist",
                 "Release" to "GoogleService-Info.plist",
+                // `E4-03` (`D-253`): Benchmark measures Staging, so it bundles the Staging plist.
+                "Benchmark" to "GoogleService-Info-Staging.plist",
             )
         val resourcePlists =
             Regex("""(?m)^\s*- path: Config/[^/\s]+/(GoogleService-Info[^/\s]*\.plist)\s*$""")
@@ -374,9 +386,9 @@ class FirebaseConfigurationTest {
         assertTrue(projectSpec.contains("Config/Release/Firebase.xcconfig"))
         assertTrue(projectSpec.contains("Config/Staging/Firebase.xcconfig"))
         assertEquals(
-            3,
+            4,
             xcodeProject.lines().count { it.contains("baseConfigurationReference") && it.contains("Firebase.xcconfig") },
-            "each of the three app configurations must carry its own base configuration",
+            "each of the four app configurations must carry a Firebase base configuration (Benchmark reuses Staging's)",
         )
         (listOf("Debug", "Release", "Staging")).forEach { configuration ->
             val base = repositoryRoot.resolve("iosApp/Config/$configuration/Firebase.xcconfig").readText()

@@ -19,8 +19,10 @@ import org.junit.Test
  * intents is `sessionPromptCallbacks`.
  */
 class SettingsSessionPromptsTest {
-    @get:Rule
     val composeRule = createComposeRule()
+
+    @get:Rule
+    val leakDetection = leakDetecting(composeRule)
 
     @Test
     fun thePendingSyncPromptShowsTheExactCount() {

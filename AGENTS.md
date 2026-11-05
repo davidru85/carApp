@@ -170,9 +170,10 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** bundle `E4-B2` (`E4-04`, then `E4-03`), the second and last Phase 4 bundle under
-  `D-209` (ADR-0210), is in flight on `story/E4-B2-release-readiness`; `D-236` (ADR-0237) limits
-  `E4-04` to engineering release readiness. Bundle `E4-B1` merged on 2026-10-23 through pull
+- **Next:** the owner's gated review of pull request #95, the second and last of bundle `E4-B2` (`E4-03`,
+  `D-262`, ADR-0263), implemented on `story/E4-B2-release-readiness`; its merge completes bundle
+  `E4-B2`, and `E4-10` follows as the last story before MVP closure. `E4-04` merged on 2026-10-30
+  through pull request #94. Bundle `E4-B1` merged on 2026-10-23 through pull
   requests #91 and #92. Both bundles are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
@@ -270,11 +271,18 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-03`, then `E4-10`. Bundle `E4-B2` (release readiness) is in flight on
-  `story/E4-B2-release-readiness`; its live checkpoint is `docs/handoffs/E4-B2.md`. `E4-04` closed its
-  engineering scope on 2026-10-27, limited by `D-236` (ADR-0237) and split by `D-258` (ADR-0259): it
-  delivers the per-build-type Firebase selection that fails release builds closed (`D-238`) and the
-  `staging` variant (`D-259`). `E4-03` measures `staging` next. `E4-10`, Production Firebase Cutover,
+- **Remaining Phase 4:** `E4-10`, once bundle `E4-B2` merges. Bundle `E4-B2` (release readiness) is
+  implemented on `story/E4-B2-release-readiness` and awaits the owner's gated review of its second pull
+  request, #95 (`D-262`, ADR-0263); its record is `docs/handoffs/E4-B2.md`. `E4-04` closed its engineering
+  scope on 2026-10-27 and merged on 2026-10-30 through pull request #94 (merge commit `bf6c8e21`), limited
+  by `D-236` (ADR-0237) and split by `D-258` (ADR-0259): it delivers the per-build-type Firebase selection
+  that fails release builds closed (`D-238`) and the `staging` variant (`D-259`); its owner-run `staging`
+  device session (O15 and O16) passed on 2026-11-03. `E4-03` measured `staging` through its `benchmark`
+  derivatives and introduced `D-251` through `D-256` and `D-263` through `D-268`. The iOS gates passed on
+  the iPhone 13 mini, on 997 seeded entries (`D-268`), and it recorded the `D-80` real-iPhone consumption
+  median on 2026-11-04. **Android has no gate figure:** `D-267` moves its device measurement to the
+  post-MVP story `E5-05`, so the MVP closes with the Android performance targets unverified on hardware.
+  `E4-10`, Production Firebase Cutover,
   is the last story before MVP closure. Bundle `E4-B1`, the product
   surface (`E4-01` Settings UI, `E4-05` account conversion host surface, `E4-02` accessibility and
   localization), merged on 2026-10-23 through pull requests #91 and #92 (merge commits `28354df8` and
@@ -282,11 +290,13 @@ review.
   `D-229` (ADR-0230) splits the iOS UI tests out of `ios-simulator-build`, and `D-230` (ADR-0231)
   runs them as five protected shard checks. Its owner-run acceptances (the `E4-01` departure
   checklists, the `E4-05` provider acceptance and the `E4-02` screen-reader walkthrough of `D-226`)
-  are still open and are recorded in the story handoffs. `E4-05` was created on 2026-10-15 by
+  are postponed to the post-MVP story `E5-08` by `D-267` and are described in the story handoffs. `E4-05` was created on 2026-10-15 by
   `D-210` (ADR-0211), which places the anonymous account-conversion entry point in Settings.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
-  Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
-  Auth-State Reconciliation).
+  Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership), `E5-04` (Departure Evaluation
+  Auth-State Reconciliation), `E5-05` (Android Physical-Device Performance Gate, which MUST precede any
+  store submission), `E5-06` (iOS Benchmark Seeder Loses Entries), `E5-07` (Local Owner Cold Start Routing)
+  and `E5-08` (Owner-Run Acceptances of Bundle E4-B1).
 
 `docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.
 
@@ -314,6 +324,7 @@ build-logic/       convention plugins, an included build
 :wiring:firebase   staged Firebase provider composition contract
 :composition:ios   sole Shared framework producer and iOS composition root
 :androidApp        the Android host app and Compose Vehicle and Fuel Entry flows
+:benchmark         Macrobenchmark test module for the androidApp benchmark build type (E4-03, D-252)
 ```
 
 `:androidApp` additionally depends on `androidx.work:work-runtime` (`D-184`), which reaches neither
@@ -572,7 +583,8 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 Work only on the assigned backlog story. `D-205` (ADR-0206) assigns the six remaining Phase 3
 stories as two bundles, `E3-B1` and `E3-B2`, and `D-209` (ADR-0210) assigns the Phase 4 stories as
 two bundles, `E4-B1` (`E4-01`, `E4-05`, `E4-02`) and `E4-B2` (`E4-04`, `E4-03`). Each bundle is
-delivered through one pull request; inside a bundle the stories run one at a time, and each keeps
+delivered through one pull request, except `E4-B2`, which `D-262` (ADR-0263) delivers through two;
+inside a bundle the stories run one at a time, and each keeps
 its own ready check, handoff and TDD cycle. No other story may be bundled without a new decision.
 The authoritative out-of-scope list is
 `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
