@@ -3,9 +3,10 @@ import XCTest
 /// `E4-03` (`D-253`): hitches during a scripted fling across the 1,000-entry list.
 ///
 /// At 60 Hz every hitch keeps the previous frame on screen for at least 33.3 ms, so a hitch count of zero
-/// is exactly "0 frames over 32 ms". Each iteration measures the flings to the end, then reopens the vehicle
-/// to return to the top: on iOS 27 a block that also flings back (about 175 s) records no hitch value
-/// (`D-266`). The test measures online (`D-266`).
+/// is exactly "0 frames over 32 ms". On iOS 27 the hitch metric stops recording after about 60 full-list
+/// flings in one run, so a run measures one block of flings to the end, and the runbook repeats the run five
+/// times (`D-266`). XCTest discards its first invocation, which never flings; the clock metric shows that the
+/// measured block is the one that flings. The test measures online (`D-266`).
 final class ListScrollPerformanceUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -25,17 +26,18 @@ final class ListScrollPerformanceUITests: XCTestCase {
         XCTAssertTrue(list.waitForExistence(timeout: PerformancePlan.contentTimeout), "The fuel entry list never appeared")
 
         let options = XCTMeasureOptions()
-        options.iterationCount = PerformancePlan.scrollIterations
+        options.iterationCount = PerformancePlan.flingBlocksPerRun
         options.invocationOptions = [.manuallyStop]
-        measure(metrics: [XCTHitchMetric(application: app)], options: options) {
-            for _ in 0..<PerformancePlan.flingsPerIteration {
-                list.swipeUp(velocity: .fast)
+        var warmUp = true
+        measure(metrics: [XCTHitchMetric(application: app), XCTClockMetric()], options: options) {
+            if warmUp {
+                warmUp = false
+            } else {
+                for _ in 0..<PerformancePlan.flingsPerIteration {
+                    list.swipeUp(velocity: .fast)
+                }
             }
             stopMeasuring()
-            app.navigationBars.buttons.element(boundBy: 0).tap()
-            _ = app.buttons["add_vehicle"].waitForExistence(timeout: PerformancePlan.contentTimeout)
-            vehicle.tap()
-            _ = list.waitForExistence(timeout: PerformancePlan.contentTimeout)
         }
         app.terminate()
     }

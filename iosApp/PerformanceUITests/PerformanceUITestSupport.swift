@@ -10,7 +10,9 @@ enum PerformancePlan {
     static let contentTimeout: TimeInterval = 30
     /// `D-265`: the launch metric drops iterations on iOS 27, so a run of 25 must record at least 10 values.
     static let coldStartIterations = 25
-    static let scrollIterations = 5
+    /// `D-266`: the iOS 27 hitch metric stops recording after about 60 full-list flings in one run, so a run
+    /// measures one block and `docs/runbooks/performance-measurement.md` I7 repeats the run five times.
+    static let flingBlocksPerRun = 1
     static let flingsPerIteration = 30
     /// `D-264`: how long a test waits for the owner to switch the device offline.
     static let offlineTimeout: TimeInterval = 300
@@ -38,9 +40,9 @@ extension XCUIApplication {
         waitIdle(idle)
     }
 
-    /// `D-266`: on iOS 27 the hitch metric records no value while the device is offline, so the fling is
-    /// measured online. Launches the app once online, so that iOS verifies the install, waits `idle`
-    /// seconds and checks that the device is still online.
+    /// `D-266`: the fling is measured online, so that its five runs need no airplane-mode switch. Launches
+    /// the app once online, so that iOS verifies the install, waits `idle` seconds and checks that the device
+    /// is still online.
     func verifyOnlineThenIdle(idle: TimeInterval) {
         verifyInstallOnline()
         waitIdle(idle)
