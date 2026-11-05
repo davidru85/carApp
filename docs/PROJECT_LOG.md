@@ -38,6 +38,31 @@
 
 ## Entries
 
+### 2026-11-05 — E4-B2 record closure
+
+- **Type:** milestone
+- **Story / Decision:** `E4-04`, `E4-03` (bundle `E4-B2`) / — (no decision changed)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E4-B2-record-closeout`)
+- **What changed:** bundle `E4-B2` merged after the owner's gated review: pull request #94 on 2026-10-30
+  (merge commit `bf6c8e21`, branch head `dd616e03`) and pull request #95 on 2026-11-05 (merge commit
+  `3943868d`, whose second parent is the branch head `8f540962`). `AGENTS.md` names `E4-10` as next; the
+  `E4-03` backlog status and index row, the `docs/TECHNICAL_PLAN.md` Phase 4 status, `docs/DEFINITION.md` and
+  `README.md` state the merge; the bundle and story handoffs carry a dated `Closure update`. The `E4-03` one
+  also corrects its incomplete §Files Changed.
+- **Why:** `AGENTS.md` §Repository State must tell an incoming agent what is built; a merged bundle must not
+  read as in review.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/DEFINITION.md`, `docs/handoffs/E4-B2.md`, `E4-03.md`, `E4-04.md`, this log.
+- **Verification:** documentation only. The head of pull request #95, `8f540962`, passed all fifteen checks on
+  attempt `1` (run `42101225471`). The push run of `main` at `bf6c8e21` (run `41021018363`) failed
+  `ios-ui-tests-audit-1` on three audit tests with `Audit failed to complete in time`, intermittent failures of
+  the kind `E4-07` tracks. The push run at `3943868d` (run `42120336218`) had not finished when this entry was
+  written. `contractCheck` and `architectureCheck` are run before the pull request.
+- **Follow-ups / risks:** `E4-10` is the last story before MVP closure and is not Ready until the owner
+  schedules it. `E5-05` to `E5-08` hold the postponed work, so the MVP closes with the Android performance
+  targets unverified on hardware (`D-267`). The owner's review of the advisories and of the default service
+  accounts stays open.
+
 ### 2026-11-05 — E4-03 performance and reliability hardening (bundle E4-B2)
 
 - **Type:** story

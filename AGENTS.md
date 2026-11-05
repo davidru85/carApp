@@ -170,10 +170,9 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** the owner's gated review of pull request #95, the second and last of bundle `E4-B2` (`E4-03`,
-  `D-262`, ADR-0263), implemented on `story/E4-B2-release-readiness`; its merge completes bundle
-  `E4-B2`, and `E4-10` follows as the last story before MVP closure. `E4-04` merged on 2026-10-30
-  through pull request #94. Bundle `E4-B1` merged on 2026-10-23 through pull
+- **Next:** `E4-10`, Production Firebase Cutover, the last story before MVP closure (`D-258`). It is not
+  Ready until the owner schedules it. Bundle `E4-B2` (`E4-04`, `E4-03`) merged through pull requests #94
+  (2026-10-30) and #95 (2026-11-05) under `D-262` (ADR-0263). Bundle `E4-B1` merged on 2026-10-23 through pull
   requests #91 and #92. Both bundles are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
@@ -271,9 +270,9 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-10`, once bundle `E4-B2` merges. Bundle `E4-B2` (release readiness) is
-  implemented on `story/E4-B2-release-readiness` and awaits the owner's gated review of its second pull
-  request, #95 (`D-262`, ADR-0263); its record is `docs/handoffs/E4-B2.md`. `E4-04` closed its engineering
+- **Remaining Phase 4:** `E4-10`. Bundle `E4-B2` (release readiness) merged on 2026-11-05, when its second
+  pull request, #95 (`D-262`, ADR-0263), merged after the owner's gated review (merge commit `3943868d`,
+  branch head `8f540962`); its record is `docs/handoffs/E4-B2.md`. `E4-04` closed its engineering
   scope on 2026-10-27 and merged on 2026-10-30 through pull request #94 (merge commit `bf6c8e21`), limited
   by `D-236` (ADR-0237) and split by `D-258` (ADR-0259): it delivers the per-build-type Firebase selection
   that fails release builds closed (`D-238`) and the `staging` variant (`D-259`); its owner-run `staging`
