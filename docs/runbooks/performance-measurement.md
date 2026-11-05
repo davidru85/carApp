@@ -27,7 +27,9 @@ A frame is over 32 ms when its lateness `L` satisfies `L > (floor(32 / T) - 1) *
    An Android device that is not rooted needs Android 14 (API 34) or later. Below API 34 Macrobenchmark
    resets compilation by reinstalling the app, which deletes the seeded history before A6 and A7; below
    API 31 it reports no `frameOverrunMs`; and on API 28 it reported no `timeToFullDisplayMs` (dry run on a
-   OnePlus 3 with Android 9 on 2026-11-03, O17 in `docs/handoffs/E4-B2.md`).
+   OnePlus 3 with Android 9 on 2026-11-03, O17 in `docs/handoffs/E4-B2.md`). An emulator cannot run A5 to
+   A7: App Check rejects its attestation, and a local owner returns to the welcome screen at every cold
+   start (`D-267`).
 2. Open a terminal in a checkout of `story/E4-B2-release-readiness` at its head (the agent's worktree
    `.worktrees/carApp-E4-B2` is one; run `git pull` there first). Run every command below from that
    checkout's root. Create the output folder (ignored by git):

@@ -1443,6 +1443,8 @@ Measure and fix MVP performance.
 Acceptance criteria:
 
 - Cold start, list smoothness and consumption targets are met, measured exactly as defined in `docs/versions-matrix.md` on the reference devices.
+  `D-267` (ADR-0268) moves the Android device measurement to `E5-05`, and `D-268` (ADR-0269) records the iOS
+  figures on 997 seeded entries.
 - Run and record the D-80 optimized consumption benchmark on a real iPhone, filling the device and date left open by E1-05.
 - No memory leaks in critical flows; state holder scopes are cancelled.
 
@@ -1628,6 +1630,79 @@ Acceptance criteria:
 Depends on: E2-05.
 
 Human review required.
+
+### E5-05 - Android Physical-Device Performance Gate - S
+
+Status: Deferred / Post-MVP (`D-267`, ADR-0268). It MUST be done before any App Store or Google Play
+submission.
+
+`E4-03` closed with no Android gate figure: its only Android figure is an indicative A3 from an emulator.
+
+Acceptance criteria:
+
+- `docs/runbooks/performance-measurement.md` §2 runs unchanged, A0 to A8, on a physical Android device with
+  Android 14 (API 34) or later: the Pixel 6a reference device, or a substitute recorded under the rule of
+  `docs/versions-matrix.md`. No Macrobenchmark error is suppressed.
+- A5 adopts the seeded history into an anonymous development identity (`D-251`), so A6 measures the adopted
+  returning user.
+- The A3 and A6 medians are under 2 s and A7 counts 0 frames over 32 ms; the figures, the device, the build
+  head and the date are recorded in the story handoff and in `docs/PROJECT_LOG.md`.
+
+Readiness: its intake needs the owner to name the physical device. The A6 and A7 procedures have never
+completed on an Android device, so this story may need harness fixes.
+
+Depends on: E4-03.
+
+### E5-06 - iOS Benchmark Seeder Loses Entries - S
+
+Status: Deferred / Post-MVP (`D-268`, ADR-0269).
+
+On the iPhone 13 mini the iOS seeding reported `benchmark_seed_done` with 1,000, but a read-only database
+copy held 997 fuel entries. `BenchmarkSeeding` in `iosApp/BenchmarkSupport.swift` saves each entry through a
+new `FuelEntryFormViewModel`, takes the save callback as success, and reports the planned count without
+reading it back.
+
+Acceptance criteria:
+
+- The cause of the lost entries is reproduced by a failing test and fixed.
+- The iOS seeding reads the fuel-entry count of the seeded vehicle back from the database and reports
+  `benchmark_seed_failed` unless it equals `BenchmarkPlan.fuelEntryCount`.
+- The shared seeder used by Android is checked for the same gap, and it gains a read-back if its writes can
+  be lost.
+- The seeding UI test asserts the read-back count.
+- No measurement is repeated (`D-268`).
+
+Depends on: E4-03.
+
+### E5-07 - Local Owner Cold Start Routing - S
+
+Status: Deferred / Post-MVP (`D-267`, ADR-0268). Not yet classified as a defect.
+
+During `E4-03` O17, a local owner with vehicles saw the welcome screen at every offline cold start on the
+Android emulator, and `Continue without an account` then showed the list with the rows intact.
+`SessionPhase.LOCAL` exists only in the published state of one process, and `SignedOut` routes to `WELCOME`.
+`docs/SPECIFICATION.md` F-1 step 5 routes a user with vehicles to the vehicle list once the authentication
+state is determined.
+
+Acceptance criteria:
+
+- The behaviour is reproduced on both hosts and compared with F-1 and `D-124`.
+- The owner decides whether it is a defect. If it is, the routing is fixed test first, without creating an
+  account for a device that has neither the explicit choice nor rows (`D-124`).
+
+Depends on: E2-06.
+
+### E5-08 - Owner-Run Acceptances of Bundle E4-B1 - S
+
+Status: Deferred / Post-MVP (`D-267`, ADR-0268).
+
+Acceptance criteria:
+
+- The owner runs and records the `E4-01` departure checklists, the `E4-05` provider acceptance and the
+  `E4-02` screen-reader walkthrough of `D-226`, as their story handoffs describe them.
+- Each failure found becomes its own story.
+
+Depends on: E4-01, E4-05, E4-02.
 
 ## Follow-Ups Outside the Phase Milestones
 
@@ -2570,5 +2645,9 @@ proof after E3-04.
 | E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
 | E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |
 | E5-04 Departure evaluation auth-state reconciliation | 5 (Post-MVP) | S | Yes |
+| E5-05 Android physical-device performance gate | 5 (Post-MVP) | S | — |
+| E5-06 iOS benchmark seeder loses entries | 5 (Post-MVP) | S | — |
+| E5-07 Local owner cold start routing | 5 (Post-MVP) | S | — |
+| E5-08 Owner-run acceptances of bundle E4-B1 | 5 (Post-MVP) | S | — |
 
 Human review gates are defined canonically in `AGENTS.md`. The column above is a convenience index, not a second source.

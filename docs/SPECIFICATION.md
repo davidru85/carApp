@@ -446,7 +446,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Area | Requirement |
 |------|-------------|
 | Platforms | Android `minSdk 26`, iOS 16+; Kotlin/Native targets `iosArm64` and `iosSimulatorArm64`. `iosX64` is not supported (`D-37`). |
-| Performance | Cold start to first content under 2 s, median of at least 10 measured runs (`D-265`) on the reference devices in the `staging` build type (`D-259`), a release-optimized build that runs release code against the development project. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
+| Performance | Cold start to first content under 2 s, median of at least 10 measured runs (`D-265`) on the reference devices in the `staging` build type (`D-259`), a release-optimized build that runs release code against the development project. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. `D-267` moves the Android device verification of these targets after the MVP. |
 | Offline | 100% of MVP functionality usable without network, including first launch. |
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
@@ -757,6 +757,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-264 | iOS benchmark install verification | Each iOS performance test launches the app once online so that iOS verifies the install, then measures offline after the device goes offline and the idle period. | Accepted |
 | D-265 | iOS cold-start sample | The iOS cold-start figure is the median of at least 10 recorded launches out of 25 iterations in one run. | Accepted |
 | D-266 | iOS fling runs and network state | The iOS fling measures one block of 30 flings per run, over five runs, online; the iOS cold starts and the seeding stay offline. | Accepted |
+| D-267 | Android performance verification after the MVP | `E4-03` closes with no Android gate figure; the physical-device measurement moves to a post-MVP story that precedes any store submission, and the emulator's figure is only indicative. | Accepted |
+| D-268 | iOS figures on 997 seeded entries | The iOS figures stand on 997 fuel entries, and a post-MVP story fixes the iOS seeder without re-measuring. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

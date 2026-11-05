@@ -271,5 +271,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-264 | [ADR-0265](0265-verify-each-ios-benchmark-install-online-before-measuring-offline.md) | Verify each iOS benchmark install online before measuring offline. | Accepted |
 | D-265 | [ADR-0266](0266-take-the-ios-cold-start-median-over-at-least-ten-recorded-launches.md) | Take the iOS cold-start median over at least ten recorded launches. | Accepted |
 | D-266 | [ADR-0267](0267-measure-the-ios-fling-online-one-block-per-run.md) | Measure the iOS fling online, one block per run. | Accepted |
+| D-267 | [ADR-0268](0268-move-android-performance-verification-after-the-mvp.md) | Move Android performance verification after the MVP. | Accepted |
+| D-268 | [ADR-0269](0269-keep-the-ios-figures-measured-on-997-seeded-entries.md) | Keep the iOS figures measured on 997 seeded entries. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

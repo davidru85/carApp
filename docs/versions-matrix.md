@@ -154,6 +154,8 @@ The reference OS is the baseline the thresholds were defined against, and it mat
 
 If a reference device is unavailable, the measurement is still run and the actual device is recorded in the handoff and in `docs/PROJECT_LOG.md`; it does not silently pass.
 
+An emulator is not a substitute device: its figures are indicative and never a gate verdict. `D-267` moves the Android device measurement of `E4-03` to the post-MVP story `E5-05`.
+
 ### Measurement tooling (`E4-03`)
 
 | Target | Android | iOS | Gate readout |

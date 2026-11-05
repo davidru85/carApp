@@ -57,6 +57,9 @@ The selected options are **A** and **R-1**.
   With `T = 1000 / refreshHz` ms, a frame is over 32 ms when `frameOverrunMs > (floor(32 / T) - 1) * T`;
   at 60 Hz that is any positive overrun. The gate is a count of zero over all iterations.
   `frameDurationCpuMs > 32` is reported as a diagnostic.
+- Amended by `D-267` (ADR-0268) on 2026-11-05: `E4-03` closes with an indicative A3 figure from an emulator,
+  and the post-MVP story `E5-05` takes these measurements on a physical Android device. The method does not
+  change.
 
 ## Consequences
 
