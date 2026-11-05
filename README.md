@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 1 complete; Phase 2 open.** `E1-01` through `E1-13`, `E3-06`, `E3-01`, `E0-07`, `E2-01` and `E2-02` have delivered the SQLDelight database, complete local Vehicle and Fuel Entry repositories, Fuel Entry validation, reviewed full-to-full consumption, executable provider decoupling, reviewed Firestore rules, the native walking skeleton, both native Vehicle and Fuel Entry flows, device-local settings, deterministic shared graph-test teardown, executable native locale-provider behavior coverage, the complete provider-free auth contracts with their auth-backed owner context, and the Firebase Auth credential exchange. `E2-03`, the F-1 onboarding flow with native Google and Apple acquisition, merged on 2026-09-06 through pull request #54; `E2-06`, local owner adoption with its automatic triggers and real platform connectivity observation, merged on 2026-09-06 through pull request #55. The project builds on both platforms and `main` is protected by ten required CI checks.
+> **Project status:** **Phases 0 to 3 complete; Phase 4 in progress.** Bundle `E4-B1` delivered the Settings screen, the account conversion surface, accessibility and localization; bundle `E4-B2` delivered engineering release readiness, crash reporting and a `staging` variant (`E4-04`, merged) and performance hardening (`E4-03`, awaiting review, with its Android device measurement moved after the MVP by `D-267`). `E4-10`, the production Firebase cutover, is the last story before MVP closure; store-submission prerequisites (`E4-06`, `E2-10`, `E4-09`, `E5-05`) remain before any App Store or Google Play release. `AGENTS.md` §`Repository State` is the authoritative status.
 
 ## Start here
 
@@ -181,9 +181,9 @@ document wins and the discrepancy is escalated.
 |-------|------|-----------|
 | 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
 | 1 - Local persistence **(complete)** | `E1-01` through `E1-13` and the `E0-07` gate are complete | The walking skeleton proves the native local/remote path, both native Vehicle and Fuel Entry flows are executable, device-local settings are persistent, Vehicle outbox payload `entityType` compliance is restored, shared graph tests tear down deterministically, and both native locale-provider paths execute in canonical verification |
-| 2 - Authentication **(open)** | E2-01, E2-02, E2-03 and E2-06 are complete and E2-07 awaits its gated owner review; E2-04 and E2-05 remain | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot; an unlinked anonymous owner is reminded before the 30-day cleanup |
-| 3 - Backend and backup **(partially complete)** | E3-06 and E3-01 are complete; the remaining backend, cleanup, sync and recovery stories plus E3-13 outbox `entityType` centralization are open | Recovery and provider decoupling are executable checks |
-| 4 - MVP hardening **(planned)** | E4-01 through E4-04 remain | Store-readiness checklist complete |
+| 2 - Authentication **(complete)** | `E2-01` through `E2-08` are complete | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot; an unlinked anonymous owner is reminded before the 30-day cleanup |
+| 3 - Backend and backup **(complete)** | `E3-01` through `E3-21` are complete; bundle `E3-B2` closed the phase on 2026-10-15 | Recovery and provider decoupling are executable checks |
+| 4 - MVP hardening **(in progress)** | `E4-01`, `E4-05`, `E4-02` and `E4-04` merged; `E4-03` awaits review in bundle `E4-B2` (PR #95); `E4-10` is last | Release builds run against the production project after `E4-10`; store-submission prerequisites remain |
 
 ## Human Review Gates
 

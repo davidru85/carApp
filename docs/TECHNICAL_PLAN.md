@@ -677,8 +677,8 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: complete through E1-13. D-80 leaves the manual optimized real-iPhone consumption
-measurement explicit for E4-03.
+Status: complete through E1-13. E4-03 recorded the D-80 optimized real-iPhone consumption
+measurement on 2026-11-04.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 
@@ -701,7 +701,7 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 ### Phase 4 - MVP Hardening
 
-Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` (`E4-04`, `E4-03`) is in flight, with `E4-04` limited to engineering release readiness by `D-236`; `D-258` moved the production Firebase cutover to `E4-10`, the last story before MVP closure.
+Status: in progress under `D-209`. Bundle `E4-B1` (`E4-01`, `E4-05`, `E4-02`) merged on 2026-10-23 through pull requests #91 and #92; bundle `E4-B2` is delivered through two pull requests (`D-262`): `E4-04`, limited to engineering release readiness by `D-236`, merged on 2026-10-30 through pull request #94, and `E4-03` is implemented and awaits the owner's gated review in pull request #95, with its Android device measurement moved after the MVP by `D-267`; `D-258` moved the production Firebase cutover to `E4-10`, the last story before MVP closure, so Phase 4 completes with `E4-10`.
 
 Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration. Store-submission requirements are outside the phase: `E4-06`, `E2-10` and `E4-09` (`D-236`).
 

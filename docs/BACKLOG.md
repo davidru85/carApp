@@ -1433,9 +1433,9 @@ Acceptance criteria:
 
 ### E4-03 - Performance and Reliability Hardening - M
 
-Status: in flight, second story of bundle `E4-B2` (`D-209`, ADR-0210), on
-`story/E4-B2-release-readiness`. `E4-04` merged first, through pull request #94 on 2026-10-30; `D-262`
-(ADR-0263) delivers this story through the bundle's second pull request. Since `D-258`
+Status: implemented as the second story of bundle `E4-B2` (`D-209`, ADR-0210), awaiting the owner's
+gated review in the bundle's second pull request, #95 (`D-262`, ADR-0263). `E4-04` merged first, through
+pull request #94 on 2026-10-30. Since `D-258`
 (ADR-0259) moved the production configuration to `E4-10`, this story measures the `staging` build type of
 `D-259` (ADR-0260), which runs release code and settings against the development project.
 
@@ -2632,7 +2632,7 @@ proof after E3-04.
 | E4-01 Settings UI (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | L | — |
 | E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
 | E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
-| E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
+| E4-03 Performance hardening (bundle `E4-B2`, implemented, PR #95) | 4 | M | — |
 | E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`, merged in PR #94) | 4 | M | — |
 | E4-10 Production Firebase cutover (last story before MVP closure, `D-258`) | 4 | M | Yes |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
