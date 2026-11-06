@@ -273,5 +273,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-266 | [ADR-0267](0267-measure-the-ios-fling-online-one-block-per-run.md) | Measure the iOS fling online, one block per run. | Accepted |
 | D-267 | [ADR-0268](0268-move-android-performance-verification-after-the-mvp.md) | Move Android performance verification after the MVP. | Accepted |
 | D-268 | [ADR-0269](0269-keep-the-ios-figures-measured-on-997-seeded-entries.md) | Keep the iOS figures measured on 997 seeded entries. | Accepted |
+| D-269 | [ADR-0270](0270-let-the-leak-check-wait-out-a-bounded-framework-retention.md) | Let the leak check wait out a bounded framework retention. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

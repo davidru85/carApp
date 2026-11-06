@@ -1433,10 +1433,10 @@ Acceptance criteria:
 
 ### E4-03 - Performance and Reliability Hardening - M
 
-Status: implemented as the second story of bundle `E4-B2` (`D-209`, ADR-0210), awaiting the owner's
-gated review in the bundle's second pull request, #95 (`D-262`, ADR-0263). `E4-04` merged first, through
-pull request #94 on 2026-10-30. Since `D-258`
-(ADR-0259) moved the production configuration to `E4-10`, this story measures the `staging` build type of
+Status: the second and last story of bundle `E4-B2` (`D-209`, ADR-0210), merged on 2026-11-05 through the
+bundle's second pull request, #95 (merge commit `3943868d`; `D-262`, ADR-0263), after the owner's gated
+review. `E4-04` merged first, through pull request #94 on 2026-10-30. Since `D-258`
+(ADR-0259) moved the production configuration to `E4-10`, this story measured the `staging` build type of
 `D-259` (ADR-0260), which runs release code and settings against the development project.
 
 Measure and fix MVP performance.
@@ -1704,6 +1704,28 @@ Acceptance criteria:
 - Each failure found becomes its own story.
 
 Depends on: E4-01, E4-05, E4-02.
+
+### E5-09 - Android Leak Check Flags a Framework Retention - S
+
+Status: delivered by pull request #96, ahead of its post-MVP placement. The `E4-B2` record closure created it on
+2026-11-05 under the owner's instruction to postpone test work the MVP does not need, the same failure recurred
+on that pull request's own head, and on 2026-11-06 the owner told the agent to fix it (`D-269`, ADR-0270).
+
+`AccessibilityFlowTest.fuelEntryListWithIndicatorsPassesAccessibilityChecks` failed
+`android-instrumented-tests` with a `NoLeakAssertionFailedError` from the `D-256` leak check, signature
+`0deaf2c5b3220cbfbb07a298157ac2a688e8c24b`, in the runs at `3943868d` (`42120336218`) and `b67c5b15`
+(`42130986110`): 2 of the 10 CI runs since the leak check landed. The path runs from the main `MessageQueue`
+through a delayed `Message`, due about 3 seconds after the heap dump, to
+`com.android.internal.jank.FrameTracker`, then `InteractionJankMonitor$Configuration.mContext`, `DecorContext`
+and `PhoneWindow` to the destroyed `MainActivity`. No other application object is on it.
+
+Acceptance criteria:
+
+- A retention of this kind no longer fails `android-instrumented-tests`, through the narrowest mechanism the
+  story's intake selects.
+- A test proves that an activity retained by application code still fails a Compose instrumented test.
+
+Depends on: E4-03.
 
 ## Follow-Ups Outside the Phase Milestones
 
@@ -2632,7 +2654,7 @@ proof after E3-04.
 | E4-01 Settings UI (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | L | — |
 | E4-05 Account conversion host surface (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | Yes |
 | E4-02 Accessibility and localization (bundle `E4-B1`, completed, PRs #91 and #92) | 4 | M | — |
-| E4-03 Performance hardening (bundle `E4-B2`, implemented, PR #95) | 4 | M | — |
+| E4-03 Performance hardening (bundle `E4-B2`, completed, PR #95) | 4 | M | — |
 | E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`, merged in PR #94) | 4 | M | — |
 | E4-10 Production Firebase cutover (last story before MVP closure, `D-258`) | 4 | M | Yes |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
@@ -2650,5 +2672,6 @@ proof after E3-04.
 | E5-06 iOS benchmark seeder loses entries | 5 (Post-MVP) | S | — |
 | E5-07 Local owner cold start routing | 5 (Post-MVP) | S | — |
 | E5-08 Owner-run acceptances of bundle E4-B1 | 5 (Post-MVP) | S | — |
+| E5-09 Android leak check flags a framework retention (`D-269`, delivered by PR #96) | 5 (Post-MVP) | S | — |
 
 Human review gates are defined canonically in `AGENTS.md`. The column above is a convenience index, not a second source.

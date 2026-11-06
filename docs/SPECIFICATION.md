@@ -759,6 +759,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-266 | iOS fling runs and network state | The iOS fling measures one block of 30 flings per run, over five runs, online; the iOS cold starts and the seeding stay offline. | Accepted |
 | D-267 | Android performance verification after the MVP | `E4-03` closes with no Android gate figure; the physical-device measurement moves to a post-MVP story that precedes any store submission, and the emulator's figure is only indicative. | Accepted |
 | D-268 | iOS figures on 997 seeded entries | The iOS figures stand on 997 fuel entries, and a post-MVP story fixes the iOS seeder without re-measuring. | Accepted |
+| D-269 | Leak check retained delay | The leak check of `D-256` waits 15 seconds before it treats a retained object as a leak. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
