@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-11-06 — E5-09 leak check waits out a bounded framework retention
+
+- **Type:** story
+- **Story / Decision:** `E5-09` / `D-269`
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E4-B2-record-closeout`)
+- **What changed:** `leakDetecting` gives LeakCanary's own interceptor a 15-second retained delay, and
+  `LeakDetectionTest` runs the real rule chain over two fixtures, one per direction.
+- **Why:** a delayed Android framework message to `FrameTracker` held the destroyed `MainActivity` for about 8
+  seconds and failed the required `android-instrumented-tests` check in 2 of 10 CI runs, including the head of
+  pull request #96. The owner told the agent on 2026-11-06 to fix it instead of postponing it.
+- **Documents touched:** ADR-0270, ADR-0257, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/BACKLOG.md`, `AGENTS.md`, `docs/handoffs/E5-09.md`, this log.
+- **Verification:** on a local API 36 emulator, `LeakDetectionTest` failed its first fixture without the fix and
+  passed both with it, and `:androidApp:connectedDebugAndroidTest` passed 156 of 156 tests. The fifteen required
+  checks of pull request #96 are the authority on the final head.
+- **Follow-ups / risks:** the fix is proven on a fixture of the same shape, not on the real `FrameTracker` message,
+  because that failure never reproduced locally. An application retention that ends within 15 seconds no longer
+  fails the check.
+
 ### 2026-11-05 — E4-B2 record closure
 
 - **Type:** milestone
@@ -48,7 +67,7 @@
   `3943868d`, whose second parent is the branch head `8f540962`). `AGENTS.md` names `E4-10` as next; the
   `E4-03` backlog status and index row, the `docs/TECHNICAL_PLAN.md` Phase 4 status, `docs/DEFINITION.md` and
   `README.md` state the merge; the bundle and story handoffs carry a dated `Closure update`. The `E4-03` one
-  also corrects its incomplete §Files Changed. The backlog gains the post-MVP story `E5-09`.
+  also corrects its incomplete §Files Changed.
 - **Why:** `AGENTS.md` §Repository State must tell an incoming agent what is built; a merged bundle must not
   read as in review.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/TECHNICAL_PLAN.md`,
@@ -58,13 +77,12 @@
   `ios-ui-tests-audit-1` on three audit tests with `Audit failed to complete in time`, intermittent failures of
   the kind `E4-07` tracks. The push run at `3943868d` (run `42120336218`), whose tree is identical to
   `8f540962`, failed `ios-ui-tests-audit-2` on one audit test with the same timeout, and
-  `android-instrumented-tests` on one `NoLeakAssertionFailedError` from the `D-256` leak check. Its path holds
-  the destroyed `MainActivity` through a delayed Android framework message to `FrameTracker`, with no other
-  application object on it. `contractCheck` and `architectureCheck` are run before the pull request.
+  `android-instrumented-tests` on the leak check that `E5-09` fixes. `contractCheck` and `architectureCheck` are
+  run before the pull request.
 - **Follow-ups / risks:** `E4-10` is the last story before MVP closure and is not Ready until the owner
-  schedules it. `E5-05` to `E5-09` hold the postponed work, so the MVP closes with the Android performance
-  targets unverified on hardware (`D-267`), and the required `android-instrumented-tests` check can fail on the
-  `E5-09` retention. The owner's review of the advisories and of the default service accounts stays open.
+  schedules it. `E5-05` to `E5-08` hold the postponed work, so the MVP closes with the Android performance
+  targets unverified on hardware (`D-267`). The owner's review of the advisories and of the default service
+  accounts stays open.
 
 ### 2026-11-05 — E4-03 performance and reliability hardening (bundle E4-B2)
 

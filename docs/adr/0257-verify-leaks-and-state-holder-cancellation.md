@@ -33,6 +33,8 @@ The selected option is **A**.
   a rule chain that installs `AppWatcher` on the main thread when it is not installed (the app-module test
   APK's content providers never start in the app process) and then applies `DetectLeaksAfterTestSuccess`
   outside the Compose rule, so activity leaks are detected after the activity is destroyed.
+  Amended by `D-269` (ADR-0270) on 2026-11-06: the chain gives LeakCanary's interceptor a 15-second retained
+  delay instead of the default 5 seconds.
 - iOS XCTests assert that each view model is deallocated once released and that releasing a form or
   fuel-list view model returns its holder to `SwiftAppGraph`.
 - Common tests assert, for `FuelEntryListStateHolder`, `FuelEntryFormStateHolder`,
