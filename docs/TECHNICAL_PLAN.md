@@ -281,6 +281,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-266 | iOS fling runs and network state | One measured block of 30 flings per run, five runs, measured online | Accepted | Runs with 60 full-list flings lost every hitch value on the iOS 27 substitute device. See ADR-0267. |
 | D-267 | Android performance verification after the MVP | No Android gate figure in `E4-03`; physical-device measurement in post-MVP `E5-05`; the emulator's A3 is indicative | Accepted | App Check rejects the emulator and a local owner returns to the welcome screen at every cold start. See ADR-0268. |
 | D-268 | iOS figures on 997 seeded entries | Keep the O18 figures; fix the iOS seeder in post-MVP `E5-06`; no re-measurement | Accepted | The iOS seeding reported 1,000 while the database held 997. See ADR-0269. |
+| D-269 | Leak check retained delay | 15-second retained delay through LeakCanary's own interceptor; an object still retained after it fails as before | Accepted | A delayed Android framework message held the destroyed activity for about 8 seconds in 2 of 10 CI runs. See ADR-0270. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

@@ -295,7 +295,8 @@ review.
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership), `E5-04` (Departure Evaluation
   Auth-State Reconciliation), `E5-05` (Android Physical-Device Performance Gate, which MUST precede any
   store submission), `E5-06` (iOS Benchmark Seeder Loses Entries), `E5-07` (Local Owner Cold Start Routing),
-  `E5-08` (Owner-Run Acceptances of Bundle E4-B1) and `E5-09` (Android Leak Check Flags a Framework Retention).
+  and `E5-08` (Owner-Run Acceptances of Bundle E4-B1). `E5-09` (Android Leak Check Flags a Framework Retention) was
+  delivered ahead of this list by pull request #96 (`D-269`, ADR-0270).
 
 `docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.
 
