@@ -274,5 +274,9 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-267 | [ADR-0268](0268-move-android-performance-verification-after-the-mvp.md) | Move Android performance verification after the MVP. | Accepted |
 | D-268 | [ADR-0269](0269-keep-the-ios-figures-measured-on-997-seeded-entries.md) | Keep the iOS figures measured on 997 seeded entries. | Accepted |
 | D-269 | [ADR-0270](0270-let-the-leak-check-wait-out-a-bounded-framework-retention.md) | Let the leak check wait out a bounded framework retention. | Accepted |
+| D-270 | [ADR-0271](0271-sign-carapp-with-a-personal-apple-developer-account.md) | Sign carApp with a personal Apple Developer account. | Accepted |
+| D-271 | [ADR-0272](0272-link-google-analytics-to-production-with-minimal-settings.md) | Link Google Analytics to production with minimal settings. | Accepted |
+| D-272 | [ADR-0273](0273-configure-production-sign-in-providers-in-the-console.md) | Configure production sign-in providers in the console. | Accepted |
+| D-273 | [ADR-0274](0274-keep-production-app-check-configuration-in-the-repository.md) | Keep production App Check configuration in the repository. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -53,7 +53,7 @@ Allowed in the repository:
   for the production project of `docs/identifiers.md`. A configuration MUST NOT reach an artifact of
   the other build type, and `FirebaseConfigurationTest` enforces it. The production keys must be
   restricted to the release package, signing certificates and bundle identifier before either file is
-  committed (`docs/runbooks/production-firebase-release.md` O4–O5, created by `E4-10`); until they exist, release builds
+  committed (`docs/runbooks/production-firebase-release.md` P9); until they exist, release builds
   fail closed. Under `D-259` the `staging` build type and the `Staging` configuration reuse the development
   configuration (`androidApp/src/staging/google-services.json`,
   `iosApp/Config/Staging/GoogleService-Info-Staging.plist`). Under `D-252` and `D-253` the non-shipping

@@ -1475,10 +1475,12 @@ Acceptance criteria:
 
 ### E4-10 - Production Firebase Cutover - M
 
-Status: Not Ready. Created on 2026-10-27 by `D-258` (ADR-0259), which moved every production-dependent
+Status: In progress since 2026-11-09, when the owner scheduled it and answered the intake questions
+(`D-270` to `D-273`). Created on 2026-10-27 by `D-258` (ADR-0259), which moved every production-dependent
 item out of `E4-04` because the owner keeps all work against `davidruiz-carapp-dev` until the last steps
 before the MVP closes. It is the last story before MVP closure: a standalone pull request after `E4-B2`
-merges, not bundled, so `D-209` is unaffected. Not Ready until the owner schedules it.
+merges, not bundled, so `D-209` is unaffected. Its record is `docs/handoffs/E4-10.md`, and its owner-run
+steps are `docs/runbooks/production-firebase-release.md`.
 
 Create the production Firebase project, point release builds at it, and prove that both platforms run
 against it.
@@ -1525,16 +1527,22 @@ Acceptance criteria:
   `Config/Release/GoogleService-Info.plist` as a resource; the `D-261` exclusions keep it out of Debug
   and Staging, and the `E4-04` guards move to "present and production-only".
 - `firebase.json` sets `oAuthBrandDisplayName` to `carApp` for every project it deploys to, while the
-  production consent screen must name `CarApp`. The intake decides how the production brand is applied
-  without changing the development project, and no `firebase deploy --only auth` runs before that.
+  production consent screen must name `CarApp`. `D-272` sets the production providers and brand in the
+  Firebase console, and no deploy to `davidruiz-carapp` includes `auth`, so the development project is
+  unchanged.
 - The restore half of the sideloaded proof uses a permanent (Google or Apple) account, because an
   anonymous identity is device-bound.
+- The production project is linked to Google Analytics with the settings of `D-271` before the client
+  configuration files are downloaded.
+- The production App Check configuration is committed in `infra/google-cloud/app-check/production/`,
+  and the live resources read back equal to it (`D-273`).
+- The production Firebase iOS app carries the Team ID of the owner's personal Apple Developer account
+  (`D-270`), without the value entering the repository.
 
-Readiness: the intake needs the owner's schedule and the Apple Developer account kind (`E4-09` item);
-it must ask whether to link a GA4 property in production, because the development project has no
-Analytics link, and that question is open. `D-237` is reserved for the production project identity
-(`docs/handoffs/E4-B2.md` §Decision ID Allocation) and is recorded by this story once creation proves
-the identifier available (`D-32`); every other choice gets its own `D-n` at the intake.
+Readiness: met on 2026-11-09. The owner scheduled the story; `D-270` answers the Apple Developer account
+kind, `D-271` the GA4 question, `D-272` the brand and `D-273` the App Check source. `D-237` is reserved
+for the production project identity (`docs/handoffs/E4-B2.md` §Decision ID Allocation) and is recorded
+by this story once creation proves the identifier available (`D-32`).
 
 Depends on: E4-04, E4-03.
 
@@ -2314,8 +2322,8 @@ Additional criteria, added on 2026-10-27:
   the production Firebase Android app, on the Android API-key restriction and in the Play Integrity
   registration; `google-services.json` is re-downloaded and committed; and builds signed with the interim
   key are reinstalled. A dedicated key per app is used, never one reused from another project.
-- The Apple Developer account kind (personal or organization) is decided before the App Store Connect
-  record is created, because the bundle identifier binds to it there.
+- The Apple Developer account kind is decided: personal (`D-270`, 2026-11-09). The App Store Connect
+  record is created under that account, because the bundle identifier binds to it there.
 
 Depends on: E4-04, E4-06.
 
