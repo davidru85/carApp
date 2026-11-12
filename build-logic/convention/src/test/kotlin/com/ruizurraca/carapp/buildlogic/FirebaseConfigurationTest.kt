@@ -125,19 +125,20 @@ class FirebaseConfigurationTest {
                 .resolve("iosApp/carApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved")
                 .readText()
 
-        assertTrue(catalog.contains("firebaseApple = \"11.8.0\""))
+        assertTrue(catalog.contains("firebaseApple = \"12.19.3\""))
+        assertTrue(catalog.contains("gitlive = \"2.8.0\""))
         assertTrue(projectSpec.contains("exactVersion: ${'$'}{FIREBASE_APPLE_VERSION}"))
-        assertFalse(projectSpec.contains("11.8.0"))
+        assertFalse(projectSpec.contains("12.19.3"))
         assertTrue(projectGenerator.contains("^firebaseApple = "))
         assertTrue(projectGenerator.contains("FIREBASE_APPLE_VERSION"))
         assertTrue(projectGenerator.contains("xcodegen generate"))
         assertTrue(xcodeProject.contains("firebase-ios-sdk"))
-        assertTrue(xcodeProject.contains("version = 11.8.0"))
+        assertTrue(xcodeProject.contains("version = 12.19.3"))
         assertTrue(xcodeProject.contains("FirebaseAuth"))
         assertTrue(xcodeProject.contains("FirebaseCore"))
         assertTrue(xcodeProject.contains("FirebaseFirestore"))
         assertTrue(resolvedPackages.contains("\"identity\" : \"firebase-ios-sdk\""))
-        assertTrue(resolvedPackages.contains("\"version\" : \"11.8.0\""))
+        assertTrue(resolvedPackages.contains("\"version\" : \"12.19.3\""))
     }
 
     @Test
