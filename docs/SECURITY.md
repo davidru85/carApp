@@ -293,6 +293,16 @@ Requirements:
   application and by API target on 2026-10-27. GitHub does not apply push protection to that pattern, so
   committing restricted Firebase client configuration is unaffected.
 
+## Remediated Incidents
+
+- **2026-11-12 - eMudhra intermediate CAs in the Firebase Apple SDK for Firestore** (`D-274`, `E4-11`). The
+  iOS build linked `firebase-ios-sdk` 11.8.0, whose embedded TLS bundle still trusts intermediate CA
+  certificates issued by eMudhra, whose private keys were compromised on 2026-10-17. No 11.x release is
+  patched. `D-274` moves GitLive to 2.8.0 and the Firebase Apple SDK to 12.19.3. The Android SDK and the
+  server SDKs are not affected. Builds installed before the move keep the vulnerable bundle until they are
+  reinstalled; no production release existed (`D-238`), so only `staging` and debug builds on the owner's
+  devices were exposed.
+
 ## Privacy
 
 - Analytics collection is disabled by default and requires an explicit opt-in.

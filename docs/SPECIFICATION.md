@@ -299,7 +299,7 @@ deferred to `E5-02`, `E5-03`, and `E5-04` and do not block MVP completion. The e
 | Build | Gradle Kotlin DSL, version catalog, convention plugins |
 | Local database | SQLDelight 2.3.2 with `androidx.sqlite:sqlite-bundled` 2.7.0 through `sqldelight-androidx-driver` 0.2.1 |
 | Remote backend | Cloud Firestore |
-| Auth | Firebase Authentication through GitLive 2.6.x |
+| Auth | Firebase Authentication through GitLive 2.8.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
 | Crash reporting | Firebase Crashlytics behind `CrashReporter` (`E4-04`), off until the Settings opt-in (`D-241`) |
 | Async | Coroutines and Flow |
@@ -497,8 +497,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Superseded |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one; electric/hybrid values are deferred. `D-127` supersedes the original clause that kept it out of the MVP UI. | Accepted |
-| D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
-| D-6 | Firebase Auth from KMP | GitLive Auth 2.6.x behind `AuthClient`. | Accepted |
+| D-5 | Firestore access from KMP | GitLive Firestore 2.8.x behind `RemoteSyncSource`. | Accepted |
+| D-6 | Firebase Auth from KMP | GitLive Auth 2.8.x behind `AuthClient`. | Accepted |
 | D-7 | Navigation | Native navigation per platform. | Accepted |
 | D-8 | Presentation layer | Shared KMP state holders. | Accepted |
 | D-9 | Firestore offline persistence | Disabled. | Accepted |

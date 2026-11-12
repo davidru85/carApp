@@ -297,6 +297,8 @@ review.
   store submission), `E5-06` (iOS Benchmark Seeder Loses Entries), `E5-07` (Local Owner Cold Start Routing),
   and `E5-08` (Owner-Run Acceptances of Bundle E4-B1). `E5-09` (Android Leak Check Flags a Framework Retention) was
   delivered ahead of this list by pull request #96 (`D-269`, ADR-0270).
+- **eMudhra CA remediation:** `E4-11` (`D-274`, ADR-0275) moved GitLive to 2.8.0 and the Firebase Apple SDK to
+  12.19.3, superseding `D-65`, because the 11.8.0 Firestore bundle trusts compromised eMudhra intermediate CAs.
 
 `docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.
 
@@ -674,7 +676,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
   Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime and trigger debt are one TD-01 item
   with a 2027-10-31 hard deadline. Only `davidruiz-carapp-dev` deploys the `dev-billing` codebase;
   production deploys `functions:default` alone (`D-247`).
-- Use GitLive 2.6.x, not 3.0 alpha.
+- Use GitLive 2.8.x, not 3.0 alpha.
 - Use Koin KMP for wiring and constructor injection for implementation classes.
 - Do not call Koin from domain, use cases, repositories or state holder business logic.
 - Do not add Ktor unless a new ADR introduces an HTTP API implementation.
