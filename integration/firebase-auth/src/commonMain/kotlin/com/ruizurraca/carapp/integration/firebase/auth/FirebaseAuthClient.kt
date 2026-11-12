@@ -497,7 +497,7 @@ internal fun isCancellation(
 /**
  * Normalizes Firebase user metadata creation time across platforms.
  *
- * In GitLive 2.6.0, `FirebaseUserMetadata.creationTime` returns a Double representing epoch milliseconds
+ * In GitLive 2.6.0 to 2.8.0, `FirebaseUserMetadata.creationTime` returns a Double representing epoch milliseconds
  * on Android, but seconds since Apple reference date (2001-01-01 00:00:00 UTC) on Apple targets (iOS).
  * This function detects the platform representation by range check and converts it to a standard UTC [Instant].
  */

@@ -13,7 +13,7 @@ import java.io.File
  *   the implementation through a re-export or a fully-qualified name that carries no package prefix
  *   on the offending line.
  * - `D-65`, `D-203`: the iOS build links `FirebaseAnalyticsWithoutAdIdSupport`. GitLive
- *   2.6.0 does not supply Firebase Apple dependencies transitively, so the cinterop klib the
+ *   2.8.0 does not supply Firebase Apple dependencies transitively, so the cinterop klib the
  *   Kotlin/Native compiler consumes resolves to `framework 'FirebaseAnalytics' not found` unless the
  *   host app links the product. Nothing else in the repository can observe that coupling: the Kotlin
  *   build succeeds either way and the failure appears only in the Xcode link step.
