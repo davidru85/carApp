@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted.
+Superseded by [ADR-0275](0275-move-firebase-apple-and-gitlive-for-the-emudhra-ca-fix.md) (`D-274`) on 2026-11-12.
+
+GitLive 2.8.0 with Firebase Apple 12.19.3 replaces the 2.6.0 and 11.8.0 pair, because no 11.x release carries the
+eMudhra CA fix. The rule that the two pins move together survives; the analysis below is the record of why the
+pair was fixed.
 
 ## Context
 
