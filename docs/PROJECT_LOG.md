@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-11-13 — E4-11 Firebase Apple SDK eMudhra CA remediation
+
+- **Type:** story
+- **Story / Decision:** `E4-11` / `D-274`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-11-firebase-apple-emudhra-remediation`)
+- **What changed:** GitLive moved from 2.6.0 to 2.8.0 and the Firebase Apple SDK from 11.8.0 to 12.19.3, together,
+  superseding `D-65`. The iOS app links `FirebaseAnalyticsCore` because Firebase Apple 12 removed
+  `FirebaseAnalyticsWithoutAdIdSupport`; the `D-203` privacy outcome is unchanged.
+- **Why:** the 11.8.0 Firestore TLS bundle trusts eMudhra intermediate CAs whose keys were compromised on 2026-10-17;
+  no 11.x release is patched. Google's notices of 2026-11-03 and 2026-11-09 require an SDK upgrade and a rebuild.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/adr/README.md`, ADR-0275 (new), ADR-0066 and ADR-0204 (notes), `docs/CONTRACTS.md`,
+  `docs/versions-matrix.md`, `docs/SECURITY.md`, `docs/BACKLOG.md`, `AGENTS.md`, `docs/handoffs/E4-11.md`.
+- **Verification:** the CI command green on a clean worktree, 44 contract assertions passing; `carAppTests` 158 tests
+  on an erased simulator; the Debug app launches on Firebase 12.19.3. The sign-in and sync runtime check is
+  owner-owned. Local Xcode was 27.2, not the 26.6 pin; CI is authoritative.
+- **Follow-ups / risks:** gated change, left for the owner's review. Tests and contract assertions that scan the
+  checkout fail while a worktree lives under `.worktrees/`; see the handoff.
+
 ### 2026-11-06 — E5-09 leak check waits out a bounded framework retention
 
 - **Type:** story
