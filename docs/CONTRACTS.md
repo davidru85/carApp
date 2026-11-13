@@ -2087,7 +2087,7 @@ session start and engagement) are also accepted (`D-203`); they are provider met
 new `AnalyticsEvent` leaves. Automatic screen reporting MUST be disabled on both hosts.
 Advertising identifiers (AAID and IDFA), iOS IDFV collection and personalized ad signals MUST be
 disabled. Android advertising permissions MUST be removed from the merged manifest, and the iOS
-app MUST link the pinned SDK's `FirebaseAnalyticsWithoutAdIdSupport` product. The SDK app instance
+app MUST link the pinned SDK's `FirebaseAnalyticsCore` product, which has no IDFA support (`D-274`). The SDK app instance
 ID remains for session measurement: this is pseudonymous analytics, not fully anonymous data.
 The application MUST NOT set a provider user ID or link the app instance ID to the Firebase UID.
 
@@ -2262,8 +2262,8 @@ Optional checks:
     can reach the implementation without carrying the prefix. `§16.1` requires collection disabled
     at startup including on a fresh install, so the tracker's own default is asserted here and not
     only in a unit test, since the default is what a host that constructs it without arguments gets.
-38. The iOS app links exactly the `FirebaseAnalyticsWithoutAdIdSupport` SwiftPM product (`D-203`),
-    which still supplies the `FirebaseAnalytics` framework required by cinterop. GitLive 2.6.0 does not supply Firebase
+38. The iOS app links exactly the `FirebaseAnalyticsCore` SwiftPM product (`D-203`, `D-274`),
+    which still supplies the `FirebaseAnalytics` framework required by cinterop. GitLive 2.8.0 does not supply Firebase
     Apple dependencies transitively (`docs/adr/0076`), so the Kotlin/Native cinterop klib for
     Firebase Analytics resolves to `framework 'FirebaseAnalytics' not found` unless the app target
     links the product. The Kotlin build succeeds either way and the failure appears only in the
@@ -2348,7 +2348,7 @@ Optional checks:
     `:integration:firebase-crashlytics` sets a provider user identifier (`§20.3.1`, `D-21`). It
     mirrors assertion 37 for the second Firebase observability integration.
 47. The iOS app links exactly the `FirebaseCrashlytics` SwiftPM product, in `iosApp/project.yml`
-    and in the generated Xcode project. GitLive 2.6.0 does not supply Firebase Apple dependencies
+    and in the generated Xcode project. GitLive 2.8.0 does not supply Firebase Apple dependencies
     transitively (`docs/adr/0076`), so without it the Kotlin/Native cinterop klib for Firebase
     Crashlytics resolves to `framework 'FirebaseCrashlytics' not found`, and only at the Xcode link
     step.

@@ -386,7 +386,7 @@ Extracted from the normative documents; none of it is a design decision.
 | `docs/CONTRACTS.md` §20.8 | `sealed interface NativeAuthCredential { Google, Apple }` — no email, phone or OIDC leaf. |
 | `docs/CONTRACTS.md` §20.10 | `SessionStateHolder.startAnonymousSignIn()` and `startPermanentSignIn(provider: AuthProvider)`. |
 | `docs/CONTRACTS.md` §20.2 | `AuthError` has no `InvalidEmail`, `WrongPassword` or `WeakPassword` leaf. |
-| `docs/adr/0007-firebase-auth-gitlive.md` | Firebase Auth via GitLive 2.6.x behind `AuthClient`; native UI obtains **Google and Apple** credentials. A custom auth backend was considered and rejected as out of scope. |
+| `docs/adr/0007-firebase-auth-gitlive.md` | Firebase Auth via GitLive 2.8.x behind `AuthClient`; native UI obtains **Google and Apple** credentials. A custom auth backend was considered and rejected as out of scope. |
 | `docs/BACKLOG.md` `E2-03` | "iOS offers Apple whenever Google is offered."; "exactly two actions on Android … exactly three on iOS"; "No control on the welcome screen starts a sign-in without naming its provider." |
 
 Email/password, magic link, OTP and SSO appear **nowhere** in the repository, and since

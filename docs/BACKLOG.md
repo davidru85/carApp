@@ -1540,6 +1540,34 @@ Depends on: E4-04, E4-03.
 
 Human review required.
 
+### E4-11 - Firebase Apple SDK eMudhra CA Remediation - S
+
+Status: Ready on 2026-11-12. Created by the owner's instruction after Google's mandatory Firebase notice of
+2026-11-03 and 2026-11-09. It is outside the `D-209` bundles and independent of `E4-10`.
+
+The Firebase Apple SDK for Cloud Firestore compiles a TLS root certificate bundle into the app binary. In
+`firebase-ios-sdk` 11.8.0, the version `D-65` pins, that bundle still trusts intermediate CA certificates
+issued by eMudhra, whose private keys were compromised on 2026-10-17 and later revoked. No 11.x release is
+patched; the fixed versions are 12.19.3 and 13.1.1. GitLive 2.8.0, released on 2026-11-05 on the 2.x line,
+bumps `firebase-ios-sdk` to 12.19.3 for this fix. The Android SDK, the Node server SDKs and the Gradle
+plugins are not affected.
+
+Acceptance criteria:
+
+- `gradle/libs.versions.toml` pins `firebaseApple = "12.19.3"` and `gitlive = "2.8.0"`, moved together, and the
+  generated Xcode project and `Package.resolved` select 12.19.3 (`D-274`, which supersedes `D-65`).
+- A guard test fails before the change and passes after it, and every document that names the old pins is
+  corrected in the same change.
+- The `staging` variant on a simulator signs in anonymously, creates a vehicle and a fuel entry, forces a sync
+  and shows a successful backup, because a compile-only pass does not prove the native bindings.
+- The Android Firestore artifact version is recorded before and after the change.
+- The iOS app links `FirebaseAnalyticsCore` because Firebase Apple 12 removed `FirebaseAnalyticsWithoutAdIdSupport`, and
+  the linked binary carries no advertising-identifier support (`D-203`, `D-274`).
+
+Depends on: E4-04.
+
+Human review required.
+
 ## Post-MVP / Future Scope
 
 Stories in this section are outside the MVP scope and are deferred to post-MVP development. They require an ADR and specification update before becoming Ready.
@@ -2657,6 +2685,7 @@ proof after E3-04.
 | E4-03 Performance hardening (bundle `E4-B2`, completed, PR #95) | 4 | M | — |
 | E4-04 Release preparation, engineering scope (bundle `E4-B2`, `D-236`, merged in PR #94) | 4 | M | — |
 | E4-10 Production Firebase cutover (last story before MVP closure, `D-258`) | 4 | M | Yes |
+| E4-11 Firebase Apple SDK eMudhra CA remediation (`D-274`) | 4 | S | Yes |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
 | E4-09 Store submission readiness (postponed, low priority) | follow-up | M | Yes |
 | E1-19 iOS fuel-entry swipe delete deletes nothing | follow-up | S | — |

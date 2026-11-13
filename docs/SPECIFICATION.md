@@ -299,7 +299,7 @@ deferred to `E5-02`, `E5-03`, and `E5-04` and do not block MVP completion. The e
 | Build | Gradle Kotlin DSL, version catalog, convention plugins |
 | Local database | SQLDelight 2.3.2 with `androidx.sqlite:sqlite-bundled` 2.7.0 through `sqldelight-androidx-driver` 0.2.1 |
 | Remote backend | Cloud Firestore |
-| Auth | Firebase Authentication through GitLive 2.6.x |
+| Auth | Firebase Authentication through GitLive 2.8.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
 | Crash reporting | Firebase Crashlytics behind `CrashReporter` (`E4-04`), off until the Settings opt-in (`D-241`) |
 | Async | Coroutines and Flow |
@@ -497,8 +497,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Superseded |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one; electric/hybrid values are deferred. `D-127` supersedes the original clause that kept it out of the MVP UI. | Accepted |
-| D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
-| D-6 | Firebase Auth from KMP | GitLive Auth 2.6.x behind `AuthClient`. | Accepted |
+| D-5 | Firestore access from KMP | GitLive Firestore 2.8.x behind `RemoteSyncSource`. | Accepted |
+| D-6 | Firebase Auth from KMP | GitLive Auth 2.8.x behind `AuthClient`. | Accepted |
 | D-7 | Navigation | Native navigation per platform. | Accepted |
 | D-8 | Presentation layer | Shared KMP state holders. | Accepted |
 | D-9 | Firestore offline persistence | Disabled. | Accepted |
@@ -557,7 +557,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-62 | Anonymous sign-in benefit reminders | Show fixed, collapsible reminders on elapsed days 1, 3, 8 and 18. | Accepted |
 | D-63 | User-data cleanup implementation | Own an idempotent cleanup service, invoke it directly for collision cleanup and allow one temporary 1st gen Auth deletion trigger. | Accepted |
 | D-64 | Anonymous lifecycle delivery | Keep E0-07 narrow and implement conversion, reminders, cleanup and cross-device recovery in their owning stories. | Accepted |
-| D-65 | Firebase Apple SDK compatibility pin | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and upgrade them together. | Accepted |
+| D-65 | Firebase Apple SDK compatibility pin (superseded by `D-274`) | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and upgrade them together. | Superseded |
 | D-66 | Development cloud cost containment | Use an EUR 10 alerts-only budget, actual-cost alerts and a development-only automatic billing cutoff with read-only OIDC runtime verification. | Accepted |
 | D-67 | Firebase App Check enforcement | Enforce Authentication and Firestore with App Attest, Play Integrity and build-restricted debug providers. | Accepted |
 | D-68 | Cloud Functions moderate advisory residual | Retain the official Functions SDK graph only while its moderate UUID advisory is dynamically unreachable and reviewed with TD-01. | Accepted |
@@ -605,7 +605,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-110 | Outbox entity-type token ownership | Keep explicit contract tokens in production code (clause superseded by `D-206`); add a test-only anchor pinning the `EntityType` enum names to the outbox wire values. | Accepted |
 | D-111 | Explicit UID change opt-in for account adoption | Add optional parameter `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential`; reject unexpected anonymous UID change by default, permit explicit adoption. | Accepted |
 | D-112 | Android Google credential acquisition | Use Credential Manager 1.6.0, its Play Services Auth bridge 1.6.0 and Google ID 1.2.0; keep native credentials and tokens outside shared UI state and telemetry. | Accepted |
-| D-113 | iOS native provider acquisition | Use native `AuthenticationServices` plus `CryptoKit` for Apple and exact GoogleSignIn-iOS 9.2.0 for Google; revalidate the Google pin whenever D-65 moves. | Accepted |
+| D-113 | iOS native provider acquisition | Use native `AuthenticationServices` plus `CryptoKit` for Apple and exact GoogleSignIn-iOS 9.2.0 for Google; revalidate the Google pin whenever D-274 moves. | Accepted |
 | D-114 | Native-to-shared sign-in handoff | Record provider selection in shared state, then use provider-named primitive completion intents and a closed exported failure enum; do not export `NativeAuthCredential`. | Accepted |
 | D-115 | Onboarding navigation topology | Mount the authenticated navigation graph once with the vehicle list as its root and push first-run vehicle creation over it. | Accepted |
 | D-116 | Vehicle list loading semantics | `VehicleListUiState.isLoading` means the vehicle list is not known yet, not that a refresh is running. | Accepted |
@@ -760,6 +760,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-267 | Android performance verification after the MVP | `E4-03` closes with no Android gate figure; the physical-device measurement moves to a post-MVP story that precedes any store submission, and the emulator's figure is only indicative. | Accepted |
 | D-268 | iOS figures on 997 seeded entries | The iOS figures stand on 997 fuel entries, and a post-MVP story fixes the iOS seeder without re-measuring. | Accepted |
 | D-269 | Leak check retained delay | The leak check of `D-256` waits 15 seconds before it treats a retained object as a leak. | Accepted |
+| D-274 | Firebase Apple SDK eMudhra CA fix (supersedes `D-65`) | GitLive 2.8.0 and the Firebase Apple SDK 12.19.3 move together, so the iOS build no longer embeds the compromised eMudhra intermediate CAs. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

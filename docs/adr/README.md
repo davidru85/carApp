@@ -71,7 +71,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-62 | [ADR-0063](0063-anonymous-sign-in-benefit-reminders.md) | Use fixed, collapsible sign-in benefit reminders. | Accepted |
 | D-63 | [ADR-0064](0064-own-user-data-cleanup-service.md) | Own idempotent user-data cleanup with one tracked 1st gen Auth trigger. | Accepted |
 | D-64 | [ADR-0065](0065-split-anonymous-lifecycle-delivery.md) | Split anonymous lifecycle implementation across owning stories. | Accepted |
-| D-65 | [ADR-0066](0066-pin-firebase-apple-to-gitlive-bindings.md) | Pin Firebase Apple to the GitLive cinterop version. | Accepted |
+| D-65 | [ADR-0066](0066-pin-firebase-apple-to-gitlive-bindings.md) | Pin Firebase Apple to the GitLive cinterop version. | Superseded |
 | D-66 | [ADR-0067](0067-contain-development-cloud-costs.md) | Contain development cloud costs with alerts and automatic billing shutdown. | Accepted |
 | D-67 | [ADR-0068](0068-enforce-firebase-app-check.md) | Enforce Firebase App Check for Authentication and Firestore. | Accepted |
 | D-68 | [ADR-0069](0069-retain-official-functions-stack-with-unreachable-moderate-advisory.md) | Retain the official Functions stack with an expiring unreachable moderate advisory. | Accepted |
@@ -274,5 +274,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-267 | [ADR-0268](0268-move-android-performance-verification-after-the-mvp.md) | Move Android performance verification after the MVP. | Accepted |
 | D-268 | [ADR-0269](0269-keep-the-ios-figures-measured-on-997-seeded-entries.md) | Keep the iOS figures measured on 997 seeded entries. | Accepted |
 | D-269 | [ADR-0270](0270-let-the-leak-check-wait-out-a-bounded-framework-retention.md) | Let the leak check wait out a bounded framework retention. | Accepted |
+| D-274 | [ADR-0275](0275-move-firebase-apple-and-gitlive-for-the-emudhra-ca-fix.md) | Move Firebase Apple and GitLive for the eMudhra CA fix. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -95,9 +95,10 @@ targets:
         product: FirebaseFunctions
       # E3-09: the GitLive firebase-analytics cinterop binds FIRAnalytics, so the static Shared
       # framework's FirebaseAnalytics references must be linked by the app target (D-65, ADR-0076).
-      # D-203 selects the pinned no-ad-ID product; FIRAnalytics remains the same framework.
+      # D-203 selects the no-ad-ID product, which Firebase Apple 12 ships as FirebaseAnalyticsCore (D-274);
+      # FIRAnalytics remains the same framework.
       - package: Firebase
-        product: FirebaseAnalyticsWithoutAdIdSupport
+        product: FirebaseAnalyticsCore
       # E4-04: the GitLive firebase-crashlytics cinterop binds FIRCrashlytics, so the static Shared
       # framework's FirebaseCrashlytics references must be linked by the app target (D-65, ADR-0076).
       - package: Firebase

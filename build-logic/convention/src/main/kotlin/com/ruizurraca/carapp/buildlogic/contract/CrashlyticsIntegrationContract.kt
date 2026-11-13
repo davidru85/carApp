@@ -11,7 +11,7 @@ import java.io.File
  * - `docs/CONTRACTS.md §11.6`, `§20.3.1` and `D-179`: the Firebase Crashlytics implementation is
  *   named only by `:wiring:firebase` and its own module, `:wiring:firebase` constructs it, it records
  *   nothing until the opt-in turns it on, and the integration never sets a provider user identifier.
- * - `D-65`, `D-75`: the iOS build links the `FirebaseCrashlytics` SwiftPM product. GitLive 2.6.0 does
+ * - `D-274`, `D-75`: the iOS build links the `FirebaseCrashlytics` SwiftPM product. GitLive 2.8.0 does
  *   not supply Firebase Apple dependencies transitively, so the cinterop klib resolves to
  *   `framework 'FirebaseCrashlytics' not found` at the Xcode link step unless the app links it.
  * - `docs/CONTRACTS.md §16.1` (`D-241`): the Crashlytics SDK initialises at process start, before

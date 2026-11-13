@@ -115,7 +115,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Build | Gradle Kotlin DSL, version catalog, convention plugins in `build-logic` |
 | Local database | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 |
 | Remote backend | Cloud Firestore as a backup and recovery replica, never as UI source of truth |
-| Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
+| Authentication | Firebase Authentication through GitLive 2.8.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, off until the Settings opt-in |
 | iOS interop | SKIE, applied only in `:composition:ios` |
