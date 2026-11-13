@@ -335,7 +335,7 @@ class AnalyticsIntegrationContractTest {
         )
 
     private companion object {
-        const val NO_AD_PRODUCT = "FirebaseAnalyticsWithoutAdIdSupport"
+        const val NO_AD_PRODUCT = "FirebaseAnalyticsCore"
         const val ANDROID_COLLECTION_KEY = "firebase_analytics_collection_enabled"
         const val IOS_COLLECTION_KEY = "FIREBASE_ANALYTICS_COLLECTION_ENABLED"
     }
