@@ -48,6 +48,12 @@ The selected option is **A**: GitLive 2.8.0 and `firebase-ios-sdk` 12.19.3, move
 - `D-75` (ADR-0076) is evaluated together with this decision, as ADR-0066 requires: the standalone Native test
   exception is re-checked, not assumed.
 - `firebaseBom`, `googleSignInIos`, `googleServices` and `crashlyticsGradle` do not change.
+- **Analytics product (amendment, 2026-11-13).** Firebase Apple 12.19.3 no longer ships
+  `FirebaseAnalyticsWithoutAdIdSupport`, the product `D-203` links. Its 12.x equivalent is `FirebaseAnalyticsCore`,
+  which wraps `GoogleAppMeasurementCore` and has neither `IdentitySupport` (IDFA) nor `GoogleAdsOnDeviceConversion`;
+  the 12.x `FirebaseAnalytics` product includes both. The iOS app therefore links `FirebaseAnalyticsCore`, so the
+  privacy outcome of `D-203` is preserved. The owner chose this on 2026-11-13 over linking `FirebaseAnalytics` and
+  over stopping to decide it separately. `docs/CONTRACTS.md` §16.1 and assertion 38 name the new product.
 
 ## Consequences
 
@@ -72,6 +78,9 @@ The selected option is **A**: GitLive 2.8.0 and `firebase-ios-sdk` 12.19.3, move
 ## Verification
 
 - `FirebaseConfigurationTest` fails before the catalog change and passes after it.
+- `AnalyticsIntegrationContractTest` fails before the product change and passes after it, and assertion 38 of
+  `contractCheck` passes on the real repository.
+- The linked iOS binary contains no `GoogleAdsOnDeviceConversion` or `IdentitySupport` code.
 - The Xcode project and `Package.resolved` select 12.19.3.
 - The `staging` variant signs in anonymously, creates a vehicle and a fuel entry, syncs, and shows a successful
   backup on a simulator.
@@ -79,6 +88,6 @@ The selected option is **A**: GitLive 2.8.0 and `firebase-ios-sdk` 12.19.3, move
 
 ## References
 
-- `docs/DECISION_BOARD.md` (decision ID `D-274`); `D-65` (ADR-0066, superseded); `D-75` (ADR-0076); `D-113`
+- `docs/DECISION_BOARD.md` (decision ID `D-274`); `D-203` (ADR-0204, amended); `D-65` (ADR-0066, superseded); `D-75` (ADR-0076); `D-113`
   (ADR-0114); `D-5`; `D-6`
 - `docs/BACKLOG.md` §`E4-11`; `docs/handoffs/E4-11.md`

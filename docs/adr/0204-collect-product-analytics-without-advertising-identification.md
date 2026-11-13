@@ -4,6 +4,11 @@
 
 Accepted
 
+Amended on 2026-11-13 by [ADR-0275](0275-move-firebase-apple-and-gitlive-for-the-emudhra-ca-fix.md) (`D-274`): Firebase
+Apple 12 removed `FirebaseAnalyticsWithoutAdIdSupport`, and the iOS app now links `FirebaseAnalyticsCore`, the 12.x
+product without `IdentitySupport` and without `GoogleAdsOnDeviceConversion`. The decision itself, analytics without
+advertising identification, is unchanged.
+
 ## Context
 
 Settings opt-in gates collection, but linking the default Firebase Analytics products also adds

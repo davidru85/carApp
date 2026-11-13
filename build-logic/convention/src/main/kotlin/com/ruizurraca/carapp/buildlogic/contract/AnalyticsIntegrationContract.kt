@@ -12,7 +12,7 @@ import java.io.File
  *   prefix; this asserts it for the public class name as well, because a platform host could reach
  *   the implementation through a re-export or a fully-qualified name that carries no package prefix
  *   on the offending line.
- * - `D-65`, `D-203`: the iOS build links `FirebaseAnalyticsWithoutAdIdSupport`. GitLive
+ * - `D-274`, `D-203`: the iOS build links `FirebaseAnalyticsCore`. GitLive
  *   2.8.0 does not supply Firebase Apple dependencies transitively, so the cinterop klib the
  *   Kotlin/Native compiler consumes resolves to `framework 'FirebaseAnalytics' not found` unless the
  *   host app links the product. Nothing else in the repository can observe that coupling: the Kotlin
@@ -133,7 +133,7 @@ internal class AnalyticsIntegrationContract internal constructor(
         }
         return result(
             id = 38,
-            name = "the iOS app links the FirebaseAnalyticsWithoutAdIdSupport SwiftPM product",
+            name = "the iOS app links the FirebaseAnalyticsCore SwiftPM product",
             problems = problems,
         )
     }
@@ -221,7 +221,7 @@ internal class AnalyticsIntegrationContract internal constructor(
 
     private companion object {
         const val IMPLEMENTATION_NAME = "FirebaseAnalyticsTracker"
-        const val IOS_PRODUCT = "FirebaseAnalyticsWithoutAdIdSupport"
+        const val IOS_PRODUCT = "FirebaseAnalyticsCore"
         const val TRACKER_PATH =
             "integration/firebase-analytics/src/commonMain/kotlin/com/ruizurraca/carapp/" +
                 "integration/firebase/analytics/FirebaseAnalyticsTracker.kt"

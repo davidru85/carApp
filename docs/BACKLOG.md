@@ -1561,6 +1561,8 @@ Acceptance criteria:
 - The `staging` variant on a simulator signs in anonymously, creates a vehicle and a fuel entry, forces a sync
   and shows a successful backup, because a compile-only pass does not prove the native bindings.
 - The Android Firestore artifact version is recorded before and after the change.
+- The iOS app links `FirebaseAnalyticsCore` because Firebase Apple 12 removed `FirebaseAnalyticsWithoutAdIdSupport`, and
+  the linked binary carries no advertising-identifier support (`D-203`, `D-274`).
 
 Depends on: E4-04.
 
